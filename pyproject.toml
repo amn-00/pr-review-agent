@@ -5,10 +5,14 @@ description = "GitHub App that reviews pull requests with a parallel LLM pipelin
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.20.1",
     "arq>=0.28.0",
+    "asyncpg>=0.32.0",
     "fastapi>=0.162.0",
     "httpx>=0.28.1",
     "pydantic-settings>=2.16.2",
+    "pyjwt[crypto]>=2.15.1",
+    "sqlalchemy[asyncio]>=2.1.6",
     "uvicorn>=0.54.0",
 ]
 
@@ -30,5 +34,6 @@ asyncio_default_fixture_loop_scope = "function"
 dev = [
     "pytest>=9.2.0",
     "pytest-asyncio>=1.4.1",
+    "respx>=0.23.1",
     "ruff>=0.17.3",
 ]

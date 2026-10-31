@@ -88,3 +88,97 @@ Phase 1, once the app actually uses them.
 
 **Postgres 16 locally.**
 Matches a version Neon supports, so migrations behave the same locally and in prod.
+
+## Phase 1 — Webhook → queue → worker
+
+**Webhook delivery IDs live in Redis only; there is no `webhook_deliveries` table.**
+`SET delivery:{id} NX EX 3d` is a cheap first filter for exact replays. The durable guarantee is
+the unique `(pr_id, head_sha)` constraint on `review_runs`, which still holds after Redis loses
+its data. A table would add a DB write before the 200, against the < 200 ms goal.
+
+**The webhook never touches Postgres; the worker creates the run row.**
+That keeps the endpoint fast and keeps it working if Postgres is briefly down. So there is no
+`queued` status: a run starts as `running`, then ends as `completed`, `failed` or `skipped`. A CHECK
+constraint enforces those four values.
+
+**Releasing the delivery ID when enqueueing fails.**
+If Redis accepts the delivery ID but the enqueue fails, we delete the key and return 503.
+GitHub's manual redelivery reuses the same ID, so otherwise it would be wrongly deduped.
+
+**Older commits are skipped by checking GitHub, not by aborting jobs.**
+At job start the worker fetches the PR. If it is closed or a draft, or its head SHA has moved on,
+the run is `skipped`. GitHub is the source of truth, so this is correct even when jobs run out
+of order, and it needs no arq job-abort machinery. Phase 2 repeats the check before posting.
+
+**Errors are classified once, in `app/github/http.py`.**
+- Timeouts, connection errors, 5xx and 429 raise `RetryableError`, and so does a 403 that comes
+  with `Retry-After` or `X-RateLimit-Remaining: 0`.
+- Any other 4xx raises `NonRetryableError`. A 403 without those headers is a permission problem,
+  and retrying won't fix it.
+- Any other exception is a bug: the run is marked `failed` and arq logs the traceback.
+
+**Retries use arq's `Retry(defer=...)`, with exponential backoff and jitter.**
+The base is 5 s, doubling up to a 300 s cap, with a random delay between 50% and 100% of that.
+If GitHub sends `Retry-After` or a rate-limit reset time, we wait exactly that long. On the last
+try the job marks the run `failed` itself. Otherwise arq would drop the job silently and the run
+would be stuck at `running`.
+
+**The GitHub rate limit is respected before hitting it.**
+The client remembers `X-RateLimit-Remaining/Reset` per installation from every response. Below
+`GITHUB_MIN_RATE_LIMIT_REMAINING` (default 50), it defers the job until the reset instead of using
+up the last requests. The numbers are kept in each process's memory, not shared across workers.
+That's good enough with one worker; Phase 6 load tests will show whether we need it in Redis.
+
+**Installation tokens are cached in process memory.**
+Tokens live 1 hour, and we refresh 5 minutes early. The cost is one token request per process per
+hour. Sharing them via Redis would mean storing credentials in Redis for no real benefit.
+
+**The private key is stored as PEM text in one env var, with `\n` escaped.**
+That works the same in `.env`, docker-compose and Render's env settings, with no secret files to
+mount.
+
+**Worker crashes: arq re-runs the job, and the run marker prevents a second post.**
+arq keeps a job in its queue until it finishes. While running, the job holds an in-progress key
+that expires after the job timeout, after which another worker picks the job up again. Before
+posting, the job looks for `<!-- pr-review-agent run:{id} -->` among the PR's comments. Tested
+by simulating "posted, then died" (`test_does_not_post_again_if_marker_already_on_pr`). A real
+kill test is in Phase 6.
+
+**Known limitation: arq keeps job results for 1 hour.**
+arq refuses a job ID whose result key still exists. So a commit whose run failed can't be
+re-enqueued for that `(repo, pr, sha)` within the hour, even by a new delivery. Phase 2's
+reconciler is the natural place to handle this.
+
+**JSON logs via stdlib `logging` + `contextvars`, with no new dependency.**
+The webhook and the job call `set_log_context(delivery_id, repo, pr, sha)`, and the job adds
+`run_id`. Every line logged during that request or job carries those fields, including uvicorn's
+and httpx's. contextvars are per asyncio task, so concurrent jobs don't mix contexts (tested).
+structlog would do the same with more features, but this is about 50 lines.
+
+**Migrations run as a one-shot compose service.**
+`migrate` runs `alembic upgrade head`, and `api`/`worker` start only after it succeeds. Two
+processes never race to migrate. The prod equivalent is decided in Phase 8.
+
+**Constraint naming convention.**
+`MetaData(naming_convention=...)` gives every constraint a predictable name, e.g.
+`uq_review_runs_pr_id_head_sha`. Without it, Postgres invents names and later migrations can't
+reliably drop or alter constraints.
+
+**Indexes.**
+The unique constraints double as the indexes for every Phase 1 lookup:
+- `installations(github_installation_id)` and `repos(github_repo_id)` for the upserts
+- `pull_requests(repo_id, number)` for finding a PR
+- `review_runs(pr_id, head_sha)` for finding a commit's run, and all runs of a PR via the
+  leading column
+
+`repos.installation_id` has no index yet; the reconciler (Phase 2) is its first reader.
+
+**Tests use real Postgres and Redis, not SQLite or fakeredis.**
+`ON CONFLICT`, CHECK constraints and arq's dedupe are exactly what's being tested, and fakes
+behave differently there. Tests use a separate `pr_review_test` database, created and migrated
+by the test session, and Redis DB 1. They never touch dev data, and a running dev worker
+(Redis DB 0) can't steal test jobs.
+
+**Responses: 202 for queued, 200 for ignored or duplicate.**
+GitHub treats every 2xx as delivered. 202 makes "accepted for async processing" visible in
+GitHub's Recent Deliveries view.
