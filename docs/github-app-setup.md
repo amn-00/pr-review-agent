@@ -100,4 +100,5 @@ Open a PR on the test repo. Within a few seconds a comment appears:
 | Run `failed`, error `-> 404 ... Integration not found` | Wrong `GITHUB_APP_ID`, or the key belongs to a different App. |
 | Run `failed`, error `-> 403 ... Resource not accessible` | App permissions are missing, or you changed them and haven't accepted the new permissions on the installation. |
 | Nothing in the API logs | The smee client isn't running, or the App's webhook URL isn't your smee URL. |
+| smee-client says Connected but prints no `POST` lines, while GitHub's Recent Deliveries show `200 OK` | The App's webhook URL and the client's `--url` are different channels. smee.io answers 200 for any channel, even one nobody listens on, so GitHub reports success. Compare them character by character (look-alikes such as `I`/`l` are easy to miss), and copy-paste the URL instead of retyping it. Then redeliver: smee doesn't replay events sent before the client connected. |
 | Draft PR gets no comment | Expected: drafts are skipped until marked "Ready for review". |
