@@ -32,7 +32,7 @@ uv run ruff format --check .
 uv run pytest
 ```
 
-New migration after changing `app/db/models.py` (needs a filled-in `.env`):
+New migration after changing `app/db/models.py` (needs only `DATABASE_URL`, and Postgres running):
 
 ```sh
 uv run alembic revision --autogenerate -m "describe the change"

@@ -15,6 +15,10 @@ from app.queue import REVIEW_PR_JOB, review_job_id
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+# How long a delivery ID is remembered for dedupe. GitHub allows redelivering events up to
+# 3 days old, so this covers manual redeliveries.
+DELIVERY_TTL_SECONDS = 3 * 24 * 3600
+
 
 def _respond(status_code: int, status: str) -> JSONResponse:
     return JSONResponse({"status": status}, status_code=status_code)
@@ -62,7 +66,7 @@ async def github_webhook(
     claimed = False
     try:
         # First filter: an exact replay of a delivery we've already accepted.
-        claimed = bool(await arq.set(delivery_key, "1", nx=True, ex=settings.delivery_ttl_seconds))
+        claimed = bool(await arq.set(delivery_key, "1", nx=True, ex=DELIVERY_TTL_SECONDS))
         if not claimed:
             logger.info("duplicate delivery, not enqueued")
             return _respond(200, "duplicate")

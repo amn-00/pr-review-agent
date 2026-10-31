@@ -7,7 +7,7 @@ from arq import Retry, func
 
 from app.config import get_settings
 from app.db.models import RunStatus
-from app.db.queries import finish_run, get_or_create_run, mark_running
+from app.db.queries import claim_run, finish_run, get_or_create_run, release_run
 from app.db.session import make_engine, make_sessionmaker
 from app.github.client import GitHubClient
 from app.github.http import NonRetryableError, RetryableError
@@ -18,6 +18,11 @@ from app.queue import REVIEW_PR_JOB, arq_redis_settings
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
+JOB_MAX_TRIES = 5
+# arq cancels a job after this long, so a run still `running` after it was abandoned by a
+# worker that died. arq re-runs such a job only after job_timeout + 10 s, by which time the
+# run is stale and the new attempt can take it over.
+JOB_TIMEOUT_SECONDS = 300
 BACKOFF_BASE_SECONDS = 5
 BACKOFF_MAX_SECONDS = 300
 
@@ -51,16 +56,19 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
     async with sessionmaker() as session:
         run = await get_or_create_run(session, payload)
         bind_log_context(run_id=run.id)
-        if run.status == RunStatus.COMPLETED:
-            logger.info("run already completed, nothing to do")
+        # Only a `completed` run, or one a live worker is on, stops this attempt.
+        if not await claim_run(session, run.id, stale_after_seconds=JOB_TIMEOUT_SECONDS):
+            logger.info(
+                "run is completed or in progress elsewhere, nothing to do",
+                extra={"fields": {"run_status": run.status}},
+            )
             return run.status
-        await mark_running(session, run.id)
     logger.info("job started", extra={"fields": {"job_try": job_try}})
 
     try:
         status, comment_id = await _post_placeholder(ctx["github"], payload, run.id)
     except RetryableError as exc:
-        if job_try >= ctx["settings"].job_max_tries:
+        if job_try >= JOB_MAX_TRIES:
             error = f"gave up after {job_try} tries: {exc}"
             logger.error(error)
             await _finish(ctx, run.id, RunStatus.FAILED, error=error)
@@ -71,6 +79,8 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
             exc,
             extra={"fields": {"job_try": job_try, "retry_in_s": round(delay, 1)}},
         )
+        async with sessionmaker() as session:
+            await release_run(session, run.id)
         raise Retry(defer=delay) from exc
     except NonRetryableError as exc:
         logger.error("permanent error, not retrying: %s", exc)
@@ -128,7 +138,6 @@ async def _finish(ctx: dict, run_id: int, status: RunStatus, **fields) -> None:
 async def startup(ctx: dict) -> None:
     setup_logging(settings.log_level)
     engine = make_engine(str(settings.database_url))
-    ctx["settings"] = settings
     ctx["engine"] = engine
     ctx["sessionmaker"] = make_sessionmaker(engine)
     ctx["github"] = GitHubClient.from_settings(settings)
@@ -144,4 +153,9 @@ class WorkerSettings:
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = arq_redis_settings(settings)
-    max_tries = settings.job_max_tries
+    max_tries = JOB_MAX_TRIES
+    job_timeout = JOB_TIMEOUT_SECONDS
+    # Don't keep finished jobs' results. arq refuses to enqueue a job ID whose result still
+    # exists, which would block re-reviewing a commit (e.g. after close + reopen) for as long
+    # as the result is kept. Postgres's unique (pr_id, head_sha) is the durable dedupe instead.
+    keep_result = 0

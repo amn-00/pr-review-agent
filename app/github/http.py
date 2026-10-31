@@ -4,7 +4,7 @@ import time
 
 import httpx
 
-from app.config import Settings
+GITHUB_API_URL = "https://api.github.com"
 
 
 class RetryableError(Exception):
@@ -20,9 +20,9 @@ class NonRetryableError(Exception):
     """Permanent failure (bad credentials, missing permission, 404). Retrying won't help."""
 
 
-def make_http_client(settings: Settings) -> httpx.AsyncClient:
+def make_http_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        base_url=settings.github_api_url,
+        base_url=GITHUB_API_URL,
         timeout=10.0,
         follow_redirects=True,  # GitHub redirects requests for renamed repos
         headers={

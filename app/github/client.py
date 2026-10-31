@@ -7,6 +7,9 @@ from app.config import Settings
 from app.github.auth import GitHubAppAuth
 from app.github.http import RetryableError, make_http_client, raise_for_status, send
 
+# Stop calling GitHub (and defer the job) when fewer requests than this remain.
+MIN_RATE_LIMIT_REMAINING = 50
+
 
 class GitHubClient:
     """The GitHub REST calls the worker needs.
@@ -19,12 +22,10 @@ class GitHubClient:
         self,
         http: httpx.AsyncClient,
         auth: GitHubAppAuth,
-        min_rate_limit_remaining: int,
         clock: Callable[[], float] = time.time,
     ):
         self._http = http
         self._auth = auth
-        self._min_remaining = min_rate_limit_remaining
         self._clock = clock
         # installation id -> (requests remaining, unix time the limit resets), from the
         # X-RateLimit-* headers of the last response.
@@ -32,9 +33,9 @@ class GitHubClient:
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "GitHubClient":
-        http = make_http_client(settings)
+        http = make_http_client()
         auth = GitHubAppAuth(http, settings.github_app_id, settings.github_private_key_pem())
-        return cls(http, auth, settings.github_min_rate_limit_remaining)
+        return cls(http, auth)
 
     async def aclose(self) -> None:
         await self._http.aclose()
@@ -83,7 +84,7 @@ class GitHubClient:
         getting 403s. Raises RetryableError so the job is deferred until the reset."""
         remaining, reset_at = self._rate_limits.get(installation_id, (None, 0.0))
         now = self._clock()
-        if remaining is not None and remaining < self._min_remaining and reset_at > now:
+        if remaining is not None and remaining < MIN_RATE_LIMIT_REMAINING and reset_at > now:
             raise RetryableError(
                 f"GitHub rate limit nearly used up ({remaining} left)",
                 retry_after=reset_at - now,

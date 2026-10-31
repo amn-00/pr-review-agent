@@ -99,7 +99,8 @@ its data. A table would add a DB write before the 200, against the < 200 ms goal
 **The webhook never touches Postgres; the worker creates the run row.**
 That keeps the endpoint fast and keeps it working if Postgres is briefly down. So there is no
 `queued` status: a run starts as `running`, then ends as `completed`, `failed` or `skipped`. A CHECK
-constraint enforces those four values.
+constraint enforces those four values. *(The status part is superseded: runs now start `queued`;
+see "Claiming a run" under Phase 1 review fixes.)*
 
 **Releasing the delivery ID when enqueueing fails.**
 If Redis accepts the delivery ID but the enqueue fails, we delete the key and return 503.
@@ -125,7 +126,7 @@ would be stuck at `running`.
 
 **The GitHub rate limit is respected before hitting it.**
 The client remembers `X-RateLimit-Remaining/Reset` per installation from every response. Below
-`GITHUB_MIN_RATE_LIMIT_REMAINING` (default 50), it defers the job until the reset instead of using
+`MIN_RATE_LIMIT_REMAINING` (50, in `app/github/client.py`), it defers the job until the reset instead of using
 up the last requests. The numbers are kept in each process's memory, not shared across workers.
 That's good enough with one worker; Phase 6 load tests will show whether we need it in Redis.
 
@@ -144,7 +145,8 @@ posting, the job looks for `<!-- pr-review-agent run:{id} -->` among the PR's co
 by simulating "posted, then died" (`test_does_not_post_again_if_marker_already_on_pr`). A real
 kill test is in Phase 6.
 
-**Known limitation: arq keeps job results for 1 hour.**
+**Known limitation: arq keeps job results for 1 hour.** *(Fixed: see `keep_result = 0` under
+Phase 1 review fixes.)*
 arq refuses a job ID whose result key still exists. So a commit whose run failed can't be
 re-enqueued for that `(repo, pr, sha)` within the hour, even by a new delivery. Phase 2's
 reconciler is the natural place to handle this.
@@ -182,3 +184,57 @@ by the test session, and Redis DB 1. They never touch dev data, and a running de
 **Responses: 202 for queued, 200 for ignored or duplicate.**
 GitHub treats every 2xx as delivered. 202 makes "accepted for async processing" visible in
 GitHub's Recent Deliveries view.
+
+## Phase 1 review fixes
+
+**Four tuning values are constants, not settings.**
+`GITHUB_API_URL`, `MIN_RATE_LIMIT_REMAINING`, `DELIVERY_TTL_SECONDS` and `JOB_MAX_TRIES` sit next to
+the code that uses them. Nobody asked for them to be configurable, and each env var is one more
+thing to document and get wrong. They can become settings when there's a real need.
+
+**`keep_result = 0`: arq keeps no record of finished jobs.**
+With arq's default (1 hour), a finished job's ID can't be enqueued again. That blocked reviewing
+a commit after close + reopen, or after a failure, and the reconciler would hit the same block.
+Postgres's unique `(pr_id, head_sha)` is the durable dedupe, so arq only needs to dedupe jobs that
+are queued or running. Tested end to end with a real arq `Worker`, and the tests fail with 3600.
+
+**The rerun rule: only a `completed` run stops a rerun.**
+`failed` and `skipped` runs are retried whenever a new job arrives for that commit, e.g. after
+the App's permissions are fixed, or when a PR closed before its job ran is reopened.
+
+**Claiming a run: one atomic `UPDATE`, with stale takeover.**
+Runs are created `queued`. A job starts only if a single `UPDATE ... WHERE ... RETURNING` turns the
+run into `running`. That succeeds for `queued`, `failed` and `skipped` runs, and for `running`
+runs whose `started_at` is older than the job timeout (300 s). The check and the write are one
+statement, so two workers can't both claim a run (tested by racing two claims).
+
+**Why the timeout makes a `running` run stale.**
+arq cancels a job after `job_timeout`, so no live attempt can be older than that. arq re-runs a
+crashed job only after `job_timeout + 10 s`, by which point the run is stale and the re-run takes
+it over. A fresh `running` run means another worker is on it, e.g. a duplicate job after Redis
+lost its data, so the job leaves it alone and doesn't call GitHub.
+
+**A job releases its run before retrying.**
+Before raising `Retry`, the job sets the run back to `queued`. Otherwise its own retry would find
+a fresh `running` run and back off as if another worker held it.
+
+**This brings back a `queued` status.**
+It means "not held by any worker": just created, or waiting for a retry. A new migration widens the
+CHECK constraint. It's written by hand, because autogenerate doesn't detect CHECK changes. The
+downgrade turns `queued` runs into `failed`, which keeps them retryable.
+
+**Migrations need only `DATABASE_URL`.**
+`Settings` now extends a `DatabaseSettings` base that holds just `database_url`. Alembic's
+`env.py` loads only that, so `alembic upgrade` runs without the GitHub secrets. Checked by running
+upgrade, downgrade and upgrade with no `.env` and no GitHub env vars.
+
+**The marker search reads every page of comments.**
+`list_issue_comments` asks for 100 per page and follows the `Link: rel="next"` header until the
+end, so the marker is found on busy PRs. Tested with the marker on page 2. We don't filter to our
+App's own comments, so a PR author could post a fake marker and suppress the placeholder comment
+for their PR. That's harmless now. It's worth closing in Phase 2, before real reviews depend on the
+marker, by checking `performed_via_github_app.id`.
+
+**The installation token cache is keyed by installation ID.**
+`GitHubAppAuth._tokens` maps installation ID to (token, expiry), so one installation's token is
+never used for another installation's repos. Tested in `test_tokens_are_cached_per_installation`.

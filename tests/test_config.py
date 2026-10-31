@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.config import Settings
+from app.config import DatabaseSettings, Settings
 
 ENV_VARS = [
     "ENVIRONMENT",
@@ -36,7 +36,6 @@ def test_defaults_are_local_dev():
     assert settings.environment == "dev"
     assert settings.log_level == "INFO"
     assert str(settings.redis_url) == "redis://localhost:6379/0"
-    assert settings.github_api_url == "https://api.github.com"
 
 
 def test_reads_values_from_env(monkeypatch):
@@ -70,6 +69,15 @@ def test_rejects_missing_github_settings(missing):
 
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **values)
+
+
+def test_database_settings_need_no_github_secrets(monkeypatch):
+    # What migrations load: must work with only DATABASE_URL set.
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://u:p@db.example.com/prod")
+
+    settings = DatabaseSettings(_env_file=None)
+
+    assert settings.database_url.hosts()[0]["host"] == "db.example.com"
 
 
 def test_rejects_unknown_environment():

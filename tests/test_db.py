@@ -1,15 +1,25 @@
+import asyncio
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.db.models import PullRequest, Repo, ReviewRun, RunStatus
-from app.db.queries import finish_run, get_or_create_run, mark_running
+from app.db.queries import claim_run, finish_run, get_or_create_run, release_run
 from app.github.webhooks import PullRequestPayload
 from tests.factories import SHA_1, SHA_2, pr_payload
+
+STALE_AFTER = 300
 
 
 def payload(**kwargs) -> PullRequestPayload:
     return PullRequestPayload.model_validate(pr_payload(**kwargs))
+
+
+async def set_run(session, run_id: int, **values) -> None:
+    await session.execute(update(ReviewRun).where(ReviewRun.id == run_id).values(**values))
+    await session.commit()
 
 
 async def count(session, model) -> int:
@@ -56,15 +66,75 @@ async def test_renamed_repo_updates_the_existing_row(sessionmaker):
         assert (await session.scalar(select(Repo))).full_name == "octo/renamed"
 
 
-async def test_finished_run_can_be_reset_to_running(sessionmaker):
+async def test_new_run_starts_queued(sessionmaker):
     async with sessionmaker() as session:
         run = await get_or_create_run(session, payload())
-        await finish_run(session, run.id, RunStatus.FAILED, error="boom")
-        await mark_running(session, run.id)
+
+        assert run.status == RunStatus.QUEUED
+
+
+@pytest.mark.parametrize("status", [RunStatus.QUEUED, RunStatus.FAILED, RunStatus.SKIPPED])
+async def test_unfinished_runs_can_be_claimed(sessionmaker, status):
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+        await set_run(session, run.id, status=status, error="earlier error")
+
+        assert await claim_run(session, run.id, stale_after_seconds=STALE_AFTER) is True
 
         await session.refresh(run)
         assert run.status == RunStatus.RUNNING
         assert run.error is None
+
+
+async def test_completed_run_cannot_be_claimed(sessionmaker):
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+        await finish_run(session, run.id, RunStatus.COMPLETED)
+
+        assert await claim_run(session, run.id, stale_after_seconds=STALE_AFTER) is False
+
+
+async def test_running_run_cannot_be_claimed_while_fresh(sessionmaker):
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+        assert await claim_run(session, run.id, stale_after_seconds=STALE_AFTER) is True
+
+        # A second worker arrives while the first is still within the job timeout.
+        assert await claim_run(session, run.id, stale_after_seconds=STALE_AFTER) is False
+
+
+async def test_stale_running_run_is_taken_over(sessionmaker):
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+        abandoned_at = datetime.now(UTC) - timedelta(seconds=STALE_AFTER + 1)
+        await set_run(session, run.id, status=RunStatus.RUNNING, started_at=abandoned_at)
+
+        assert await claim_run(session, run.id, stale_after_seconds=STALE_AFTER) is True
+
+        await session.refresh(run)
+        assert run.started_at > abandoned_at  # the new attempt's start time
+
+
+async def test_two_workers_racing_only_one_claims(sessionmaker):
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+
+    async def claim() -> bool:
+        async with sessionmaker() as session:  # separate connection per "worker"
+            return await claim_run(session, run.id, stale_after_seconds=STALE_AFTER)
+
+    results = await asyncio.gather(claim(), claim())
+
+    assert sorted(results) == [False, True]
+
+
+async def test_released_run_can_be_claimed_by_the_retry(sessionmaker):
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+        await claim_run(session, run.id, stale_after_seconds=STALE_AFTER)
+        await release_run(session, run.id)
+
+        assert await claim_run(session, run.id, stale_after_seconds=STALE_AFTER) is True
 
 
 async def test_database_rejects_unknown_status(sessionmaker):

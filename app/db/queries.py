@@ -1,6 +1,6 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -51,7 +51,7 @@ async def get_or_create_run(session: AsyncSession, payload: PullRequestPayload) 
     )
     await session.execute(
         insert(ReviewRun)
-        .values(pr_id=pr_id, head_sha=pr.head.sha, status=RunStatus.RUNNING)
+        .values(pr_id=pr_id, head_sha=pr.head.sha, status=RunStatus.QUEUED)
         .on_conflict_do_nothing(index_elements=[ReviewRun.pr_id, ReviewRun.head_sha])
     )
     run = await session.scalar(
@@ -61,12 +61,36 @@ async def get_or_create_run(session: AsyncSession, payload: PullRequestPayload) 
     return run
 
 
-async def mark_running(session: AsyncSession, run_id: int) -> None:
-    """Reset a run that is being (re)tried: a failed or skipped run can be picked up again."""
-    await session.execute(
+async def claim_run(session: AsyncSession, run_id: int, stale_after_seconds: int) -> bool:
+    """Atomically mark the run `running` for this attempt. Returns False if we can't have it.
+
+    Claimable: `queued`, `failed` and `skipped` runs, and `running` runs whose attempt started
+    more than `stale_after_seconds` ago (that worker died). Not claimable: `completed` runs and
+    runs another worker is actively on. The check and the update are one statement, so two
+    workers can't both claim the same run.
+    """
+    stale_before = func.now() - timedelta(seconds=stale_after_seconds)
+    claimed_id = await session.scalar(
         update(ReviewRun)
-        .where(ReviewRun.id == run_id)
-        .values(status=RunStatus.RUNNING, error=None, finished_at=None)
+        .where(
+            ReviewRun.id == run_id,
+            or_(
+                ReviewRun.status.in_([RunStatus.QUEUED, RunStatus.FAILED, RunStatus.SKIPPED]),
+                and_(ReviewRun.status == RunStatus.RUNNING, ReviewRun.started_at < stale_before),
+            ),
+        )
+        .values(status=RunStatus.RUNNING, started_at=func.now(), error=None, finished_at=None)
+        .returning(ReviewRun.id)
+    )
+    await session.commit()
+    return claimed_id is not None
+
+
+async def release_run(session: AsyncSession, run_id: int) -> None:
+    """Hand the run back (status `queued`) while the job waits to retry, so the retry can
+    claim it straight away instead of waiting for it to go stale."""
+    await session.execute(
+        update(ReviewRun).where(ReviewRun.id == run_id).values(status=RunStatus.QUEUED)
     )
     await session.commit()
 

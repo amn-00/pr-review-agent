@@ -33,6 +33,8 @@ class Base(DeclarativeBase):
 
 
 class RunStatus(StrEnum):
+    # Not claimed by a worker: just created, or released to wait for a retry.
+    QUEUED = "queued"
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
@@ -76,14 +78,17 @@ class ReviewRun(Base):
         # The durable dedupe: at most one run per commit of a PR, even if Redis loses its data.
         UniqueConstraint("pr_id", "head_sha"),
         CheckConstraint(
-            "status IN ('running', 'completed', 'failed', 'skipped')", name="valid_status"
+            "status IN ('queued', 'running', 'completed', 'failed', 'skipped')",
+            name="valid_status",
         ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     pr_id: Mapped[int] = mapped_column(ForeignKey("pull_requests.id"))
     head_sha: Mapped[str] = mapped_column(String(40))
-    status: Mapped[str] = mapped_column(String(20), default=RunStatus.RUNNING)
+    status: Mapped[str] = mapped_column(String(20), default=RunStatus.QUEUED)
+    # When the current attempt claimed the run. A `running` run older than the job timeout
+    # belongs to a worker that died, and can be taken over.
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     tokens_in: Mapped[int] = mapped_column(Integer, default=0, server_default="0")

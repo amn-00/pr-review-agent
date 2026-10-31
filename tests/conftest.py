@@ -37,6 +37,7 @@ from arq.connections import RedisSettings  # noqa: E402
 
 from app.db.session import make_engine, make_sessionmaker  # noqa: E402
 from app.github.client import GitHubClient  # noqa: E402
+from app.main import create_app  # noqa: E402
 
 TABLES = "review_runs, pull_requests, repos, installations"
 
@@ -97,8 +98,17 @@ class StubAuth:
 
 @pytest.fixture
 async def github():
-    client = GitHubClient(
-        httpx.AsyncClient(base_url=GITHUB_API), StubAuth(), min_rate_limit_remaining=50
-    )
+    client = GitHubClient(httpx.AsyncClient(base_url=GITHUB_API), StubAuth())
     yield client
     await client.aclose()
+
+
+@pytest.fixture
+async def client(arq_redis):
+    """HTTP client for the API, wired to the test Redis."""
+    app = create_app()
+    # The lifespan doesn't run under ASGITransport, so wire the Redis pool by hand.
+    app.state.arq = arq_redis
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client

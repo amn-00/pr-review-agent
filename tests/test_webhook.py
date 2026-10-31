@@ -1,47 +1,9 @@
-import hashlib
-import hmac
 import json
 
-import httpx
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
 
-from app.main import create_app
-from tests.conftest import WEBHOOK_SECRET
-from tests.factories import PR_NUMBER, REPO, SHA_1, SHA_2, pr_payload
-
-
-@pytest.fixture
-async def client(arq_redis):
-    app = create_app()
-    # The lifespan doesn't run under ASGITransport, so wire the Redis pool by hand.
-    app.state.arq = arq_redis
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
-
-
-def sign(body: bytes, secret: str = WEBHOOK_SECRET) -> str:
-    return "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
-
-
-async def send_event(
-    client,
-    payload: dict,
-    *,
-    delivery: str | None = "delivery-1",
-    event: str = "pull_request",
-    signature: str | None = None,
-) -> httpx.Response:
-    body = json.dumps(payload).encode()
-    headers = {
-        "X-GitHub-Event": event,
-        "X-Hub-Signature-256": signature if signature is not None else sign(body),
-        "Content-Type": "application/json",
-    }
-    if delivery is not None:
-        headers["X-GitHub-Delivery"] = delivery
-    return await client.post("/webhook", content=body, headers=headers)
+from tests.factories import PR_NUMBER, REPO, SHA_1, SHA_2, pr_payload, send_event, sign
 
 
 async def queued_jobs(arq_redis) -> list:

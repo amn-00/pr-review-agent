@@ -6,7 +6,7 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.config import get_settings
+from app.config import DatabaseSettings
 from app.db.models import Base
 
 config = context.config
@@ -24,7 +24,9 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_migrations() -> None:
-    engine = create_async_engine(str(get_settings().database_url), poolclass=pool.NullPool)
+    # Only DATABASE_URL: migrations must not need the GitHub secrets.
+    database_url = str(DatabaseSettings().database_url)
+    engine = create_async_engine(database_url, poolclass=pool.NullPool)
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()
