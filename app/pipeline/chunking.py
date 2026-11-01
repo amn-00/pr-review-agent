@@ -19,6 +19,9 @@ class Chunk:
     start: int  # first line shown (new-file numbering)
     end: int  # last line shown
     text: str  # numbered lines, "+" marking lines added in this PR
+    # The same lines without numbers, for the cache key: a hunk that only moved still matches.
+    body: str
+    added: int  # how many lines this PR added in the chunk (more = reviewed earlier)
 
 
 def estimate_tokens(text: str) -> int:
@@ -72,23 +75,37 @@ def build_chunks(path: str, hunks: list[Hunk], content: str) -> list[Chunk]:
 
     chunks: list[Chunk] = []
     for start, end in windows:
-        numbered = [
-            f"{n:>5} {'+' if n in added else ' '} {lines[n - 1]}" for n in range(start, end + 1)
-        ]
-        chunks.extend(_split(path, start, numbered))
+        marked = [("+" if n in added else " ", lines[n - 1]) for n in range(start, end + 1)]
+        chunks.extend(_split(path, start, marked))
     return chunks
 
 
-def _split(path: str, start: int, numbered: list[str]) -> list[Chunk]:
-    """Cut a window into pieces of at most MAX_CHUNK_TOKENS, on line boundaries."""
+def _split(path: str, start: int, marked: list[tuple[str, str]]) -> list[Chunk]:
+    """Cut a window of (marker, code) lines into chunks of at most MAX_CHUNK_TOKENS, on line
+    boundaries."""
     chunks: list[Chunk] = []
-    piece: list[str] = []
+    piece: list[tuple[str, str]] = []
     piece_start = start
-    for offset, line in enumerate(numbered):
-        if piece and estimate_tokens("\n".join([*piece, line])) > MAX_CHUNK_TOKENS:
-            chunks.append(Chunk(path, piece_start, start + offset - 1, "\n".join(piece)))
+    for offset, line in enumerate(marked):
+        if piece and estimate_tokens(_numbered(piece_start, [*piece, line])) > MAX_CHUNK_TOKENS:
+            chunks.append(_chunk(path, piece_start, piece))
             piece, piece_start = [], start + offset
         piece.append(line)
     if piece:
-        chunks.append(Chunk(path, piece_start, start + len(numbered) - 1, "\n".join(piece)))
+        chunks.append(_chunk(path, piece_start, piece))
     return chunks
+
+
+def _numbered(start: int, marked: list[tuple[str, str]]) -> str:
+    return "\n".join(f"{start + i:>5} {mark} {code}" for i, (mark, code) in enumerate(marked))
+
+
+def _chunk(path: str, start: int, marked: list[tuple[str, str]]) -> Chunk:
+    return Chunk(
+        path=path,
+        start=start,
+        end=start + len(marked) - 1,
+        text=_numbered(start, marked),
+        body="\n".join(f"{mark} {code}" for mark, code in marked),
+        added=sum(mark == "+" for mark, _ in marked),
+    )

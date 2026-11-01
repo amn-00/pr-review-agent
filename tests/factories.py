@@ -6,6 +6,8 @@ import json
 
 import httpx
 
+from app.github.diff import Hunk
+from app.pipeline.chunking import Chunk, build_chunks
 from tests.conftest import WEBHOOK_SECRET
 
 SHA_1 = "a" * 40
@@ -116,3 +118,13 @@ def mock_github_pr(
     return github_api.post(f"{pulls}/reviews").mock(
         return_value=httpx.Response(200, json={"id": 777})
     )
+
+
+def make_chunk(
+    path: str = BUGGY_FILE, content: str = BUGGY_CONTENT, added: set[int] | None = None
+) -> Chunk:
+    """One chunk covering the whole (short) file; by default its last line is the added one."""
+    lines = content.splitlines()
+    added = {len(lines)} if added is None else added
+    [chunk] = build_chunks(path, [Hunk(1, len(lines), added)], content)
+    return chunk

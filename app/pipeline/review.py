@@ -33,7 +33,7 @@ def inline_comment(candidate: Candidate) -> dict:
 def summary(
     marker: str,
     head_sha: str,
-    model: str,
+    models: dict[str, str],
     posted: list[Candidate],
     reviewed_files: list[str],
     skipped_files: dict[str, str],
@@ -45,20 +45,32 @@ def summary(
         headline = f"Found {len(posted)} issue(s): {found}."
     else:
         headline = "No issues found."
+    lanes_by_model: dict[str, list[str]] = {}
+    for lane, model in models.items():
+        lanes_by_model.setdefault(model, []).append(lane)
+    model_text = " and ".join(
+        f"`{model}` ({', '.join(lane_names)})" for model, lane_names in lanes_by_model.items()
+    )
+    usage = lanes.usage
     lines = [
         marker,
         f"### Automated review of `{head_sha[:7]}`",
         headline,
-        f"Reviewed {len(reviewed_files)} file(s) with `{model}` (prompts {PROMPT_VERSION}).",
+        f"Reviewed {len(reviewed_files)} file(s) with {model_text}, prompts {PROMPT_VERSION}.",
+        f"Cost ≈ ${usage.cost_usd:.4f} at list prices (free tier); "
+        f"{usage.cached_calls} of {usage.llm_calls + usage.cached_calls} lane call(s) "
+        "answered from cache.",
     ]
 
     # File names come from the PR, so they go through safe() too.
     not_reviewed = [f"- `{safe(path)}`: {reason}" for path, reason in skipped_files.items()]
-    if lanes.skipped_calls:
-        files = sorted({chunk.path for _, chunk in lanes.skipped_calls})
+    skipped_by_reason: dict[str, list[str]] = {}
+    for _, chunk, reason in lanes.skipped_calls:
+        skipped_by_reason.setdefault(reason, []).append(chunk.path)
+    for reason, paths in skipped_by_reason.items():
         not_reviewed.append(
-            f"- {len(lanes.skipped_calls)} lane call(s) not run (time limit), in: "
-            + ", ".join(f"`{safe(path)}`" for path in files)
+            f"- {len(paths)} lane call(s) not run ({reason}), in: "
+            + ", ".join(f"`{safe(path)}`" for path in sorted(set(paths)))
         )
     if lanes.failed_calls:
         not_reviewed.append(f"- {lanes.failed_calls} lane call(s) failed")

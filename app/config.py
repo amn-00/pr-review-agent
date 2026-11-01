@@ -33,8 +33,11 @@ class Settings(DatabaseSettings):
     github_webhook_secret: SecretStr
 
     groq_api_key: SecretStr
-    # Must support strict structured outputs (json_schema). gpt-oss-120b and gpt-oss-20b do.
+    # Both must support strict structured outputs (json_schema); the gpt-oss models do.
+    # The main model runs the correctness and security lanes; the small one runs
+    # maintainability. Each model has its own Groq rate limits, so splitting adds capacity.
     groq_model: str = "openai/gpt-oss-120b"
+    groq_small_model: str = "openai/gpt-oss-20b"
 
     def github_private_key_pem(self) -> str:
         return self.github_app_private_key.get_secret_value().replace("\\n", "\n")

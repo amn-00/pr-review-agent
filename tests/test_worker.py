@@ -7,12 +7,14 @@ from arq import Retry
 from sqlalchemy import select, update
 
 from app.db.models import Finding, ReviewRun, RunStatus
-from app.db.queries import get_or_create_run
+from app.db.queries import add_daily_tokens, get_or_create_run
 from app.github.webhooks import PullRequestPayload
 from app.pipeline.lanes import LANES, system_prompt
+from app.pipeline.orchestrator import DAILY_TOKEN_BUDGET, utc_today
 from app.queue import REVIEW_PR_JOB
 from app.worker import (
     BACKOFF_MAX_SECONDS,
+    DAILY_RESET_MARGIN_SECONDS,
     JOB_MAX_TRIES,
     JOB_TIMEOUT_SECONDS,
     MAX_JOBS,
@@ -21,6 +23,7 @@ from app.worker import (
     retry_delay,
     review_pr,
     run_marker,
+    seconds_until_utc_midnight,
 )
 from tests.factories import (
     BOT_LOGIN,
@@ -409,3 +412,105 @@ def test_worker_settings():
     assert reconciler.name == "cron:reconcile"
     assert reconciler.run_at_startup is True
     assert reconciler.minute == set(range(0, 60, 5))
+
+
+# A 100-line file with two changed lines far apart, so it makes two chunks.
+TWO_HUNK_FILE = "app/calc.py"
+TWO_HUNK_PATCH = "@@ -10 +10 @@\n-old\n+value = compute(1)\n@@ -80 +80 @@\n-old\n+total = add(2)"
+
+
+def two_hunk_content(line_80: str) -> str:
+    lines = [f"line_{n} = {n}" for n in range(1, 101)]
+    lines[9], lines[79] = "value = compute(1)", line_80
+    return "\n".join(lines) + "\n"
+
+
+async def get_run_for(sessionmaker, sha: str) -> ReviewRun:
+    async with sessionmaker() as session:
+        return await session.scalar(select(ReviewRun).where(ReviewRun.head_sha == sha))
+
+
+async def test_second_push_only_rereviews_the_changed_chunk(ctx, github_api):
+    file = {"filename": TWO_HUNK_FILE, "status": "modified", "patch": TWO_HUNK_PATCH}
+    mock_github_pr(
+        github_api, files=[file], contents={TWO_HUNK_FILE: two_hunk_content("total = add(2)")}
+    )
+    await review_pr(ctx, pr_payload(sha=SHA_1), "delivery-1")
+    assert len(ctx["groq"].calls) == 2 * len(LANES)  # two chunks, three lanes each
+
+    # Second commit: only the line in the second hunk changed.
+    github_api.get(PULL_URL).mock(return_value=httpx.Response(200, json=pull_response(sha=SHA_2)))
+    github_api.get(f"/repos/{REPO}/contents/{TWO_HUNK_FILE}").mock(
+        return_value=httpx.Response(200, text=two_hunk_content("total = add(3)"))
+    )
+    await review_pr(ctx, pr_payload("synchronize", sha=SHA_2), "delivery-2")
+
+    assert len(ctx["groq"].calls) == 3 * len(LANES)  # only the changed chunk's 3 lanes
+    second = await get_run_for(ctx["sessionmaker"], SHA_2)
+    assert (second.llm_calls, second.cached_calls) == (3, 3)
+    assert second.tokens_saved == 3 * 120  # what run 1 paid for the unchanged chunk
+
+
+async def test_retry_after_a_failed_post_makes_no_new_llm_calls(ctx, github_api):
+    post = mock_github_pr(github_api)
+    post.mock(side_effect=[httpx.Response(502), httpx.Response(200, json={"id": 777})])
+
+    with pytest.raises(Retry):
+        await review_pr(ctx, pr_payload(), "delivery-1")
+    calls_after_first_attempt = len(ctx["groq"].calls)
+    result = await review_pr({**ctx, "job_try": 2}, pr_payload(), "delivery-1")
+
+    assert result == RunStatus.COMPLETED
+    assert len(ctx["groq"].calls) == calls_after_first_attempt
+    run = await get_run(ctx["sessionmaker"])
+    # Totals cover both attempts: the first paid for 3 calls, the retry reused them.
+    assert (run.llm_calls, run.cached_calls) == (3, 3)
+    assert (run.tokens_in, run.tokens_out) == (300, 60)
+    assert run.tokens_saved == 0  # reusing its own calls saves nothing overall
+
+
+async def test_run_stores_cost_and_call_counts(ctx, github_api):
+    mock_github_pr(github_api)
+
+    await review_pr(ctx, pr_payload(), "delivery-1")
+
+    run = await get_run(ctx["sessionmaker"])
+    assert (run.llm_calls, run.cached_calls, run.tokens_saved) == (3, 0, 0)
+    # Two lanes on gpt-oss-120b ($0.15/$0.60), one on gpt-oss-20b ($0.075/$0.30), per 1M.
+    expected = (2 * (100 * 0.15 + 20 * 0.60) + (100 * 0.075 + 20 * 0.30)) / 1_000_000
+    assert float(run.cost_usd) == pytest.approx(expected)
+
+
+async def test_maintainability_uses_the_small_model(ctx, github_api):
+    mock_github_pr(github_api)
+
+    await review_pr(ctx, pr_payload(), "delivery-1")
+
+    models = {c["schema_name"].removesuffix("_findings"): c["model"] for c in ctx["groq"].calls}
+    assert models == {
+        "correctness": "openai/gpt-oss-120b",
+        "security": "openai/gpt-oss-120b",
+        "maintainability": "openai/gpt-oss-20b",
+    }
+
+
+async def test_nothing_reviewable_under_the_daily_budget_waits_for_midnight(ctx, github_api):
+    post = mock_github_pr(github_api)
+    async with ctx["sessionmaker"]() as session:
+        for model in ("openai/gpt-oss-120b", "openai/gpt-oss-20b"):
+            await add_daily_tokens(session, model, utc_today(), DAILY_TOKEN_BUDGET)
+
+    with pytest.raises(Retry) as retry:
+        await review_pr(ctx, pr_payload(), "delivery-1")
+
+    assert post.call_count == 0
+    assert ctx["groq"].calls == []
+    assert (await get_run(ctx["sessionmaker"])).status == RunStatus.QUEUED
+    # Deferred to just after midnight UTC, not by the usual few-second backoff.
+    expected = seconds_until_utc_midnight() + DAILY_RESET_MARGIN_SECONDS
+    assert retry.value.defer_score / 1000 == pytest.approx(expected, abs=5)
+
+
+def test_seconds_until_utc_midnight():
+    assert seconds_until_utc_midnight(datetime(2026, 11, 1, 23, 0, tzinfo=UTC)) == 3600
+    assert seconds_until_utc_midnight(datetime(2026, 11, 1, 0, 0, tzinfo=UTC)) == 86400

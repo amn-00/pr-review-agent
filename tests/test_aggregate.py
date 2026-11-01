@@ -58,12 +58,26 @@ def test_overlapping_same_category_keeps_the_most_severe():
     assert low.drop_reason == "duplicate"
 
 
-def test_same_lines_different_category_are_both_kept():
-    # Cross-lane duplicates aren't merged yet (see docs/decisions.md).
-    bug = candidate(12, 12, category="bug")
-    readability = candidate(12, 12, category="readability", lane="maintainability")
+def test_overlap_across_lanes_keeps_only_the_most_severe():
+    # PR #4: correctness flagged a critical IndexError, maintainability a low idiom note on
+    # overlapping lines. Only the critical one should be posted.
+    bug = candidate(12, 14, category="bug", severity="critical")
+    idiom = candidate(13, 15, category="idiom", severity="low", lane="maintainability")
 
-    assert len(kept(aggregate([bug, readability], HUNKS))) == 2
+    result = aggregate([idiom, bug], HUNKS)
+
+    assert kept(result) == [bug]
+    assert idiom.drop_reason == "duplicate"
+
+
+def test_severity_tie_across_lanes_goes_by_lane_order():
+    readability = candidate(12, 12, category="readability", lane="maintainability")
+    security = candidate(12, 12, category="security", lane="security")
+    bug = candidate(12, 12, category="bug", lane="correctness")
+
+    result = aggregate([readability, security, bug], HUNKS)
+
+    assert kept(result) == [bug]
 
 
 def test_kept_findings_are_ranked_by_severity_then_position():

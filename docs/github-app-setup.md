@@ -77,12 +77,14 @@ Then the Groq key, from https://console.groq.com/keys:
 
 ```
 GROQ_API_KEY=gsk_...
-GROQ_MODEL=openai/gpt-oss-120b   # optional; this is the default
+GROQ_MODEL=openai/gpt-oss-120b        # optional; correctness + security lanes
+GROQ_SMALL_MODEL=openai/gpt-oss-20b   # optional; maintainability lane
 ```
 
 Your real limits are under Settings → Limits in the Groq console. On the free plan each model
-has its own budget (about 8K tokens/minute and 200K tokens/day for `gpt-oss-120b`), which is
-roughly 40 small chunks a day.
+has its own budget (about 8K tokens/minute and 200K tokens/day). The app stops itself at 180K
+tokens per model per day (UTC), and at 50K tokens per PR. Unchanged code is answered from a cache,
+so re-pushes are cheap.
 
 ## 5. Run it
 
@@ -123,3 +125,4 @@ on the problems it found and a summary. A PR with nothing to report still gets a
 | Draft PR gets no review | Expected: drafts are skipped until marked "Ready for review". |
 | Run `failed`, error `Groq 401 ... invalid_api_key` | `GROQ_API_KEY` is wrong or missing from `.env` (saved?). After fixing it, `docker compose up -d` to reload `.env`. |
 | Review says "N lane call(s) not run (time limit)" | Groq's tokens-per-minute (or daily) limit ran out before the 10-minute deadline. Source files are reviewed first, then tests, then docs. |
+| Review says "N lane call(s) not run (PR token budget)" or "(daily token budget)" | The PR used its 50K tokens, or a model used today's 180K. The most important chunks go first. If nothing at all could be reviewed, no review is posted and the job runs again just after midnight UTC. |

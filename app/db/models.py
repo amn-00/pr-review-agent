@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
 
@@ -6,6 +6,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Integer,
@@ -16,6 +17,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Deterministic constraint names, so migrations can refer to them by name.
@@ -94,7 +96,15 @@ class ReviewRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     tokens_in: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     tokens_out: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
-    cost_usd: Mapped[Decimal] = mapped_column(Numeric(10, 6), default=0, server_default="0")
+    # 9 decimal places: one lane call costs ~$0.00003, and calls are added one at a time, so
+    # 6 places would round every addition by up to a few percent.
+    cost_usd: Mapped[Decimal] = mapped_column(Numeric(12, 9), default=0, server_default="0")
+    # Totals over all attempts of the run, added to after every lane call: llm_calls vs.
+    # cached_calls, and tokens_saved = what cache hits on other runs' answers originally cost.
+    # "The cache saved X% of tokens" = tokens_saved / (tokens_saved + tokens_in + tokens_out).
+    llm_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    cached_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    tokens_saved: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     error: Mapped[str | None] = mapped_column(Text)
     # The review we posted for this run.
     github_review_id: Mapped[int | None] = mapped_column(BigInteger)
@@ -123,3 +133,29 @@ class Finding(Base):
     verdict: Mapped[str | None] = mapped_column(String(10))
     posted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     drop_reason: Mapped[str | None] = mapped_column(String(20))  # not_in_diff | duplicate
+
+
+class ChunkCache(Base):
+    """One lane's answer for one chunk, keyed by app.pipeline.cache.cache_key."""
+
+    __tablename__ = "chunk_cache"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)  # sha256 hex
+    # The model's findings, with line numbers relative to the chunk's first line.
+    findings: Mapped[list] = mapped_column(JSONB)
+    tokens_in: Mapped[int] = mapped_column(Integer)
+    tokens_out: Mapped[int] = mapped_column(Integer)
+    # The run that paid for this answer. Hits from other runs count as tokens saved; a retry
+    # reusing its own run's calls doesn't. No foreign key: the cache outlives runs.
+    run_id: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DailyTokenUsage(Base):
+    """Tokens spent per model per UTC day, across all PRs, for the daily budget."""
+
+    __tablename__ = "daily_token_usage"
+
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    model: Mapped[str] = mapped_column(String(100), primary_key=True)
+    tokens: Mapped[int] = mapped_column(BigInteger, default=0)

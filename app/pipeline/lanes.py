@@ -8,10 +8,10 @@ from typing import Literal
 
 from pydantic import BaseModel, ValidationError
 
-from app.llm.groq import GroqClient, LLMError
-from app.pipeline.chunking import Chunk
+from app.llm.groq import EXPECTED_OUTPUT_TOKENS, GroqClient, LLMError
+from app.pipeline.chunking import Chunk, estimate_tokens
 
-PROMPT_VERSION = "v1"
+PROMPT_VERSION = "v2"
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts" / PROMPT_VERSION
 
 CATEGORIES_BY_LANE = {
@@ -21,6 +21,9 @@ CATEGORIES_BY_LANE = {
 }
 LANES = list(CATEGORIES_BY_LANE)
 SEVERITIES = ["critical", "high", "medium", "low"]
+# Lanes run on the small model (GROQ_SMALL_MODEL); the rest on the main one (GROQ_MODEL).
+# Maintainability is the lowest-stakes lane, so it gives up the stronger model.
+SMALL_MODEL_LANES = {"maintainability"}
 
 
 class LaneFinding(BaseModel):
@@ -86,6 +89,15 @@ def lane_schema(lane: str) -> dict:
         "required": ["findings"],
         "additionalProperties": False,
     }
+
+
+def lane_models(main_model: str, small_model: str) -> dict[str, str]:
+    return {lane: small_model if lane in SMALL_MODEL_LANES else main_model for lane in LANES}
+
+
+def estimate_call_tokens(lane: str, chunk: Chunk) -> int:
+    """Tokens one call will probably use (prompt plus typical output), for budget checks."""
+    return estimate_tokens(system_prompt(lane) + chunk.text) + EXPECTED_OUTPUT_TOKENS
 
 
 @cache

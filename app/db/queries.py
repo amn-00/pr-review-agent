@@ -1,12 +1,23 @@
-from datetime import UTC, datetime, timedelta
+from dataclasses import asdict
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Finding, Installation, PullRequest, Repo, ReviewRun, RunStatus
+from app.db.models import (
+    ChunkCache,
+    DailyTokenUsage,
+    Finding,
+    Installation,
+    PullRequest,
+    Repo,
+    ReviewRun,
+    RunStatus,
+)
 from app.github.webhooks import PullRequestPayload
 from app.pipeline.lanes import Candidate
+from app.pipeline.usage import Usage
 
 
 async def get_or_create_run(session: AsyncSession, payload: PullRequestPayload) -> ReviewRun:
@@ -139,11 +150,9 @@ async def record_findings(
     run_id: int,
     candidates: list[Candidate],
     posted: bool,
-    tokens_in: int,
-    tokens_out: int,
 ) -> None:
-    """Replace the run's findings and token counts in one transaction. Replacing (not
-    appending) means a retry or a stale-run takeover never leaves duplicates behind."""
+    """Replace the run's findings in one transaction. Replacing (not appending) means a
+    retry or a stale-run takeover never leaves duplicates behind."""
     await session.execute(delete(Finding).where(Finding.run_id == run_id))
     session.add_all(
         Finding(
@@ -163,9 +172,56 @@ async def record_findings(
         )
         for c in candidates
     )
+    await session.commit()
+
+
+async def add_run_usage(session: AsyncSession, run_id: int, delta: Usage) -> None:
+    """Add one call's usage to the run's totals. Added per call, not written at the end, so
+    an attempt that dies or retries still has its spend counted."""
+    columns = {name: getattr(ReviewRun, name) + value for name, value in asdict(delta).items()}
+    await session.execute(update(ReviewRun).where(ReviewRun.id == run_id).values(**columns))
+    await session.commit()
+
+
+async def get_cached(session: AsyncSession, key: str) -> ChunkCache | None:
+    return await session.get(ChunkCache, key)
+
+
+async def put_cached(
+    session: AsyncSession,
+    key: str,
+    findings: list[dict],
+    tokens_in: int,
+    tokens_out: int,
+    run_id: int,
+) -> None:
+    """First answer wins: two workers caching the same key store the same kind of result."""
     await session.execute(
-        update(ReviewRun)
-        .where(ReviewRun.id == run_id)
-        .values(tokens_in=tokens_in, tokens_out=tokens_out)
+        insert(ChunkCache)
+        .values(
+            key=key, findings=findings, tokens_in=tokens_in, tokens_out=tokens_out, run_id=run_id
+        )
+        .on_conflict_do_nothing(index_elements=[ChunkCache.key])
+    )
+    await session.commit()
+
+
+async def daily_tokens_used(session: AsyncSession, model: str, day: date) -> int:
+    used = await session.scalar(
+        select(DailyTokenUsage.tokens).where(
+            DailyTokenUsage.day == day, DailyTokenUsage.model == model
+        )
+    )
+    return used or 0
+
+
+async def add_daily_tokens(session: AsyncSession, model: str, day: date, tokens: int) -> None:
+    """Atomic add: concurrent calls can't lose each other's tokens."""
+    statement = insert(DailyTokenUsage).values(day=day, model=model, tokens=tokens)
+    await session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[DailyTokenUsage.day, DailyTokenUsage.model],
+            set_={"tokens": DailyTokenUsage.tokens + statement.excluded.tokens},
+        )
     )
     await session.commit()

@@ -1,7 +1,7 @@
 """Decide which candidates get posted: drop invented lines, merge duplicates, rank."""
 
 from app.github.diff import Hunk, hunk_for_line
-from app.pipeline.lanes import SEVERITIES, Candidate
+from app.pipeline.lanes import LANES, SEVERITIES, Candidate
 
 
 def aggregate(candidates: list[Candidate], hunks_by_file: dict[str, list[Hunk]]) -> list[Candidate]:
@@ -10,8 +10,12 @@ def aggregate(candidates: list[Candidate], hunks_by_file: dict[str, list[Hunk]])
     kept: list[Candidate] = []
     dropped: list[Candidate] = []
 
-    # Most severe first, so dedupe keeps the most severe of overlapping candidates.
-    for candidate in sorted(candidates, key=lambda c: SEVERITIES.index(c.severity)):
+    # Most severe first, so dedupe keeps the most severe of overlapping candidates. On a tie,
+    # lane order decides: correctness, then security, then maintainability.
+    by_importance = sorted(
+        candidates, key=lambda c: (SEVERITIES.index(c.severity), LANES.index(c.lane))
+    )
+    for candidate in by_importance:
         if not _fit_to_diff(candidate, hunks_by_file.get(candidate.file, [])):
             candidate.drop_reason = "not_in_diff"
             dropped.append(candidate)
@@ -39,11 +43,6 @@ def _fit_to_diff(candidate: Candidate, hunks: list[Hunk]) -> bool:
 
 
 def _same_issue(a: Candidate, b: Candidate) -> bool:
-    """Same file and category with overlapping lines. Different categories on the same
-    lines are kept apart for now (see docs/decisions.md)."""
-    return (
-        a.file == b.file
-        and a.category == b.category
-        and a.line_start <= b.line_end
-        and b.line_start <= a.line_end
-    )
+    """Same file, overlapping lines, whatever the lane or category: two comments on the same
+    lines are noise, so only the most severe is posted (see docs/decisions.md)."""
+    return a.file == b.file and a.line_start <= b.line_end and b.line_start <= a.line_end

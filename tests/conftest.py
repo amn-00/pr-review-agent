@@ -42,7 +42,9 @@ from app.github.client import GitHubClient  # noqa: E402
 from app.llm.groq import Completion  # noqa: E402
 from app.main import create_app  # noqa: E402
 
-TABLES = "findings, review_runs, pull_requests, repos, installations"
+TABLES = (
+    "findings, review_runs, pull_requests, repos, installations, chunk_cache, daily_token_usage"
+)
 
 
 async def _create_database_if_missing(url: str) -> None:

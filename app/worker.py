@@ -3,6 +3,7 @@
 import logging
 import random
 import time
+from datetime import UTC, datetime, timedelta
 
 import httpx
 from arq import Retry, cron, func
@@ -19,8 +20,8 @@ from app.llm.groq import GroqClient
 from app.log import bind_log_context, set_log_context, setup_logging
 from app.pipeline.aggregate import aggregate
 from app.pipeline.chunking import Chunk, build_chunks, skip_reason
-from app.pipeline.lanes import Candidate
-from app.pipeline.orchestrator import run_lanes
+from app.pipeline.lanes import Candidate, lane_models
+from app.pipeline.orchestrator import nothing_reviewed_for_daily_budget, run_lanes
 from app.pipeline.review import inline_comment, summary
 from app.queue import JOB_TIMEOUT_SECONDS, REVIEW_PR_JOB, arq_redis_settings
 from app.reconciler import RECONCILE_EVERY_MINUTES, RECONCILE_TIMEOUT_SECONDS, reconcile
@@ -35,6 +36,8 @@ REVIEW_DEADLINE_SECONDS = 600
 # Two reviews at once already use up Groq's tokens-per-minute limit; more would just queue
 # inside the worker and use memory.
 MAX_JOBS = 2
+# A deferred job runs this long after midnight UTC, when the daily budget has reset.
+DAILY_RESET_MARGIN_SECONDS = 300
 BACKOFF_BASE_SECONDS = 5
 BACKOFF_MAX_SECONDS = 300
 
@@ -132,21 +135,28 @@ async def _review(
     chunks, hunks_by_file, skipped_files = await _load_chunks(
         github, installation_id, repo, number, sha
     )
-    lanes = await run_lanes(ctx["groq"], settings.groq_model, chunks, deadline)
+    models = lane_models(settings.groq_model, settings.groq_small_model)
+    lanes = await run_lanes(
+        ctx["groq"], ctx["sessionmaker"], models, payload.repository.id, run_id, chunks, deadline
+    )
+    if nothing_reviewed_for_daily_budget(lanes):
+        # Nothing worth posting: wait for the budget to reset instead of posting an empty review.
+        raise RetryableError(
+            "daily token budget used up; reviewing after it resets at midnight UTC",
+            retry_after=seconds_until_utc_midnight() + DAILY_RESET_MARGIN_SECONDS,
+        )
     candidates = aggregate(lanes.candidates, hunks_by_file)
     to_post = [c for c in candidates if c.drop_reason is None]
 
     # A new commit may have arrived while the lanes ran; don't post a stale review.
     if await _moved_on(github, installation_id, repo, number, sha):
-        await _record(ctx, run_id, candidates, False, lanes.tokens_in, lanes.tokens_out)
+        await _record(ctx, run_id, candidates, False)
         return RunStatus.SKIPPED, None
 
-    body = summary(
-        marker, sha, settings.groq_model, to_post, list(hunks_by_file), skipped_files, lanes
-    )
+    body = summary(marker, sha, models, to_post, list(hunks_by_file), skipped_files, lanes)
     comments = [inline_comment(c) for c in to_post]
     review = await github.create_review(installation_id, repo, number, sha, body, comments)
-    await _record(ctx, run_id, candidates, True, lanes.tokens_in, lanes.tokens_out)
+    await _record(ctx, run_id, candidates, True)
     logger.info("review posted", extra={"fields": {"comments": len(comments)}})
     return RunStatus.COMPLETED, review["id"]
 
@@ -206,16 +216,15 @@ async def _load_chunks(
     return chunks, hunks_by_file, skipped_files
 
 
-async def _record(
-    ctx: dict,
-    run_id: int,
-    candidates: list[Candidate],
-    posted: bool,
-    tokens_in: int,
-    tokens_out: int,
-) -> None:
+async def _record(ctx: dict, run_id: int, candidates: list[Candidate], posted: bool) -> None:
     async with ctx["sessionmaker"]() as session:
-        await record_findings(session, run_id, candidates, posted, tokens_in, tokens_out)
+        await record_findings(session, run_id, candidates, posted)
+
+
+def seconds_until_utc_midnight(now: datetime | None = None) -> float:
+    now = now or datetime.now(UTC)
+    midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    return (midnight - now).total_seconds()
 
 
 async def _finish(ctx: dict, run_id: int, status: RunStatus, **fields) -> None:

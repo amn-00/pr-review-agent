@@ -283,7 +283,7 @@ that order, so the time limit cuts off the tail.
 - **Limit:** no prompt can guarantee the model is never swayed into staying quiet. Phase 5's eval
   set should include an injection PR to measure it. Tests cover the separation and the sanitizing.
 
-**Cross-lane duplicates aren't merged yet.**
+**Cross-lane duplicates aren't merged yet.** *(Fixed in Phase 3a.)*
 Dedupe merges candidates with the same file, category and overlapping lines, keeping the most
 severe. Each lane has its own categories, so the same lines flagged by two lanes (e.g. a bug and a
 readability note) both get posted. Phase 5 will measure how often that happens before we add a rule.
@@ -345,20 +345,20 @@ Two reviews at once already use up Groq's tokens-per-minute limit, and more woul
 a 512 MB instance while they wait. The per-installation limit waits for Phase 6, where load tests
 make it measurable.
 
-**Known cost: retries re-run the lanes.**
+**Known cost: retries re-run the lanes.** *(Fixed in Phase 3a by the cache.)*
 If posting fails with a temporary error after the lanes ran, the retry starts over and spends the
 tokens again. Phase 3's cache fixes this.
 
 ### Known issues from the real-GitHub test (PR #4, run 5), to fix in Phase 3 with prompts v2
 
-**Cross-lane duplicates get posted.**
+**Cross-lane duplicates get posted.** *(Fixed in Phase 3a; see below.)*
 Correctness flagged an IndexError on lines 9–11 (`critical`), and maintainability flagged lines
 8–12 as a low `idiom` finding about the same loop. Both were posted. The fix: when line ranges
 overlap across lanes, keep only the most severe. That's a change to `aggregate.py`, not only to
 the prompts. The trade-off: a different, genuinely separate issue on overlapping lines (e.g. a
 low security note next to a high bug) gets dropped too. Phase 5 measures how often.
 
-**Line ranges are too wide.**
+**Line ranges are too wide.** *(Fixed in Phase 3a by prompts v2; see below.)*
 The division by zero in `average()` was posted on lines 1–5 (the whole function) instead of line
 5. The v1 prompt already says "Use the narrowest range that shows the problem", so wording alone
 isn't enough. v2 should ask for the single line where the problem happens (`line_start ==
@@ -416,3 +416,99 @@ from `app.worker` would be circular, since the worker imports the reconciler to 
 listing does). `installation_id=None` means "authenticate as the App" (JWT, for
 `/app/installations`), and `items_key` unwraps endpoints that return `{"repositories": [...]}`
 instead of a list.
+
+## Phase 3a — Cache, budgets, cost, prompts v2
+
+The plan is in `docs/plans/phase-3.md`.
+
+**The cache key.**
+sha256 of the repo ID, lane, the lane's full prompt text, model, file path, and the chunk's lines
+*without line numbers*. The spec's key is (path + content + prompt version); the additions are
+deliberate:
+- **No line numbers:** a hunk that only moved down the file still hits.
+- **Prompt text, not the version label:** editing a prompt can never silently reuse old answers.
+- **Model:** a different model never reuses another's answers.
+- **Repo:** findings can quote code, so they're never shared across repos.
+
+Cached findings store line numbers relative to the chunk's first line, and are shifted to its
+current position on a hit.
+
+**The cache lives in Postgres, and is written after every call.**
+Render Key Value loses data on restart, so Redis would forget everything a restart ago. Writing
+after each successful call (not at the end of the run) means a retry, a stale-run takeover, or a
+run cut off by the deadline reuses everything already paid for. Tested: a failed post followed by
+a retry makes zero new LLM calls. Failed calls aren't cached; empty answers are. Size is about
+1 KB per lane call, with no cleanup job yet.
+
+**Usage is added to the run after every call, not written at the end.**
+Found while testing retries: writing usage at the end lost the first attempt's spend whenever it
+failed, so a retried run reported $0. Each call now adds to the run's columns with
+`col = col + value`, so `tokens_in`, `tokens_out`, `llm_calls`, `cached_calls`, `tokens_saved`
+and `cost_usd` are totals over all of a run's attempts.
+
+**`tokens_saved` only counts other runs' answers.**
+Each cache entry records the run that paid for it. A hit on another run's entry (a re-push) adds
+that entry's original tokens to `tokens_saved`; a retry reusing its own run's calls adds nothing.
+So "the cache saved X% of tokens on re-pushes" is
+`tokens_saved / (tokens_saved + tokens_in + tokens_out)` without retries inflating it. Tested.
+
+**Per-PR budget: 50K tokens per attempt.**
+Before each LLM call (cache hits are free), the call's estimate (prompt characters ÷ 4, plus the
+expected output) is checked against what this attempt has spent. If it won't fit, the call is
+skipped as "PR token budget". It's per attempt rather than per run because a retry mostly hits
+the cache anyway.
+
+**Daily budget: 180K tokens per model per UTC day, counted in Postgres.**
+`daily_token_usage(day, model, tokens)` is updated with an atomic upsert after every call, and
+checked before every call. It lives in Postgres because it must survive restarts. Concurrent calls
+can overshoot by at most the calls in flight (3 × ~3K tokens), and Groq's own daily limit stays
+the hard backstop. Assumption: Groq's daily window resets at midnight UTC. Their docs don't say;
+if it's rolling, a deferred job may hit a 429 and wait longer.
+
+**The 20K daily headroom won't cover the Phase 4 agent.**
+180K of each model's 200K is the pipeline's. The remaining 20K is for smoke tests and slack, not
+for verification agent runs, which make several tool-calling steps per finding. Phase 4 must
+decide how each model's daily budget is split between the pipeline and the agent (for example, a
+lower `DAILY_TOKEN_BUDGET` for the lanes plus a separate agent budget).
+
+**When budgets run short, the least important work is left out.**
+Calls are ordered source, then tests, then docs, and within each group the chunks with the most
+added lines go first.
+
+**Nothing reviewable under the daily budget: defer to just after midnight UTC.**
+If the daily budget stopped every call and nothing came from the cache, there's nothing worth
+posting. The job raises `RetryableError` with `retry_after` = seconds to midnight + 5 minutes, so
+the usual retry path releases the run and defers the job. That uses one of the job's 5 tries. If
+the deferred job is lost (Redis restart), the run is `queued`, and the reconciler re-enqueues it
+while the PR is inside its 24-hour lookback. If some calls ran, the review is posted, listing
+"not run (daily token budget)".
+
+**Cost: list prices in code, summed per call, stored with 9 decimal places.**
+`app/llm/pricing.py` holds Groq's on-demand prices with the source and date: gpt-oss-120b $0.15 /
+$0.60, gpt-oss-20b $0.075 / $0.30 per million tokens in/out. Sources disagreed, and Groq's console
+is authoritative. `cost_usd` was widened from `Numeric(10, 6)` to `Numeric(12, 9)`: one call costs
+about $0.00003, and with per-call additions, 6 decimal places rounded every addition by up to a
+few percent (a test caught it). A model with no known price counts as $0, with a warning, rather
+than failing a review over a reporting number.
+
+**Prompts v2: point at the exact line.**
+`prompts/v2/common.md` replaces "use the narrowest range" (which the model ignored) with an
+explicit section: one line is the normal case, a range is at most 5 lines and never a whole
+function, plus the `average()` example. v1 stays in `prompts/v1/`, so Phase 5 can compare them.
+On PR #4's real code with real Groq, the division by zero went from lines 1–5 to line 5.
+
+**Cross-lane dedupe: overlapping lines keep only the most severe.**
+Same file and overlapping lines, whatever the lane or category. On a severity tie, lane order
+decides: correctness, then security, then maintainability. On PR #4's real code, maintainability's
+note about the `get_user` loop (line 9) is now dropped next to correctness's critical IndexError
+(lines 9–11).
+
+**Maintainability runs on gpt-oss-20b (`GROQ_SMALL_MODEL`).**
+Each model has its own Groq limits, so moving the lowest-stakes lane takes about a third of the
+calls off gpt-oss-120b, the bottleneck: roughly 1.5× throughput, while correctness and security
+keep the stronger model. The daily budget and the cost are per model. The 20B model handled the
+strict schema without problems in the real-Groq check.
+
+**Hand-written migration parts.**
+Autogenerate created the two tables and the counters. The `cost_usd` precision change is written
+by hand, because autogenerate doesn't compare numeric precision. `alembic check` passes.
