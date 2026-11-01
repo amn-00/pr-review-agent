@@ -25,6 +25,7 @@ from app.pipeline.orchestrator import nothing_reviewed_for_daily_budget, run_lan
 from app.pipeline.review import inline_comment, summary
 from app.queue import JOB_TIMEOUT_SECONDS, REVIEW_PR_JOB, arq_redis_settings
 from app.reconciler import RECONCILE_EVERY_MINUTES, RECONCILE_TIMEOUT_SECONDS, reconcile
+from app.static.collect import attach_hints, collect_tool_findings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -201,6 +202,7 @@ async def _load_chunks(
     chunks: list[Chunk] = []
     hunks_by_file: dict[str, list[Hunk]] = {}
     skipped_files: dict[str, str] = {}
+    contents: dict[str, str] = {}
     for file in await github.list_pull_files(installation_id, repo, number):
         path = file["filename"]
         reason = skip_reason(file)
@@ -212,7 +214,15 @@ async def _load_chunks(
             continue
         content = await github.get_file_content(installation_id, repo, path, sha)
         hunks_by_file[path] = hunks
+        contents[path] = content
         chunks.extend(build_chunks(path, hunks, content))
+
+    # Static tools: findings on added lines become hints for the matching lane.
+    added_lines = {
+        path: set().union(*(h.added for h in hunks)) for path, hunks in hunks_by_file.items()
+    }
+    tool_findings = await collect_tool_findings(contents, added_lines, settings.semgrep_enabled)
+    attach_hints(chunks, tool_findings)
     return chunks, hunks_by_file, skipped_files
 
 

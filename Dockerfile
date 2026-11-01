@@ -14,6 +14,16 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev --no-install-project
 
+# Optional Semgrep (SEMGREP_ENABLED=true at runtime needs it): docker build --build-arg
+# WITH_SEMGREP=true. It gets its own environment, because current Semgrep pins library versions
+# that conflict with FastAPI's; we only run its CLI.
+ARG WITH_SEMGREP=false
+ARG SEMGREP_VERSION=1.180.0
+RUN if [ "$WITH_SEMGREP" = "true" ]; then \
+        UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin \
+        uv tool install "semgrep==${SEMGREP_VERSION}"; \
+    fi
+
 COPY alembic.ini ./
 COPY app ./app
 COPY prompts ./prompts

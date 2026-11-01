@@ -512,3 +512,70 @@ strict schema without problems in the real-Groq check.
 **Hand-written migration parts.**
 Autogenerate created the two tables and the counters. The `cost_usd` precision change is written
 by hand, because autogenerate doesn't compare numeric precision. `alembic check` passes.
+
+## Phase 3b — Static tools
+
+**Ruff runs on every reviewed Python file, with our rules only.**
+`ruff check --isolated --select F,B,UP,SIM`, with the file's text on stdin and `--stdin-filename`,
+so no checkout is needed. `--isolated` means the repo's own Ruff config is never read, so a PR
+can't silence our rules. A test checks that a repo `per-file-ignores` entry is ignored (a plain
+`ignore` wouldn't prove it, since the CLI's `--select` already overrides that). The binary comes
+from `ruff.find_ruff_bin()`, not PATH. Ruff moved from the dev dependencies to the runtime
+dependencies. Peak memory is about 26 MB per file, and at most 4 run at once.
+
+**Tool findings are hints for the lanes, never posted directly.**
+Only findings on lines the PR added are kept: problems that were already there aren't the PR's
+doing. They are routed by rule:
+- **correctness:** Ruff `F` (pyflakes), Ruff `B` (bugbear), and syntax errors (`invalid-syntax`)
+- **maintainability:** Ruff `UP` and `SIM`
+- **security:** Semgrep
+
+Each lane sees only its own hints, listed after the code *inside* the untrusted block, because
+messages quote identifiers from the code.
+
+**Prompts v3 say how to treat hints.**
+Treat them as hints, check each one against the code, report only real problems in your own
+words, and keep reviewing what the tools missed. v1 and v2 stay. On a planted file with real Groq,
+Ruff's F821 and Semgrep's `shell=True` hint each led to a single-line finding in the model's own
+words.
+
+**Hints are part of the cache key.**
+The same code with different tool output can get a different answer, so the hints text for that
+lane joins the key. Lanes that see no hints keep the same key.
+
+**A tool problem never fails a review.**
+All tools run through one helper (`app/static/process.py`): if a tool can't start, times out
+(Ruff 10 s, Semgrep 120 s), exits with an error, or prints something we can't parse, it's logged
+and the review continues without it.
+
+**Semgrep is behind `SEMGREP_ENABLED`, off by default.**
+In the container, one scan of a small file peaked at 143 MB, on top of the app itself, and real
+scans use more. That doesn't fit next to the app on a 512 MB instance. Semgrep is for evals and
+bigger hosts.
+
+**Semgrep is an isolated tool, not a dependency group (a change from the plan).**
+The plan said an optional dependency group. But current Semgrep pins
+`opentelemetry-api < 1.38`, while our FastAPI needs `>= 1.44`. A group could only resolve to the
+mid-2024 release (1.79), which predates native Windows support. Since we only run Semgrep's CLI and
+never import it, it gets its own environment:
+- **Docker:** `--build-arg WITH_SEMGREP=true` runs `uv tool install` into `/opt/uv-tools`.
+- **CI:** `uv tool install` before the tests, so the real-Semgrep tests run.
+- **Local:** any separate install (e.g. `uv tool install`) on PATH.
+
+It's pinned to 1.180.0 (released 2026-10-07). 1.183.0 was only 3 days old. The Semgrep image is
+1.39 GB against 523 MB for the default one.
+
+**Our Semgrep rules.**
+`app/static/semgrep_rules.yml` has 7 Python rules: `subprocess` with `shell=True`, `eval`/`exec`
+of non-literals, `yaml.load` without a safe loader, `pickle.load(s)`, `verify=False`, SQL built
+with `%`, `.format`, f-strings or `+`, and hard-coded secrets (a name like
+password/secret/api_key/token assigned a string of 8+ characters). They were validated with
+`semgrep --validate` and against a sample with one hit per rule plus safe lookalikes that must
+not match. That's the "Semgrep secrets rule" that stands in for gitleaks.
+
+**How Semgrep is run.**
+The reviewed `.py` files are written to a temp folder (with a guard against paths that would leave
+it), and `semgrep scan` runs there. Since only the PR's Python files are in that folder, there's
+no `.semgrepignore` or other config of the PR's for Semgrep to pick up. Semgrep's default ignore
+list skips `tests/` folders (checked). That's accepted: test files rank lowest, and the security
+lane still reviews them.

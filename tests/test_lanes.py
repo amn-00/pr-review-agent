@@ -6,6 +6,7 @@ from app.llm.groq import Completion, LLMError
 from app.pipeline.lanes import (
     CATEGORIES_BY_LANE,
     LANES,
+    PROMPT_VERSION,
     LaneFinding,
     lane_models,
     lane_schema,
@@ -63,7 +64,7 @@ async def test_findings_get_the_file_from_the_chunk():
 
     [candidate] = result.candidates
     assert candidate.file == "app/stats.py"
-    assert (candidate.lane, candidate.prompt_version) == ("correctness", "v2")
+    assert (candidate.lane, candidate.prompt_version) == ("correctness", PROMPT_VERSION)
     assert (result.tokens_in, result.tokens_out) == (10, 5)
 
 

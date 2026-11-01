@@ -1,0 +1,65 @@
+# Our own Semgrep rules: a few common Python security problems. Findings are hints for the
+# security lane, which decides whether they're real.
+rules:
+  - id: subprocess-shell-true
+    languages: [python]
+    severity: ERROR
+    message: subprocess call with shell=True. If any part of the command comes from input, this allows shell injection.
+    pattern: subprocess.$FUNC(..., shell=True, ...)
+
+  - id: eval-or-exec
+    languages: [python]
+    severity: ERROR
+    message: eval/exec runs arbitrary code. Dangerous if the argument can come from input.
+    patterns:
+      - pattern-either:
+          - pattern: eval($X, ...)
+          - pattern: exec($X, ...)
+      - pattern-not: eval("...", ...)
+      - pattern-not: exec("...", ...)
+
+  - id: yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: yaml.load without a safe loader can build arbitrary Python objects from the input.
+    patterns:
+      - pattern: yaml.load(...)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader, ...)
+      - pattern-not: yaml.load(..., Loader=yaml.CSafeLoader, ...)
+
+  - id: pickle-load
+    languages: [python]
+    severity: ERROR
+    message: Unpickling runs arbitrary code if the data can come from an untrusted source.
+    pattern-either:
+      - pattern: pickle.loads(...)
+      - pattern: pickle.load(...)
+
+  - id: tls-verification-disabled
+    languages: [python]
+    severity: WARNING
+    message: verify=False turns off TLS certificate checks, which allows man-in-the-middle attacks.
+    pattern: $LIB.$METHOD(..., verify=False, ...)
+
+  - id: sql-built-from-strings
+    languages: [python]
+    severity: ERROR
+    message: SQL built with string formatting. Use query parameters to avoid SQL injection.
+    pattern-either:
+      - pattern: $CUR.execute($QUERY % $ARGS, ...)
+      - pattern: $CUR.execute($QUERY.format(...), ...)
+      - pattern: $CUR.execute(f"...", ...)
+      - pattern: $CUR.execute("..." + $X, ...)
+
+  - id: hardcoded-secret
+    languages: [python]
+    severity: WARNING
+    message: Looks like a hard-coded secret. Load it from the environment or a secret store.
+    patterns:
+      - pattern: $NAME = "$VALUE"
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i).*(password|passwd|secret|api_?key|token).*
+      - metavariable-regex:
+          metavariable: $VALUE
+          regex: .{8,}

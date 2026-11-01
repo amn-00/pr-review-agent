@@ -40,6 +40,7 @@ def test_defaults_are_local_dev():
     assert settings.log_level == "INFO"
     assert str(settings.redis_url) == "redis://localhost:6379/0"
     assert settings.groq_model == "openai/gpt-oss-120b"
+    assert settings.semgrep_enabled is False
 
 
 def test_reads_values_from_env(monkeypatch):

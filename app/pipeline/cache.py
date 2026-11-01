@@ -4,7 +4,13 @@ push, and a retry doesn't pay for calls an earlier attempt already made."""
 import hashlib
 
 from app.pipeline.chunking import Chunk
-from app.pipeline.lanes import PROMPT_VERSION, Candidate, LaneFinding, system_prompt
+from app.pipeline.lanes import (
+    PROMPT_VERSION,
+    Candidate,
+    LaneFinding,
+    system_prompt,
+    tool_hints,
+)
 
 
 def cache_key(repo_id: int, lane: str, model: str, chunk: Chunk) -> str:
@@ -14,8 +20,10 @@ def cache_key(repo_id: int, lane: str, model: str, chunk: Chunk) -> str:
       reuses another's answers.
     - The chunk without line numbers: a hunk that only moved down the file still hits.
     - The repo: findings can quote code, so they're never shared across repos.
+    - The tool findings the lane sees: different hints can mean a different answer.
     """
     parts = [str(repo_id), lane, system_prompt(lane), model, chunk.path, chunk.body]
+    parts.append(tool_hints(chunk, lane))
     return hashlib.sha256("\x00".join(parts).encode()).hexdigest()
 
 

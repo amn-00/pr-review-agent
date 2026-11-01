@@ -38,6 +38,9 @@ jobs:
           python-version: "3.12"
           enable-cache: true
       - run: uv sync --locked
+      # Semgrep in its own environment (it conflicts with FastAPI's dependencies), so the
+      # real-Semgrep tests run in CI. Keep the version in step with the Dockerfile.
+      - run: uv tool install semgrep==1.180.0
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
@@ -47,3 +50,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t pr-review-agent:ci .
+      - run: docker build --build-arg WITH_SEMGREP=true -t pr-review-agent:ci-semgrep .

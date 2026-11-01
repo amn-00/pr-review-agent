@@ -514,3 +514,23 @@ async def test_nothing_reviewable_under_the_daily_budget_waits_for_midnight(ctx,
 def test_seconds_until_utc_midnight():
     assert seconds_until_utc_midnight(datetime(2026, 11, 1, 23, 0, tzinfo=UTC)) == 3600
     assert seconds_until_utc_midnight(datetime(2026, 11, 1, 0, 0, tzinfo=UTC)) == 86400
+
+
+async def test_ruff_findings_reach_the_matching_lane_as_hints(ctx, github_api):
+    content = "import os\ndef f(x=[]):\n    return x\n"
+    patch = "@@ -0,0 +1,3 @@\n+import os\n+def f(x=[]):\n+    return x"
+    mock_github_pr(
+        github_api,
+        files=[{"filename": "app/new.py", "status": "added", "patch": patch}],
+        contents={"app/new.py": content},
+    )
+
+    await review_pr(ctx, pr_payload(), "delivery-1")
+
+    sent = {
+        c["schema_name"].removesuffix("_findings"): c["messages"][1]["content"]
+        for c in ctx["groq"].calls
+    }
+    assert "line 1: F401" in sent["correctness"]  # unused import
+    assert "line 2: B006" in sent["correctness"]  # mutable default argument
+    assert "Tool findings" not in sent["security"]

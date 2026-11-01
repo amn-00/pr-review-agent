@@ -39,6 +39,10 @@ class Settings(DatabaseSettings):
     groq_model: str = "openai/gpt-oss-120b"
     groq_small_model: str = "openai/gpt-oss-20b"
 
+    # Semgrep needs a few hundred MB of memory and its own install (see the Dockerfile), so
+    # it is off unless asked for. Ruff always runs.
+    semgrep_enabled: bool = False
+
     def github_private_key_pem(self) -> str:
         return self.github_app_private_key.get_secret_value().replace("\\n", "\n")
 

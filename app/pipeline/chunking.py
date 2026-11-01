@@ -1,9 +1,10 @@
 """Turn changed files into chunks small enough for one LLM call each."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import PurePosixPath
 
 from app.github.diff import Hunk
+from app.static.findings import ToolFinding
 
 # Lines of unchanged code shown above and below each hunk, taken from the full file.
 CONTEXT_LINES = 20
@@ -22,6 +23,8 @@ class Chunk:
     # The same lines without numbers, for the cache key: a hunk that only moved still matches.
     body: str
     added: int  # how many lines this PR added in the chunk (more = reviewed earlier)
+    # Static-tool findings on this chunk's added lines, by the lane that sees them.
+    hints: dict[str, list[ToolFinding]] = field(default_factory=dict)
 
 
 def estimate_tokens(text: str) -> int:

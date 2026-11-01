@@ -77,8 +77,9 @@ and cost is stored per run.
 - **The flag:** `SEMGREP_ENABLED=false`.
 - **How it runs:** our own rules file (about 6 Python security rules), with findings going to the
   security lane.
-- **Packaging:** an optional `semgrep` dependency group, plus a Docker build argument
-  `WITH_SEMGREP=false`.
+- **Packaging:** a Docker build argument `WITH_SEMGREP=false`. *(Changed while building:
+  Semgrep is installed as an isolated tool, not a dependency group, because current Semgrep's
+  pins conflict with FastAPI's. See decisions.md, Phase 3b.)*
 
 ### Not doing
 gitleaks: a Go binary to pin in the Dockerfile. The security lane plus a Semgrep secrets rule

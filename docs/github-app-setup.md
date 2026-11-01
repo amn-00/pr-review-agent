@@ -125,4 +125,5 @@ on the problems it found and a summary. A PR with nothing to report still gets a
 | Draft PR gets no review | Expected: drafts are skipped until marked "Ready for review". |
 | Run `failed`, error `Groq 401 ... invalid_api_key` | `GROQ_API_KEY` is wrong or missing from `.env` (saved?). After fixing it, `docker compose up -d` to reload `.env`. |
 | Review says "N lane call(s) not run (time limit)" | Groq's tokens-per-minute (or daily) limit ran out before the 10-minute deadline. Source files are reviewed first, then tests, then docs. |
+| Logs say `could not start semgrep` or `semgrep command isn't installed` | `SEMGREP_ENABLED=true` but the image was built without Semgrep. Rebuild with `docker compose build --build-arg WITH_SEMGREP=true`, or set it back to `false`. |
 | Review says "N lane call(s) not run (PR token budget)" or "(daily token budget)" | The PR used its 50K tokens, or a model used today's 180K. The most important chunks go first. If nothing at all could be reviewed, no review is posted and the job runs again just after midnight UTC. |

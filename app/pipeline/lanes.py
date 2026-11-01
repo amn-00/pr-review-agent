@@ -11,7 +11,7 @@ from pydantic import BaseModel, ValidationError
 from app.llm.groq import EXPECTED_OUTPUT_TOKENS, GroqClient, LLMError
 from app.pipeline.chunking import Chunk, estimate_tokens
 
-PROMPT_VERSION = "v2"
+PROMPT_VERSION = "v3"
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts" / PROMPT_VERSION
 
 CATEGORIES_BY_LANE = {
@@ -97,7 +97,8 @@ def lane_models(main_model: str, small_model: str) -> dict[str, str]:
 
 def estimate_call_tokens(lane: str, chunk: Chunk) -> int:
     """Tokens one call will probably use (prompt plus typical output), for budget checks."""
-    return estimate_tokens(system_prompt(lane) + chunk.text) + EXPECTED_OUTPUT_TOKENS
+    prompt = system_prompt(lane) + chunk.text + tool_hints(chunk, lane)
+    return estimate_tokens(prompt) + EXPECTED_OUTPUT_TOKENS
 
 
 @cache
@@ -106,16 +107,29 @@ def system_prompt(lane: str) -> str:
     return common + "\n" + (PROMPTS_DIR / f"{lane}.md").read_text(encoding="utf-8")
 
 
-def user_message(chunk: Chunk, boundary: str) -> str:
+def tool_hints(chunk: Chunk, lane: str) -> str:
+    """The static-tool findings this lane should see, as text ("" if none). Part of the cache
+    key too: the same code with different tool output may get a different answer."""
+    hints = chunk.hints.get(lane, [])
+    if not hints:
+        return ""
+    lines = [f"- line {h.line}: {h.code} {h.message} ({h.tool})" for h in hints]
+    return "Tool findings on changed lines (hints to verify, not conclusions):\n" + "\n".join(lines)
+
+
+def user_message(chunk: Chunk, boundary: str, lane: str) -> str:
     """The chunk wrapped in markers with a random ID, so content in the PR can't fake the
-    end marker and put text outside the untrusted block. The file name is PR content too."""
+    end marker and put text outside the untrusted block. The file name is PR content too,
+    and so are tool findings: they quote the code."""
+    hints = tool_hints(chunk, lane)
     return (
         "Review the file excerpt below. Numbers on the left are new-file line numbers; "
         '"+" marks lines added or changed in this pull request.\n\n'
         f"BEGIN UNTRUSTED PR CONTENT {boundary}\n"
         f"File: {chunk.path}\n"
         f"{chunk.text}\n"
-        f"END UNTRUSTED PR CONTENT {boundary}"
+        + (f"\n{hints}\n" if hints else "")
+        + f"END UNTRUSTED PR CONTENT {boundary}"
     )
 
 
@@ -125,7 +139,7 @@ async def run_lane(
     """Raises LLMError for a failed call or output that doesn't match the schema."""
     messages = [
         {"role": "system", "content": system_prompt(lane)},
-        {"role": "user", "content": user_message(chunk, boundary=secrets.token_hex(8))},
+        {"role": "user", "content": user_message(chunk, secrets.token_hex(8), lane)},
     ]
     completion = await groq.complete_json(
         model, messages, f"{lane}_findings", lane_schema(lane), deadline
