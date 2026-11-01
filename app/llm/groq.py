@@ -34,8 +34,16 @@ class LLMError(Exception):
 
 
 class ToolCallFailed(LLMError):
-    """Groq's `tool_use_failed`: the model wrote a tool call that doesn't parse. Asking again
-    usually works."""
+    """The model's output for this call was unusable, and asking again usually works:
+    - `tool_use_failed`: a tool call that doesn't parse or doesn't match the schema;
+    - `output_parse_failed`: output that isn't a tool call at all (e.g. prose; seen in the
+      Phase 5 smoke run).
+
+    It's an LLMError, so callers that don't retry treat it as any failed call."""
+
+
+# Groq error codes that mean "this generation was unusable", not "this request is wrong".
+FAILED_GENERATION_CODES = ("tool_use_failed", "output_parse_failed")
 
 
 class DeadlineExceeded(Exception):
@@ -184,7 +192,7 @@ class GroqClient:
                 waited += await self._backoff(attempt, deadline, message)
             elif response.status_code in (401, 403):
                 raise NonRetryableError(message)  # bad API key: every call would fail
-            elif "tool_use_failed" in response.text:
+            elif any(code in response.text for code in FAILED_GENERATION_CODES):
                 raise ToolCallFailed(message)
             else:
                 raise LLMError(message)  # e.g. 400 json_validate_failed

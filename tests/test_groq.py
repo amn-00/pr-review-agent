@@ -204,14 +204,34 @@ async def test_tool_calls_send_tools_and_return_the_assistant_message(groq, groq
     assert "response_format" not in body  # structured outputs can't be combined with tools
 
 
-async def test_a_malformed_tool_call_raises_tool_call_failed(groq, groq_api, fake_time):
-    error = {"error": {"code": "tool_use_failed", "message": "Failed to call a function"}}
+@pytest.mark.parametrize(
+    ("code", "message"),
+    [
+        ("tool_use_failed", "Failed to call a function"),
+        # The model wrote prose instead of a tool call (the Phase 5 smoke run).
+        ("output_parse_failed", "Parsing failed. The model generated output that could not be"),
+    ],
+)
+async def test_an_unusable_generation_raises_tool_call_failed(
+    groq, groq_api, fake_time, code, message
+):
+    error = {"error": {"code": code, "message": message, "type": "invalid_request_error"}}
     groq_api.mock(return_value=httpx.Response(400, json=error))
 
     with pytest.raises(ToolCallFailed):
         await call_tools(groq, fake_time)
 
-    assert groq_api.call_count == 1
+    assert groq_api.call_count == 1  # not retried here: the agent loop asks again
+
+
+async def test_other_bad_requests_are_plain_llm_errors(groq, groq_api, fake_time):
+    error = {"error": {"code": "json_validate_failed", "message": "bad"}}
+    groq_api.mock(return_value=httpx.Response(400, json=error))
+
+    with pytest.raises(LLMError) as raised:
+        await call_tools(groq, fake_time)
+
+    assert not isinstance(raised.value, ToolCallFailed)
 
 
 async def test_tool_calls_share_the_retry_handling(groq, groq_api, fake_time):

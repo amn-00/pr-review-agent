@@ -877,4 +877,20 @@ that. If both fail, the finding is `uncertain`.
 The second finding didn't reach a forced step. At step 3 Groq answered 400 `output_parse_failed`
 (the model wrote prose instead of a tool call). The client treats that as a plain `LLMError`,
 not as a lost step, so the finding ended "agent error". The retry and the JSON fallback weren't
-needed in this run; they're covered by the loop tests.
+needed in this run; they're covered by the loop tests. *(Fixed: see below.)*
+
+**`output_parse_failed` is a lost step, like `tool_use_failed`.**
+Both mean this generation was unusable, not that the request was wrong, and asking again
+usually works. Both now raise `ToolCallFailed`. The agent loop already handles it: the step is
+lost and the loop asks again; on a forced step, it goes to the retry and the JSON fallback.
+`ToolCallFailed` is an `LLMError`, so a lane call that gets either code still just counts as a
+failed call. Other 400s (e.g. `json_validate_failed`) stay plain `LLMError`s (tested).
+
+**Second rerun (bug-01, agent mode).** Both findings confirmed in 3 steps each, with evidence
+on both sides (`shop/stats.py:10` and the caller `shop/report.py:7`). 6 calls, none rejected,
+8.9K agent tokens, 49 s (46 s of it waiting for the per-minute limit). `output_parse_failed`
+didn't recur in this run, so the new mapping is covered by the tests only.
+
+**A flaky eval test, fixed.** `test_a_case_runs_in_every_mode_and_scores` checked the order of
+the lane calls. They run in parallel, so they're recorded in whatever order they finish, and
+the test failed about one full-suite run in two. It now compares them sorted.

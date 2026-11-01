@@ -53,7 +53,9 @@ async def test_a_case_runs_in_every_mode_and_scores(tmp_path, sessionmaker, groq
 
     # Pipeline only: the lanes paid, the finding was posted unverified.
     assert pipeline["run"]["agent_enabled"] is False
-    assert [c["kind"] for c in pipeline["calls"]] == ["correctness", "security", "maintainability"]
+    # Lane calls run in parallel, so they're recorded in whatever order they finish.
+    lanes = sorted(c["kind"] for c in pipeline["calls"])
+    assert lanes == ["correctness", "maintainability", "security"]
     [posted] = [f for f in pipeline["findings"] if f["posted"]]
     assert posted["verdict"] is None
 
