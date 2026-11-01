@@ -579,3 +579,88 @@ it), and `semgrep scan` runs there. Since only the PR's Python files are in that
 no `.semgrepignore` or other config of the PR's for Semgrep to pick up. Semgrep's default ignore
 list skips `tests/` folders (checked). That's accepted: test files rank lowest, and the security
 lane still reviews them.
+
+## Phase 4a — Verification agent (on its own)
+
+The plan is in `docs/plans/phase-4.md`. 4a builds and tests the agent; 4b wires it into the worker.
+
+**The verdict is a tool, because Groq can't combine strict structured outputs with tool calling.**
+`submit_verdict(verdict, reason, evidence)` sits next to the four read tools. Every step sends
+`tool_choice: "required"`, so the model never answers in prose and no verdict is guessed from free
+text. The last allowed step names `submit_verdict` in `tool_choice`, forcing it. Its arguments are
+checked with Pydantic; invalid ones go back to the model as the tool result. Rejected: a final
+strict-JSON call without tools, which would resend the whole conversation once more.
+
+**Groq checks tool arguments against the schema.**
+In the real run, one `read_file` call failed with a 400 `tool_use_failed` ("Tool call validation
+failed"). That raises `ToolCallFailed`, which costs the step, and the loop asks again; the next try
+worked. Any other Groq error ends the finding as `uncertain`, and a 401/403 still fails the run.
+
+**Stopping rules: a `for` loop over 6 steps, a 12K token cap and 120 s per finding.**
+Before each call the request is estimated (characters ÷ 4, tool schemas included). If it doesn't
+fit what's left, the finding ends `uncertain` ("token limit"). If the call after it wouldn't fit,
+this call is forced to be the verdict, while there's still room for one. A repeated identical
+tool call isn't run again, and extra tool calls in one reply are answered "not run": gpt-oss on
+Groq doesn't do parallel tool calls anyway, and we send `parallel_tool_calls: false`.
+
+**Evidence must point at lines the agent was shown.**
+That's the excerpt, `read_file` results, and search or caller matches. A `confirmed` or `dropped`
+verdict with no such evidence becomes `uncertain`. It catches made-up evidence, and it means an
+injection that wants a real finding dropped has to cite real code.
+
+**The agent sees a window of the chunk, not all of it.**
+The finding's lines plus 20 lines either side. A chunk can be ~2000 tokens, and every step resends
+it; the tools can read more when needed. In the real run, the first request was ~1250 tokens.
+
+**Tool results and the candidate are untrusted.**
+Each tool result is wrapped in `BEGIN/END UNTRUSTED TOOL RESULT <id>` with a new random ID, so
+file content can't close the block. The candidate's title and explanation come from a lane that
+read the PR, so they sit in the untrusted PR block with the excerpt. `prompts/agent/v1.md` says
+both are data. The tools are read-only and the verdict only filters, so the worst an injection
+can do is hide or keep a finding, not post new text.
+
+**The repo snapshot: a tarball streamed to disk, extracted member by member.**
+`GET /repos/{repo}/tarball/{sha}` redirects to codeload; httpx drops our token on that cross-host
+redirect (tested). The download stops past 50 MB. Extraction reads the archive as a stream and
+never calls `extractall`: only regular files, top folder stripped, a path guard, at most 512 KB per
+file, no binaries (a NUL byte in the first 8 KB), at most 100 MB or 20K files. If anything fails,
+the repo tools say "repository files are unavailable" and the review goes on. Measured in the
+container on FastAPI 0.115.0 (12.5 MB tarball, 2,256 files kept): extraction 1.3 s, a search 0.3–0.4 s,
+about 7 MB of extra peak memory.
+
+**`search_repo` is plain text, never a regex.**
+A pattern chosen by the model (or by an injection) could take forever to match. `find_callers`
+builds its own escaped whole-word regex, and leaves out the symbol's `def`/`class` lines. It's
+grep-based, with the limits noted before Phase 0.
+
+**CI results are fetched once per attempt; errors come back as text.**
+`get_ci_results` lists the commit's check runs (name, status, conclusion, title cut short). A
+GitHub error, e.g. a missing Checks permission, never fails the review. CI is often still running
+when the agent looks.
+
+**The model's reasoning isn't sent back.**
+Only the assistant message's content and tool calls go into the history, which saves tokens. Groq
+accepted it in the real run.
+
+**`agent_steps`: one row per LLM call.**
+`tool` is NULL when the call failed or called no tool. Arguments are stored even when they don't
+parse, for debugging. Tokens are split into in and out for cost. Rows are deleted with their
+finding (ON DELETE CASCADE), so a retry that replaces a run's findings leaves no stray steps.
+`findings` gains `verdict_reason` and `evidence`.
+
+**The real-Groq check (no posting).**
+A file with an f-string SQL query whose column comes from an allow-list in another file, and an
+average that divides by `len()` of a list that can be empty. Both lanes flagged the SQL; the agent
+dropped both, citing the allow-list lines, and confirmed the division by zero, citing the caller.
+3 findings, 3–4 steps each, about 4.5K tokens per finding ($0.0024 in total). That's well under
+the plan's 10–12K estimate. The long step latencies (up to 54 s) were the per-minute token limit
+waiting after the lane calls.
+
+### Notes for Phase 5
+
+**With about 5 agent PRs a day, the eval set may need to shrink to about 20 PRs.**
+The agent's 70K daily budget limits how many PRs a day can run in "pipeline + agent" mode.
+
+**A possible quota saver to measure: skip the agent for findings Ruff or Semgrep back up.**
+A lane finding on the same line as a static-tool finding is already corroborated. Phase 5 should
+measure how often the agent would have dropped those before skipping it for them.

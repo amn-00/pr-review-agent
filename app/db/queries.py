@@ -5,7 +5,9 @@ from sqlalchemy import and_, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.loop import AgentStep as AgentStepRecord
 from app.db.models import (
+    AgentStep,
     ChunkCache,
     DailyTokenUsage,
     Finding,
@@ -172,6 +174,12 @@ async def record_findings(
         )
         for c in candidates
     )
+    await session.commit()
+
+
+async def add_agent_step(session: AsyncSession, finding_id: int, step: AgentStepRecord) -> None:
+    """Written as soon as the step finishes, so a crash keeps the steps already taken."""
+    session.add(AgentStep(finding_id=finding_id, **asdict(step)))
     await session.commit()
 
 

@@ -1,3 +1,5 @@
+import json
+
 import httpx
 import pytest
 import respx
@@ -9,6 +11,8 @@ from app.llm.groq import (
     DeadlineExceeded,
     GroqClient,
     LLMError,
+    ToolCallFailed,
+    estimate_tool_call_tokens,
     parse_duration,
 )
 
@@ -166,3 +170,59 @@ async def test_token_limits_are_tracked_per_model(groq, groq_api, fake_time):
 )
 def test_parse_duration(value, seconds):
     assert parse_duration(value) == pytest.approx(seconds)
+
+
+TOOLS = [{"type": "function", "function": {"name": "search_repo", "parameters": {}}}]
+
+
+def tool_reply() -> httpx.Response:
+    call = {"id": "c1", "type": "function", "function": {"name": "search_repo", "arguments": "{}"}}
+    body = {
+        "choices": [{"message": {"role": "assistant", "content": None, "tool_calls": [call]}}],
+        "usage": {"prompt_tokens": 300, "completion_tokens": 40},
+    }
+    return httpx.Response(200, json=body)
+
+
+async def call_tools(groq, fake_time, tool_choice="required"):
+    return await groq.complete_tools(
+        "openai/gpt-oss-120b", MESSAGES, TOOLS, tool_choice, fake_time.now + 600
+    )
+
+
+async def test_tool_calls_send_tools_and_return_the_assistant_message(groq, groq_api, fake_time):
+    groq_api.mock(return_value=tool_reply())
+
+    completion = await call_tools(groq, fake_time)
+
+    assert completion.message["tool_calls"][0]["function"]["name"] == "search_repo"
+    assert (completion.tokens_in, completion.tokens_out) == (300, 40)
+    body = json.loads(groq_api.calls.last.request.read())
+    assert body["tools"] == TOOLS
+    assert body["tool_choice"] == "required"
+    assert body["parallel_tool_calls"] is False
+    assert "response_format" not in body  # structured outputs can't be combined with tools
+
+
+async def test_a_malformed_tool_call_raises_tool_call_failed(groq, groq_api, fake_time):
+    error = {"error": {"code": "tool_use_failed", "message": "Failed to call a function"}}
+    groq_api.mock(return_value=httpx.Response(400, json=error))
+
+    with pytest.raises(ToolCallFailed):
+        await call_tools(groq, fake_time)
+
+    assert groq_api.call_count == 1
+
+
+async def test_tool_calls_share_the_retry_handling(groq, groq_api, fake_time):
+    groq_api.mock(side_effect=[httpx.Response(503), tool_reply()])
+
+    await call_tools(groq, fake_time)
+
+    assert fake_time.slept == [2]
+
+
+def test_the_tool_call_estimate_counts_the_tool_schemas():
+    without_tools = estimate_tool_call_tokens(MESSAGES, [])
+
+    assert estimate_tool_call_tokens(MESSAGES, TOOLS * 10) > without_tools

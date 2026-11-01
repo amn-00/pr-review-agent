@@ -6,8 +6,10 @@ import pytest
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app.db.models import Finding, PullRequest, Repo, ReviewRun, RunStatus
+from app.agent.loop import AgentStep as AgentStepRecord
+from app.db.models import AgentStep, Finding, PullRequest, Repo, ReviewRun, RunStatus
 from app.db.queries import (
+    add_agent_step,
     add_daily_tokens,
     add_run_usage,
     claim_run,
@@ -229,3 +231,24 @@ async def test_daily_tokens_add_up_per_model_and_day(sessionmaker):
         assert await daily_tokens_used(session, "big", today) == 150
         assert await daily_tokens_used(session, "small", today) == 7
         assert await daily_tokens_used(session, "unused", today) == 0
+
+
+async def test_agent_steps_are_stored_and_go_away_with_their_findings(sessionmaker):
+    step = AgentStepRecord(1, "find_callers", {"symbol": "average"}, 120, "Uses...", 900, 80, 1500)
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+        await record_findings(session, run.id, [candidate("checked")], False)
+        finding_id = await session.scalar(select(Finding.id))
+        await add_agent_step(session, finding_id, step)
+
+        stored = await session.scalar(select(AgentStep))
+        assert (stored.tool, stored.args_json, stored.tokens_in, stored.latency_ms) == (
+            "find_callers",
+            {"symbol": "average"},
+            900,
+            1500,
+        )
+
+        # A retry replaces the run's findings; their steps must not linger.
+        await record_findings(session, run.id, [candidate("again")], False)
+        assert await session.scalar(select(func.count()).select_from(AgentStep)) == 0

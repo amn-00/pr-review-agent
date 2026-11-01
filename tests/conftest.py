@@ -43,7 +43,8 @@ from app.llm.groq import Completion  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 TABLES = (
-    "findings, review_runs, pull_requests, repos, installations, chunk_cache, daily_token_usage"
+    "agent_steps, findings, review_runs, pull_requests, repos, installations, chunk_cache, "
+    "daily_token_usage"
 )
 
 

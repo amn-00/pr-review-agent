@@ -11,6 +11,7 @@ from app.github.http import RetryableError, make_http_client, raise_for_status, 
 
 # Stop calling GitHub (and defer the job) when fewer requests than this remain.
 MIN_RATE_LIMIT_REMAINING = 50
+TARBALL_TIMEOUT_SECONDS = 60
 
 
 class GitHubClient:
@@ -84,6 +85,38 @@ class GitHubClient:
             json={"commit_id": commit_id, "event": "COMMENT", "body": body, "comments": comments},
         )
         return response.json()
+
+    async def iter_tarball(self, installation_id: int, repo: str, ref: str) -> AsyncIterator[bytes]:
+        """The repo's files at `ref` as a gzipped tarball, streamed in pieces so it never sits
+        in memory. GitHub redirects to codeload.github.com with a short-lived token in the
+        URL; httpx drops our Authorization header on that cross-host redirect.
+
+        Use it with contextlib.aclosing() if you may stop early.
+        """
+        self._wait_if_rate_limited(installation_id)
+        token = await self._auth.installation_token(installation_id)
+        headers = {"Authorization": f"Bearer {token}"}
+        url = f"/repos/{repo}/tarball/{ref}"
+        try:
+            async with self._http.stream(
+                "GET", url, headers=headers, timeout=TARBALL_TIMEOUT_SECONDS
+            ) as response:
+                # The rate limit headers are on GitHub's redirect, not on codeload's answer.
+                github_response = response.history[0] if response.history else response
+                self._record_rate_limit(installation_id, github_response)
+                if not response.is_success:
+                    await response.aread()  # so the error message can include the body
+                    raise_for_status(response)
+                async for piece in response.aiter_bytes():
+                    yield piece
+        except httpx.TransportError as exc:
+            raise RetryableError(f"GitHub GET {url} failed: {exc!r}") from exc
+
+    async def list_check_runs(self, installation_id: int, repo: str, sha: str) -> list[dict]:
+        """CI check runs (e.g. GitHub Actions jobs) for a commit. Needs Checks: read."""
+        url = f"/repos/{repo}/commits/{sha}/check-runs"
+        items = self._iter_items(installation_id, url, items_key="check_runs")
+        return [run async for run in items]
 
     async def bot_login(self) -> str:
         """The login our App posts as, e.g. "my-app[bot]". Looked up once via GET /app.

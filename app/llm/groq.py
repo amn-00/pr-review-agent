@@ -1,4 +1,5 @@
-"""Groq chat completions over httpx, with structured (JSON schema) output.
+"""Groq chat completions over httpx: structured (JSON schema) output for the lanes, and tool
+calling for the verification agent.
 
 Rate limiting is per process: Groq reports the tokens left in this minute on every response,
 and we wait for the reset before sending a call that won't fit. In prod the worker runs in
@@ -6,6 +7,7 @@ one process, so that is effectively global (see docs/decisions.md).
 """
 
 import asyncio
+import json
 import re
 import time
 from collections.abc import Awaitable, Callable
@@ -21,11 +23,19 @@ CALL_TIMEOUT_SECONDS = 60
 MAX_COMPLETION_TOKENS = 2048
 # Rough output size of one lane call (findings + "low" reasoning), for the pre-send check.
 EXPECTED_OUTPUT_TOKENS = 800
+# An agent step's output is one tool call plus "low" reasoning.
+TOOL_CALL_MAX_COMPLETION_TOKENS = 1024
+EXPECTED_TOOL_CALL_OUTPUT_TOKENS = 300
 
 
 class LLMError(Exception):
     """One call failed for good (bad request, invalid output, out of retries). The caller
     skips that call; the review goes on."""
+
+
+class ToolCallFailed(LLMError):
+    """Groq's `tool_use_failed`: the model wrote a tool call that doesn't parse. Asking again
+    usually works."""
 
 
 class DeadlineExceeded(Exception):
@@ -37,6 +47,20 @@ class Completion:
     content: str
     tokens_in: int
     tokens_out: int
+
+
+@dataclass
+class ToolCompletion:
+    message: dict  # the assistant message, with its `tool_calls`
+    tokens_in: int
+    tokens_out: int
+
+
+def estimate_tool_call_tokens(messages: list[dict], tools: list[dict]) -> int:
+    """Tokens one agent step will probably use. The tool schemas and earlier tool calls are
+    sent too, so the whole request counts, not only the message texts."""
+    request_chars = len(json.dumps(messages)) + len(json.dumps(tools))
+    return request_chars // 4 + EXPECTED_TOOL_CALL_OUTPUT_TOKENS
 
 
 def parse_duration(value: str) -> float:
@@ -82,7 +106,46 @@ class GroqClient:
         }
         prompt_chars = sum(len(m["content"]) for m in messages)
         needed_tokens = prompt_chars // 4 + EXPECTED_OUTPUT_TOKENS
+        data = await self._post(model, body, needed_tokens, deadline)
+        return Completion(
+            content=data["choices"][0]["message"]["content"],
+            tokens_in=data["usage"]["prompt_tokens"],
+            tokens_out=data["usage"]["completion_tokens"],
+        )
 
+    async def complete_tools(
+        self,
+        model: str,
+        messages: list[dict],
+        tools: list[dict],
+        tool_choice: str | dict,
+        deadline: float,
+    ) -> ToolCompletion:
+        """One agent step: the model answers with tool calls. `tool_choice` is "required" or
+        names one function to force it. Structured outputs can't be combined with tools, so
+        the caller validates the arguments itself.
+
+        Raises ToolCallFailed, LLMError, DeadlineExceeded, or NonRetryableError.
+        """
+        body = {
+            "model": model,
+            "messages": messages,
+            "tools": tools,
+            "tool_choice": tool_choice,
+            "parallel_tool_calls": False,
+            "max_completion_tokens": TOOL_CALL_MAX_COMPLETION_TOKENS,
+            "reasoning_effort": "low",
+        }
+        needed_tokens = estimate_tool_call_tokens(messages, tools)
+        data = await self._post(model, body, needed_tokens, deadline)
+        return ToolCompletion(
+            message=data["choices"][0]["message"],
+            tokens_in=data["usage"]["prompt_tokens"],
+            tokens_out=data["usage"]["completion_tokens"],
+        )
+
+    async def _post(self, model: str, body: dict, needed_tokens: int, deadline: float) -> dict:
+        """Send one request, with rate limiting, retries and the deadline. Returns the JSON."""
         for attempt in range(1, MAX_ATTEMPTS + 1):
             await self._wait_for_tokens(model, needed_tokens, deadline)
             timeout = min(CALL_TIMEOUT_SECONDS, deadline - self._clock())
@@ -101,12 +164,7 @@ class GroqClient:
 
             self._record_token_limit(model, response)
             if response.is_success:
-                data = response.json()
-                return Completion(
-                    content=data["choices"][0]["message"]["content"],
-                    tokens_in=data["usage"]["prompt_tokens"],
-                    tokens_out=data["usage"]["completion_tokens"],
-                )
+                return response.json()
             message = f"Groq {response.status_code}: {response.text[:300]}"
             if response.status_code == 429:
                 wait = float(response.headers.get("retry-after", 2**attempt))
@@ -115,6 +173,8 @@ class GroqClient:
                 await self._backoff(attempt, deadline, message)
             elif response.status_code in (401, 403):
                 raise NonRetryableError(message)  # bad API key: every call would fail
+            elif "tool_use_failed" in response.text:
+                raise ToolCallFailed(message)
             else:
                 raise LLMError(message)  # e.g. 400 json_validate_failed
         raise LLMError(f"Groq call failed after {MAX_ATTEMPTS} attempts")

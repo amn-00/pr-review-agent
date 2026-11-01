@@ -129,10 +129,34 @@ class Finding(Base):
     title: Mapped[str] = mapped_column(Text)
     explanation: Mapped[str] = mapped_column(Text)
     suggested_fix: Mapped[str | None] = mapped_column(Text)
-    # Set by the verification agent in Phase 4: confirmed | dropped | uncertain.
+    # Set by the verification agent: confirmed | dropped | uncertain. NULL = not verified.
     verdict: Mapped[str | None] = mapped_column(String(10))
+    # The agent's reason, or why it didn't run (e.g. "time limit").
+    verdict_reason: Mapped[str | None] = mapped_column(Text)
+    # [{path, line, why}]: lines the agent read that support the verdict.
+    evidence: Mapped[list | None] = mapped_column(JSONB)
     posted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     drop_reason: Mapped[str | None] = mapped_column(String(20))  # not_in_diff | duplicate
+
+
+class AgentStep(Base):
+    """One step of the verification agent: an LLM call and the tool it called."""
+
+    __tablename__ = "agent_steps"
+    # Also the index for "all steps of a finding".
+    __table_args__ = (UniqueConstraint("finding_id", "step_no"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Steps go with their finding: a retry replaces the run's findings, and their steps.
+    finding_id: Mapped[int] = mapped_column(ForeignKey("findings.id", ondelete="CASCADE"))
+    step_no: Mapped[int] = mapped_column(Integer)
+    tool: Mapped[str | None] = mapped_column(String(30))  # NULL: the call failed or called none
+    args_json: Mapped[dict | None] = mapped_column(JSONB)
+    result_chars: Mapped[int] = mapped_column(Integer)
+    result_summary: Mapped[str] = mapped_column(Text)  # the first 300 characters
+    tokens_in: Mapped[int] = mapped_column(Integer)
+    tokens_out: Mapped[int] = mapped_column(Integer)
+    latency_ms: Mapped[int] = mapped_column(Integer)
 
 
 class ChunkCache(Base):

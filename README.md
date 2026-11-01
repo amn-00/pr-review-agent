@@ -6,7 +6,8 @@ tool-using verification agent for precision. See [SPEC.md](SPEC.md) for the full
 
 Status: Phase 3 complete (3 LLM lanes over the diff, with Ruff (and optionally Semgrep)
 findings as hints, posted as one review with inline comments; cached by chunk, with per-PR
-and daily token budgets and cost per run; a reconciler catches missed webhooks).
+and daily token budgets and cost per run; a reconciler catches missed webhooks). Phase 4a: the
+verification agent is built and tested on its own; Phase 4b wires it into reviews.
 
 ## Run locally
 
