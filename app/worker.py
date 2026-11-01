@@ -5,7 +5,7 @@ import random
 import time
 
 import httpx
-from arq import Retry, func
+from arq import Retry, cron, func
 
 from app.config import get_settings
 from app.db.models import RunStatus
@@ -22,17 +22,13 @@ from app.pipeline.chunking import Chunk, build_chunks, skip_reason
 from app.pipeline.lanes import Candidate
 from app.pipeline.orchestrator import run_lanes
 from app.pipeline.review import inline_comment, summary
-from app.queue import REVIEW_PR_JOB, arq_redis_settings
+from app.queue import JOB_TIMEOUT_SECONDS, REVIEW_PR_JOB, arq_redis_settings
+from app.reconciler import RECONCILE_EVERY_MINUTES, RECONCILE_TIMEOUT_SECONDS, reconcile
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 JOB_MAX_TRIES = 5
-# arq cancels a job after this long, so a run still `running` after it was abandoned by a
-# worker that died. arq re-runs such a job only after job_timeout + 10 s, by which time the
-# run is stale and the new attempt can take it over. Sized for real reviews, which wait on
-# Groq's tokens-per-minute limit.
-JOB_TIMEOUT_SECONDS = 900
 # The LLM work must end by this many seconds after the job starts; chunks not reached are
 # listed as skipped. The rest of the timeout covers fetching, posting and GitHub retries.
 REVIEW_DEADLINE_SECONDS = 600
@@ -244,6 +240,16 @@ async def shutdown(ctx: dict) -> None:
 
 class WorkerSettings:
     functions = [func(review_pr, name=REVIEW_PR_JOB)]
+    cron_jobs = [
+        # At startup too: on Render, the request that wakes the service may be the very
+        # webhook that was lost. max_tries=1 (arq's default): the next cycle is the retry.
+        cron(
+            reconcile,
+            minute=set(range(0, 60, RECONCILE_EVERY_MINUTES)),
+            run_at_startup=True,
+            timeout=RECONCILE_TIMEOUT_SECONDS,
+        )
+    ]
     on_startup = startup
     on_shutdown = shutdown
     redis_settings = arq_redis_settings(settings)

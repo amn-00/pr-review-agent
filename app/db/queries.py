@@ -87,6 +87,23 @@ async def claim_run(session: AsyncSession, run_id: int, stale_after_seconds: int
     return claimed_id is not None
 
 
+async def find_run(
+    session: AsyncSession, github_repo_id: int, pr_number: int, head_sha: str
+) -> ReviewRun | None:
+    """The run for one commit of a PR, if any. Every join and filter is covered by an
+    existing unique index."""
+    return await session.scalar(
+        select(ReviewRun)
+        .join(PullRequest, ReviewRun.pr_id == PullRequest.id)
+        .join(Repo, PullRequest.repo_id == Repo.id)
+        .where(
+            Repo.github_repo_id == github_repo_id,
+            PullRequest.number == pr_number,
+            ReviewRun.head_sha == head_sha,
+        )
+    )
+
+
 async def release_run(session: AsyncSession, run_id: int) -> None:
     """Hand the run back (status `queued`) while the job waits to retry, so the retry can
     claim it straight away instead of waiting for it to go stale."""

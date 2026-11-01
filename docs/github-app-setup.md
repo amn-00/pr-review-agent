@@ -103,6 +103,10 @@ on the problems it found and a summary. A PR with nothing to report still gets a
   the API should answer `{"status": "duplicate"}` and no second comment appears.
 - **Logs:** every line is JSON with `delivery_id`, `repo`, `pr`, `sha` (and `run_id` in the
   worker). To follow one PR: `docker compose logs -f api worker | grep '"pr": 7'`.
+- **Reconciler:** at worker startup and every 5 minutes it looks for open PRs (updated in the
+  last 24 hours) that have no finished review, and queues them. Its lines carry
+  `"delivery_id": "reconciler"`: `docker compose logs worker | grep reconcile`. To test it, stop
+  smee-client, push to a PR, then wait up to 5 minutes (or restart the worker).
 - **Database:** `docker compose exec postgres psql -U postgres -d pr_review -c "select * from review_runs"`,
   and `select lane, file, line_start, severity, title, posted, drop_reason from findings` for
   everything the lanes reported, including what was dropped.

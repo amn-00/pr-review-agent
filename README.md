@@ -4,8 +4,8 @@ A GitHub App that reviews pull requests: a parallel LLM pipeline for breadth, pl
 tool-using verification agent for precision. See [SPEC.md](SPEC.md) for the full design and
 [docs/decisions.md](docs/decisions.md) for the reasoning behind it.
 
-Status: Phase 2a (webhook → queue → worker runs 3 LLM lanes over the diff and posts a
-review with inline comments).
+Status: Phase 2b (webhook → queue → worker runs 3 LLM lanes over the diff and posts a
+review with inline comments; a reconciler catches missed webhooks every 5 minutes).
 
 ## Run locally
 

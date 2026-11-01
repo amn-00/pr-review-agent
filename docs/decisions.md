@@ -40,7 +40,7 @@ against it.
 Render's free tier has no background workers. Running the worker in the API process keeps one
 service within 512 MB. Locally, docker-compose still runs them as separate containers.
 
-**A reconciler is the safety net for missed webhooks (planned for Phase 2).**
+**A reconciler is the safety net for missed webhooks (planned for Phase 2).** *(Built in Phase 2b, with a 24-hour lookback; see below.)*
 Render free services sleep, and GitHub does not retry failed deliveries, so webhooks can be lost.
 On startup and every few minutes, a job lists open PRs per installation and enqueues any head SHA
 without a completed run. Webhooks are the fast path. It lands in Phase 2 because "completed run"
@@ -173,7 +173,7 @@ The unique constraints double as the indexes for every Phase 1 lookup:
 - `review_runs(pr_id, head_sha)` for finding a commit's run, and all runs of a PR via the
   leading column
 
-`repos.installation_id` has no index yet; the reconciler (Phase 2) is its first reader.
+`repos.installation_id` has no index yet. *(Still unread after Phase 2b: the reconciler lists repos from GitHub, not from our tables.)*
 
 **Tests use real Postgres and Redis, not SQLite or fakeredis.**
 `ON CONFLICT`, CHECK constraints and arq's dedupe are exactly what's being tested, and fakes
@@ -348,3 +348,71 @@ make it measurable.
 **Known cost: retries re-run the lanes.**
 If posting fails with a temporary error after the lanes ran, the retry starts over and spends the
 tokens again. Phase 3's cache fixes this.
+
+### Known issues from the real-GitHub test (PR #4, run 5), to fix in Phase 3 with prompts v2
+
+**Cross-lane duplicates get posted.**
+Correctness flagged an IndexError on lines 9–11 (`critical`), and maintainability flagged lines
+8–12 as a low `idiom` finding about the same loop. Both were posted. The fix: when line ranges
+overlap across lanes, keep only the most severe. That's a change to `aggregate.py`, not only to
+the prompts. The trade-off: a different, genuinely separate issue on overlapping lines (e.g. a
+low security note next to a high bug) gets dropped too. Phase 5 measures how often.
+
+**Line ranges are too wide.**
+The division by zero in `average()` was posted on lines 1–5 (the whole function) instead of line
+5. The v1 prompt already says "Use the narrowest range that shows the problem", so wording alone
+isn't enough. v2 should ask for the single line where the problem happens (`line_start ==
+line_end`) unless the problem really spans lines, and show an example.
+
+## Phase 2b — Reconciler
+
+**An arq cron job, at worker startup and every 5 minutes.**
+arq's cron is `unique` by default, so with several workers only one runs each cycle. It has a
+120 s timeout and `max_tries=1`: the next cycle, 5 minutes later, is the retry. The startup run
+matters on Render, which wakes the service on an incoming request: the request that woke it may
+be the very webhook that got lost. While the service sleeps the cron doesn't fire, so on Render
+"within 5 minutes" becomes "when the service next wakes".
+
+**Open PRs come from GitHub, not from our tables.**
+Our tables only know repos and PRs that some webhook already told us about. If the first webhook
+for a PR is the one that was lost, only GitHub knows the PR exists. One cycle costs, per
+installation, one request for its repos plus one request per repo for its open PRs.
+
+**When a head SHA gets a job.**
+No run (webhook missed), `queued` (its job may have been lost with Redis), `skipped` (was closed
+or a draft, now open at the same head), or `running` for longer than the job timeout (worker
+died). Not when `completed`, or when `running` and fresh. Not when `failed` either: only a new
+delivery retries a failed run, so a broken PR doesn't burn the token budget every 5 minutes.
+Enqueueing uses the same job ID as the webhook, so arq ignores PRs that are already queued or
+running.
+
+**Only PRs updated in the last 24 hours.**
+A missed webhook always comes from a recent push or open, which bumps the PR's `updated_at`.
+Without this, the first cycle after installing the App would review every open PR, months-old
+ones included, and could use up a day's Groq budget. PRs are listed newest first, and paging stops
+at the first PR older than the window. The cost: a webhook missed and then unnoticed for more than
+24 hours is only reviewed on the next push.
+
+**No cap on how many jobs one cycle enqueues.**
+The lookback, `max_jobs = 2` and the review deadline already bound the work, and Phase 3's daily
+token budget is the real guard. A per-cycle cap would be one more knob for no gain today.
+
+**Errors are contained per installation.**
+A GitHub error for one installation is logged and the cycle moves on to the next one. Suspended
+installations are skipped, since GitHub refuses them tokens anyway. If listing the installations
+itself fails, the cycle fails, arq logs it, and the next cycle tries again.
+
+**The job can't tell where its payload came from.**
+The reconciler builds the same trimmed `PullRequestPayload` the webhook enqueues, with
+`action="reconcile"`, and passes `delivery_id="reconciler"`, so its jobs are easy to filter in the
+logs. An end-to-end test runs reconcile, then the real arq worker, and checks a review is posted.
+
+**`JOB_TIMEOUT_SECONDS` moved to `app/queue.py`.**
+The worker uses it as arq's timeout, and the reconciler uses it to spot stale runs. Importing it
+from `app.worker` would be circular, since the worker imports the reconciler to register the cron.
+
+**One paging helper for every GitHub listing.**
+`_iter_items` follows the `Link` header and yields items, so a caller can stop early (the open-PR
+listing does). `installation_id=None` means "authenticate as the App" (JWT, for
+`/app/installations`), and `items_key` unwraps endpoints that return `{"repositories": [...]}`
+instead of a list.

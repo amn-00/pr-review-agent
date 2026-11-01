@@ -9,6 +9,7 @@ from arq.worker import Worker
 from sqlalchemy import select
 
 from app.db.models import ReviewRun, RunStatus
+from app.reconciler import reconcile
 from app.worker import WorkerSettings
 from tests.factories import PR_NUMBER, REPO, mock_github_pr, pr_payload, pull_response, send_event
 
@@ -103,5 +104,32 @@ async def test_completed_commit_is_not_reviewed_again(
     assert response.status_code == 202
     await run_worker(arq_redis, sessionmaker, github, groq)
 
+    assert await run_status(sessionmaker) == RunStatus.COMPLETED
+    assert post.call_count == 1
+
+
+async def test_reconciler_catches_a_missed_webhook_and_the_review_is_posted(
+    arq_redis, sessionmaker, github, groq, github_api
+):
+    # No webhook at all: the PR is only found by the reconciler.
+    post = mock_github_pr(github_api)
+    github_api.get("/app/installations").mock(
+        return_value=httpx.Response(200, json=[{"id": 555, "suspended_at": None}])
+    )
+    repo = {"id": 1001, "full_name": REPO, "owner": {"login": "octo"}}
+    github_api.get("/installation/repositories").mock(
+        return_value=httpx.Response(200, json={"total_count": 1, "repositories": [repo]})
+    )
+    pull = pull_response() | {
+        "title": "Add feature",
+        "updated_at": "2999-01-01T00:00:00Z",  # always within the lookback
+        "user": {"login": "alice"},
+    }
+    github_api.get(f"/repos/{REPO}/pulls").mock(return_value=httpx.Response(200, json=[pull]))
+
+    enqueued = await reconcile({"sessionmaker": sessionmaker, "github": github, "redis": arq_redis})
+    await run_worker(arq_redis, sessionmaker, github, groq)
+
+    assert enqueued == 1
     assert await run_status(sessionmaker) == RunStatus.COMPLETED
     assert post.call_count == 1

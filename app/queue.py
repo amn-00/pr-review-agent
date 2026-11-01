@@ -6,6 +6,12 @@ from app.config import Settings
 
 REVIEW_PR_JOB = "review_pr"
 
+# arq cancels a job after this long, so a run still `running` after it was abandoned by a
+# worker that died. arq re-runs such a job only after job_timeout + 10 s, by which time the
+# run is stale and the new attempt can take it over. Sized for real reviews, which wait on
+# Groq's tokens-per-minute limit. Shared by the worker and the reconciler.
+JOB_TIMEOUT_SECONDS = 900
+
 
 def arq_redis_settings(settings: Settings) -> RedisSettings:
     return RedisSettings.from_dsn(str(settings.redis_url))

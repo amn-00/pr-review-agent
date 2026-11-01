@@ -405,3 +405,7 @@ def test_worker_settings():
     assert WorkerSettings.keep_result == 0
     # The LLM deadline leaves room inside the job timeout for fetching and posting.
     assert REVIEW_DEADLINE_SECONDS < JOB_TIMEOUT_SECONDS
+    [reconciler] = WorkerSettings.cron_jobs
+    assert reconciler.name == "cron:reconcile"
+    assert reconciler.run_at_startup is True
+    assert reconciler.minute == set(range(0, 60, 5))

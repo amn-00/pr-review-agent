@@ -1,5 +1,6 @@
 import time
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from datetime import datetime
 from urllib.parse import quote
 
 import httpx
@@ -48,7 +49,8 @@ class GitHubClient:
 
     async def list_pull_files(self, installation_id: int, repo: str, number: int) -> list[dict]:
         """Changed files with their `patch` (missing for binary or very large diffs)."""
-        return await self._get_all_pages(installation_id, f"/repos/{repo}/pulls/{number}/files")
+        url = f"/repos/{repo}/pulls/{number}/files"
+        return [file async for file in self._iter_items(installation_id, url)]
 
     async def get_file_content(self, installation_id: int, repo: str, path: str, ref: str) -> str:
         """A file's full text at a commit. The raw media type returns the bytes directly
@@ -63,7 +65,8 @@ class GitHubClient:
         return response.text
 
     async def list_reviews(self, installation_id: int, repo: str, number: int) -> list[dict]:
-        return await self._get_all_pages(installation_id, f"/repos/{repo}/pulls/{number}/reviews")
+        url = f"/repos/{repo}/pulls/{number}/reviews"
+        return [review async for review in self._iter_items(installation_id, url)]
 
     async def create_review(
         self,
@@ -89,26 +92,63 @@ class GitHubClient:
         this account.
         """
         if self._bot_login is None:
-            response = await send(
-                self._http,
-                "GET",
-                "/app",
-                headers={"Authorization": f"Bearer {self._auth.make_jwt()}"},
-            )
-            raise_for_status(response)
+            response = await self._app_request("/app")
             self._bot_login = f"{response.json()['slug']}[bot]"
         return self._bot_login
 
-    async def _get_all_pages(self, installation_id: int, url: str) -> list[dict]:
-        items: list[dict] = []
+    async def list_installations(self) -> list[dict]:
+        """Every installation of our App (each has `id` and `suspended_at`)."""
+        return [item async for item in self._iter_items(None, "/app/installations")]
+
+    async def list_installation_repos(self, installation_id: int) -> list[dict]:
+        url = "/installation/repositories"
+        items = self._iter_items(installation_id, url, items_key="repositories")
+        return [repo async for repo in items]
+
+    async def list_open_pulls(
+        self, installation_id: int, repo: str, updated_since: datetime
+    ) -> list[dict]:
+        """Open PRs updated since `updated_since`, newest first. Stops paging at the first
+        older one, so a repo with many old PRs costs one request."""
+        params = {"state": "open", "sort": "updated", "direction": "desc"}
+        pulls: list[dict] = []
+        async for pull in self._iter_items(installation_id, f"/repos/{repo}/pulls", params):
+            if datetime.fromisoformat(pull["updated_at"]) < updated_since:
+                break
+            pulls.append(pull)
+        return pulls
+
+    async def _iter_items(
+        self,
+        installation_id: int | None,
+        url: str,
+        params: dict | None = None,
+        items_key: str | None = None,
+    ) -> AsyncIterator[dict]:
+        """Yield every item of a paginated list endpoint, following the Link header.
+
+        `installation_id=None` authenticates as the App itself (JWT). `items_key` is for
+        endpoints that wrap the list in an object, like {"repositories": [...]}.
+        """
         next_url: str | None = url
-        params: dict | None = {"per_page": 100}
+        page_params: dict | None = {"per_page": 100, **(params or {})}
         while next_url:
-            response = await self._request(installation_id, "GET", next_url, params=params)
-            items.extend(response.json())
+            if installation_id is None:
+                response = await self._app_request(next_url, params=page_params)
+            else:
+                response = await self._request(installation_id, "GET", next_url, params=page_params)
+            data = response.json()
+            for item in data[items_key] if items_key else data:
+                yield item
             next_url = response.links.get("next", {}).get("url")
-            params = None  # the "next" URL already carries the query string
-        return items
+            page_params = None  # the "next" URL already carries the query string
+
+    async def _app_request(self, url: str, params: dict | None = None) -> httpx.Response:
+        """GET as the App itself (JWT), for endpoints about the App, not one installation."""
+        headers = {"Authorization": f"Bearer {self._auth.make_jwt()}"}
+        response = await send(self._http, "GET", url, params=params, headers=headers)
+        raise_for_status(response)
+        return response
 
     async def _request(
         self, installation_id: int, method: str, url: str, headers: dict | None = None, **kwargs

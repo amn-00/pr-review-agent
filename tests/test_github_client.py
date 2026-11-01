@@ -179,3 +179,31 @@ async def test_requests_resume_after_the_limit_resets(github, github_api):
     await github.get_pull(INSTALLATION_ID, REPO, PR_NUMBER)  # reset time already passed
 
     assert route.call_count == 2
+
+
+async def test_list_installations_authenticates_as_the_app_and_paginates(github, github_api):
+    next_page = "https://api.github.com/app/installations?page=2"
+    route = github_api.get("/app/installations").mock(
+        side_effect=[
+            httpx.Response(200, json=[{"id": 1}], headers={"Link": f'<{next_page}>; rel="next"'}),
+            httpx.Response(200, json=[{"id": 2}]),
+        ]
+    )
+
+    installations = await github.list_installations()
+
+    assert [i["id"] for i in installations] == [1, 2]
+    assert route.calls[0].request.headers["Authorization"] == "Bearer test-jwt"
+
+
+async def test_list_installation_repos_unwraps_the_repositories_key(github, github_api):
+    route = github_api.get("/installation/repositories").mock(
+        return_value=httpx.Response(
+            200, json={"total_count": 2, "repositories": [{"id": 1}, {"id": 2}]}
+        )
+    )
+
+    repos = await github.list_installation_repos(INSTALLATION_ID)
+
+    assert [r["id"] for r in repos] == [1, 2]
+    assert route.calls.last.request.headers["Authorization"] == "Bearer test-token"
