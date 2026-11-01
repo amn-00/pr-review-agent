@@ -1,0 +1,10 @@
+kind = "bug"
+title = "Sign and verify session tokens"
+
+# Expiry is checked correctly; the only planted bug is the signature comparison.
+
+[[expect]]
+file = "auth/tokens.py"
+lines = [20, 20]
+note = "signature compared with != instead of hmac.compare_digest: timing attack"
+categories = ["security"]

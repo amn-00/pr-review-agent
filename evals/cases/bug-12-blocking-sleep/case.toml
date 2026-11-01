@@ -1,0 +1,9 @@
+kind = "bug"
+title = "Wait for the job service to become ready"
+
+# Our Ruff run doesn't select the ASYNC rules, so this one has no tool hint.
+
+[[expect]]
+file = "jobs/poller.py"
+lines = [14, 14]
+note = "time.sleep inside async def blocks the event loop; should be await asyncio.sleep"

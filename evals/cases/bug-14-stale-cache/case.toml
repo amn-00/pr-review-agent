@@ -1,0 +1,11 @@
+kind = "bug"
+title = "Cache product lookups"
+
+# The PR adds a cache to get_product and touches update_price, but never clears the cached
+# product there, so a price change isn't seen until the process restarts.
+
+[[expect]]
+file = "products/service.py"
+lines = [16, 16]
+note = "update_price doesn't invalidate the cache: get_product keeps returning the old price"
+also_at = ["products/service.py:7-10"]
