@@ -41,7 +41,10 @@ PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts" / "agent"
 
 MAX_AGENT_STEPS = 6
 FINDING_TOKEN_LIMIT = 12_000
-FINDING_TIMEOUT_SECONDS = 120
+# Working time per finding: LLM calls and tools, not waits for Groq's rate limits (those come
+# from the shared quota, not from this finding). Past it, the next step is the forced verdict.
+# The agent's overall deadline still counts waits, and is the hard limit.
+FINDING_TIME_LIMIT_SECONDS = 120
 RESULT_SUMMARY_CHARS = 300
 # Lines of the chunk shown around the finding. A whole chunk can be ~2000 tokens, resent on
 # every step; the tools can read more when needed.
@@ -125,10 +128,11 @@ async def verify_finding(
     on_step: Callable[[AgentStep], Awaitable[None]],
     clock: Callable[[], float] = time.monotonic,
 ) -> Verdict:
-    """Check one candidate. `on_step` is awaited after every LLM call (to store the step and
-    its usage). Raises NonRetryableError for a rejected API key; anything else ends as a
-    verdict."""
-    deadline = min(deadline, clock() + FINDING_TIMEOUT_SECONDS)
+    """Check one candidate. `deadline` is the agent's overall deadline, waits included.
+    `on_step` is awaited after every LLM call (to store the step and its usage). Raises
+    NonRetryableError for a rejected API key; anything else ends as a verdict."""
+    began = clock()
+    waited = 0.0  # seconds Groq spent waiting on rate limits and backoff
     messages = [
         {"role": "system", "content": system_prompt()},
         {"role": "user", "content": task_message(candidate, chunk, secrets.token_hex(8))},
@@ -153,10 +157,12 @@ async def verify_finding(
         if used + estimate > FINDING_TOKEN_LIMIT:
             result.reason = "token limit"
             return result
-        # Force the verdict on the last step, or while there's still room for it: when the
-        # call after this one would not fit the token limit.
-        last_chance = step_no == MAX_AGENT_STEPS or (
-            used + 2 * estimate + STEP_GROWTH_TOKENS > FINDING_TOKEN_LIMIT
+        # Force the verdict on the last step, while there's still room for it (the call after
+        # this one would not fit the token limit), or once the working time is used up.
+        last_chance = (
+            step_no == MAX_AGENT_STEPS
+            or used + 2 * estimate + STEP_GROWTH_TOKENS > FINDING_TOKEN_LIMIT
+            or clock() - began - waited > FINDING_TIME_LIMIT_SECONDS
         )
         tool_choice = FORCE_VERDICT if last_chance else "required"
         started = clock()
@@ -174,6 +180,7 @@ async def verify_finding(
             result.reason = f"agent error: {str(exc)[:200]}"
             return result
 
+        waited += completion.waited_seconds
         tokens = (completion.tokens_in, completion.tokens_out)
         content = completion.message.get("content")
         calls = completion.message.get("tool_calls") or []

@@ -43,6 +43,10 @@ class Settings(DatabaseSettings):
     # it is off unless asked for. Ruff always runs.
     semgrep_enabled: bool = False
 
+    # The verification agent checks each finding before it's posted (on GROQ_MODEL). Off means
+    # pipeline only: every finding that passes aggregation is posted, as before Phase 4.
+    agent_enabled: bool = True
+
     def github_private_key_pem(self) -> str:
         return self.github_app_private_key.get_secret_value().replace("\\n", "\n")
 

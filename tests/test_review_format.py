@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from app.agent.verify import AgentResult, Check
 from app.pipeline.lanes import Candidate
 from app.pipeline.orchestrator import OrchestratorResult
 from app.pipeline.review import inline_comment, safe, summary
@@ -114,3 +115,69 @@ def test_summary_shows_cost_and_cache_use():
         "Cost ≈ $0.0012 at list prices (free tier); 4 of 6 lane call(s) answered from cache."
         in body
     )
+
+
+def test_confirmed_comment_shows_where_the_agent_checked():
+    evidence = [
+        {"path": "app/report.py", "line": 7, "why": "passes []"},
+        {"path": "app/stats.py", "line": 3, "why": "divides"},
+        {"path": "a.py", "line": 1, "why": "x"},
+        {"path": "b.py", "line": 2, "why": "a fourth one is not shown"},
+    ]
+
+    body = inline_comment(candidate(), evidence)["body"]
+
+    assert body.endswith("_Checked against `app/report.py:7`, `app/stats.py:3`, `a.py:1`_")
+    assert "passes []" not in body  # locations only, never the agent's own words
+
+
+def agent_result(*checks: tuple[str | None, str, str]) -> AgentResult:
+    """(verdict, title, reason) per finding."""
+    result = AgentResult("big", [])
+    for n, (verdict, title, reason) in enumerate(checks, start=1):
+        result.checks.append(
+            Check(n, candidate(line_start=n, line_end=n, title=title), verdict, reason)
+        )
+    result.usage.cost_usd = Decimal("0.002")
+    return result
+
+
+def test_summary_with_the_agent_counts_verdicts_and_lists_what_wasnt_posted():
+    agent = agent_result(
+        ("confirmed", "Real bug", "caller passes []"),
+        ("dropped", "Guarded elsewhere", "api.py validates it"),
+        ("uncertain", "Maybe a race", "could not find the callers"),
+        (None, "Not reached", "agent daily token budget"),
+    )
+    lanes = OrchestratorResult()
+    lanes.usage.cost_usd = Decimal("0.001")
+    posted = [agent.checks[0].candidate]
+
+    body = summary(MARKER, "a" * 40, MODELS, posted, ["app/stats.py"], {}, lanes, agent)
+
+    assert "Found 1 confirmed issue(s): 1 high." in body
+    assert "1 confirmed, 1 dropped, 1 uncertain, 1 not verified" in body
+    assert "Cost ≈ $0.0030 at list prices (free tier; agent $0.0020)" in body
+    assert "<summary>Uncertain (not posted): 1</summary>" in body
+    assert "- `app/stats.py:3` **high** Maybe a race — could not find the callers" in body
+    assert "<summary>Not verified (not posted): 1</summary>" in body
+    assert "Not reached — agent daily token budget" in body
+    assert "Guarded elsewhere" not in body  # dropped findings are only counted
+
+
+def test_summary_without_the_agent_is_unchanged():
+    body = summary(
+        MARKER, "a" * 40, MODELS, [candidate()], ["app/stats.py"], {}, OrchestratorResult()
+    )
+
+    assert "Found 1 issue(s): 1 high." in body
+    assert "verification agent" not in body
+
+
+def test_agent_reasons_cannot_plant_a_marker_in_the_summary():
+    agent = agent_result(("uncertain", "t", f"{MARKER} @alice"))
+
+    body = summary(MARKER, "a" * 40, MODELS, [], [], {}, OrchestratorResult(), agent)
+
+    assert body.count(MARKER) == 1
+    assert "@alice" not in body

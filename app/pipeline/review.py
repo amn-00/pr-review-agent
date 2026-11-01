@@ -3,8 +3,13 @@
 import re
 from collections import Counter
 
+from app.agent.loop import AGENT_PROMPT_VERSION
+from app.agent.verify import AgentResult, Check
 from app.pipeline.lanes import PROMPT_VERSION, SEVERITIES, Candidate
 from app.pipeline.orchestrator import OrchestratorResult
+
+# Evidence locations shown under a confirmed finding.
+MAX_EVIDENCE_SHOWN = 3
 
 
 def safe(text: str) -> str:
@@ -16,13 +21,20 @@ def safe(text: str) -> str:
     return re.sub(r"@(?=[A-Za-z0-9-])", "@​", text)
 
 
-def inline_comment(candidate: Candidate) -> dict:
+def inline_comment(candidate: Candidate, evidence: list[dict] | None = None) -> dict:
+    """`evidence` is what the agent checked: only file locations are shown (no free text from
+    the agent), and paths come from the repo, so they go through safe() too."""
     body = (
         f"**{candidate.severity}** · {candidate.category} · {safe(candidate.title)}\n\n"
         f"{safe(candidate.explanation)}"
     )
     if candidate.suggested_fix:
         body += f"\n\n**Suggested fix:** {safe(candidate.suggested_fix)}"
+    if evidence:
+        places = ", ".join(
+            f"`{safe(e['path'])}:{e['line']}`" for e in evidence[:MAX_EVIDENCE_SHOWN]
+        )
+        body += f"\n\n_Checked against {places}_"
     comment = {"path": candidate.file, "line": candidate.line_end, "side": "RIGHT", "body": body}
     if candidate.line_start < candidate.line_end:
         comment["start_line"] = candidate.line_start
@@ -38,13 +50,16 @@ def summary(
     reviewed_files: list[str],
     skipped_files: dict[str, str],
     lanes: OrchestratorResult,
+    agent: AgentResult | None = None,
 ) -> str:
+    """`agent` is None when the agent is off (pipeline only): then every finding is posted."""
     counts = Counter(c.severity for c in posted)
+    issues = "confirmed issue(s)" if agent else "issue(s)"
     if posted:
         found = ", ".join(f"{counts[s]} {s}" for s in SEVERITIES if counts[s])
-        headline = f"Found {len(posted)} issue(s): {found}."
+        headline = f"Found {len(posted)} {issues}: {found}."
     else:
-        headline = "No issues found."
+        headline = "No confirmed issues found." if agent else "No issues found."
     lanes_by_model: dict[str, list[str]] = {}
     for lane, model in models.items():
         lanes_by_model.setdefault(model, []).append(lane)
@@ -57,10 +72,29 @@ def summary(
         f"### Automated review of `{head_sha[:7]}`",
         headline,
         f"Reviewed {len(reviewed_files)} file(s) with {model_text}, prompts {PROMPT_VERSION}.",
-        f"Cost ≈ ${usage.cost_usd:.4f} at list prices (free tier); "
-        f"{usage.cached_calls} of {usage.llm_calls + usage.cached_calls} lane call(s) "
-        "answered from cache.",
     ]
+    cost = usage.cost_usd
+    if agent:
+        verdicts = Counter(check.verdict for check in agent.checks)
+        lines.append(
+            f"Each finding was checked against the repository by the verification agent "
+            f"(`{agent.model}`, prompt agent {AGENT_PROMPT_VERSION}): "
+            f"{verdicts['confirmed']} confirmed, {verdicts['dropped']} dropped, "
+            f"{verdicts['uncertain']} uncertain, {verdicts[None]} not verified. "
+            "Only confirmed findings are posted."
+        )
+        cost += agent.usage.cost_usd
+    lines.append(
+        f"Cost ≈ ${cost:.4f} at list prices (free tier"
+        + (f"; agent ${agent.usage.cost_usd:.4f}" if agent else "")
+        + f"); {usage.cached_calls} of {usage.llm_calls + usage.cached_calls} lane call(s) "
+        "answered from cache."
+    )
+    if agent:
+        uncertain = [c for c in agent.checks if c.verdict == "uncertain"]
+        not_verified = [c for c in agent.checks if c.verdict is None]
+        lines += _collapsed("Uncertain (not posted)", uncertain)
+        lines += _collapsed("Not verified (not posted)", not_verified)
 
     # File names come from the PR, so they go through safe() too.
     not_reviewed = [f"- `{safe(path)}`: {reason}" for path, reason in skipped_files.items()]
@@ -78,3 +112,16 @@ def summary(
         lines += ["", "<details><summary>Not fully reviewed</summary>", "", *not_reviewed]
         lines += ["", "</details>"]
     return "\n".join(lines)
+
+
+def _collapsed(title: str, checks: list[Check]) -> list[str]:
+    """A collapsed list of findings that weren't posted, with the reason. The reason can be
+    the agent's words (which may echo PR content), so it goes through safe()."""
+    if not checks:
+        return []
+    items = [
+        f"- `{safe(c.candidate.file)}:{c.candidate.line_start}` **{c.candidate.severity}** "
+        f"{safe(c.candidate.title)} — {safe(c.reason)}"
+        for c in checks
+    ]
+    return ["", f"<details><summary>{title}: {len(checks)}</summary>", "", *items, "", "</details>"]

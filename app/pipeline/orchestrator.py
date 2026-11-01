@@ -10,6 +10,7 @@ from datetime import UTC, date, datetime
 
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.db.models import BudgetPurpose
 from app.db.queries import (
     add_daily_tokens,
     add_run_usage,
@@ -31,9 +32,10 @@ MAX_PARALLEL_CALLS = 3
 # Tokens of real LLM calls one run may spend (cache hits are free), so one big PR can't take
 # the whole day: 200K/day leaves room for at least 4 PRs.
 PR_TOKEN_BUDGET = 50_000
-# Per model per UTC day, across all PRs. Groq's free limit is 200K; the 20K left over is for
-# smoke tests, and is not enough for the Phase 4 agent (see docs/decisions.md).
-DAILY_TOKEN_BUDGET = 180_000
+# The lanes' share of each model's daily tokens, across all PRs. Groq's free limit is 200K:
+# 110K for the lanes, 70K for the verification agent (AGENT_DAILY_TOKEN_BUDGET), and 20K left
+# over for smoke tests (see docs/decisions.md).
+PIPELINE_DAILY_TOKEN_BUDGET = 110_000
 
 # Why a lane call was not run.
 SKIP_TIME = "time limit"
@@ -83,8 +85,10 @@ async def run_lanes(
         if usage.tokens_in + usage.tokens_out + estimate > PR_TOKEN_BUDGET:
             return SKIP_PR_BUDGET
         async with sessionmaker() as session:
-            used_today = await daily_tokens_used(session, model, utc_today())
-        if used_today + estimate > DAILY_TOKEN_BUDGET:
+            used_today = await daily_tokens_used(
+                session, model, utc_today(), BudgetPurpose.PIPELINE
+            )
+        if used_today + estimate > PIPELINE_DAILY_TOKEN_BUDGET:
             return SKIP_DAILY_BUDGET
         return None
 
@@ -137,7 +141,9 @@ async def run_lanes(
             async with sessionmaker() as session:
                 findings = to_cached(lane_result.candidates, chunk)
                 await put_cached(session, key, findings, tokens_in, tokens_out, run_id)
-                await add_daily_tokens(session, model, utc_today(), tokens_in + tokens_out)
+                await add_daily_tokens(
+                    session, model, utc_today(), BudgetPurpose.PIPELINE, tokens_in + tokens_out
+                )
 
     try:
         # TaskGroup cancels the other workers if one raises (e.g. Groq rejects the key).

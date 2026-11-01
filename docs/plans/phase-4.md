@@ -72,7 +72,7 @@ The loop is `for step in range(1, MAX_AGENT_STEPS + 1)`; there is no `while`.
 |---|---|---|
 | Max steps (one step = one LLM call) | 6 | Step 6 forces `submit_verdict`. No verdict means `uncertain`. |
 | Tokens per finding | 12K | If the call after this one wouldn't fit, the verdict is forced now; if this one doesn't fit, `uncertain`. |
-| Time per finding | 120 s | Passed to Groq as the deadline. Running out means `uncertain`. |
+| Time per finding | 120 s | Passed to Groq as the deadline. Running out means `uncertain`. *(Changed in 4b: working time only, rate-limit waits left out; past it the verdict is forced. See decisions.md.)* |
 | Repeated identical tool call | | Not run; the model is told "already ran". Still uses a step. |
 | Extra tool calls in one reply | | Answered "not run". `parallel_tool_calls: false` is sent too. |
 

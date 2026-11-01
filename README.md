@@ -4,10 +4,11 @@ A GitHub App that reviews pull requests: a parallel LLM pipeline for breadth, pl
 tool-using verification agent for precision. See [SPEC.md](SPEC.md) for the full design and
 [docs/decisions.md](docs/decisions.md) for the reasoning behind it.
 
-Status: Phase 3 complete (3 LLM lanes over the diff, with Ruff (and optionally Semgrep)
-findings as hints, posted as one review with inline comments; cached by chunk, with per-PR
-and daily token budgets and cost per run; a reconciler catches missed webhooks). Phase 4a: the
-verification agent is built and tested on its own; Phase 4b wires it into reviews.
+Status: Phase 4 complete. 3 LLM lanes review the diff, with Ruff (and optionally Semgrep)
+findings as hints; a tool-using verification agent then checks each finding against the repo
+at the PR's head commit, and only confirmed findings are posted, as one review with inline
+comments. Cached by chunk, with per-PR and daily token budgets and cost per run; a reconciler
+catches missed webhooks. `AGENT_ENABLED=false` gives pipeline-only reviews.
 
 ## Run locally
 

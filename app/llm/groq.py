@@ -54,6 +54,9 @@ class ToolCompletion:
     message: dict  # the assistant message, with its `tool_calls`
     tokens_in: int
     tokens_out: int
+    # Time spent waiting before or between attempts (rate limits, backoff), so the agent's
+    # per-finding time limit can leave out waits caused by quota rather than by the agent.
+    waited_seconds: float = 0.0
 
 
 def estimate_tool_call_tokens(messages: list[dict], tools: list[dict]) -> int:
@@ -106,7 +109,7 @@ class GroqClient:
         }
         prompt_chars = sum(len(m["content"]) for m in messages)
         needed_tokens = prompt_chars // 4 + EXPECTED_OUTPUT_TOKENS
-        data = await self._post(model, body, needed_tokens, deadline)
+        data, _ = await self._post(model, body, needed_tokens, deadline)
         return Completion(
             content=data["choices"][0]["message"]["content"],
             tokens_in=data["usage"]["prompt_tokens"],
@@ -137,17 +140,22 @@ class GroqClient:
             "reasoning_effort": "low",
         }
         needed_tokens = estimate_tool_call_tokens(messages, tools)
-        data = await self._post(model, body, needed_tokens, deadline)
+        data, waited = await self._post(model, body, needed_tokens, deadline)
         return ToolCompletion(
             message=data["choices"][0]["message"],
             tokens_in=data["usage"]["prompt_tokens"],
             tokens_out=data["usage"]["completion_tokens"],
+            waited_seconds=waited,
         )
 
-    async def _post(self, model: str, body: dict, needed_tokens: int, deadline: float) -> dict:
-        """Send one request, with rate limiting, retries and the deadline. Returns the JSON."""
+    async def _post(
+        self, model: str, body: dict, needed_tokens: int, deadline: float
+    ) -> tuple[dict, float]:
+        """Send one request, with rate limiting, retries and the deadline. Returns the JSON and
+        the seconds spent waiting."""
+        waited = 0.0
         for attempt in range(1, MAX_ATTEMPTS + 1):
-            await self._wait_for_tokens(model, needed_tokens, deadline)
+            waited += await self._wait_for_tokens(model, needed_tokens, deadline)
             timeout = min(CALL_TIMEOUT_SECONDS, deadline - self._clock())
             if timeout <= 0:
                 raise DeadlineExceeded("no time left for the call")
@@ -159,18 +167,18 @@ class GroqClient:
                     timeout=timeout,
                 )
             except httpx.TransportError as exc:  # timeouts, connection errors
-                await self._backoff(attempt, deadline, f"Groq request failed: {exc!r}")
+                waited += await self._backoff(attempt, deadline, f"Groq request failed: {exc!r}")
                 continue
 
             self._record_token_limit(model, response)
             if response.is_success:
-                return response.json()
+                return response.json(), waited
             message = f"Groq {response.status_code}: {response.text[:300]}"
             if response.status_code == 429:
                 wait = float(response.headers.get("retry-after", 2**attempt))
-                await self._wait(wait, deadline)
+                waited += await self._wait(wait, deadline)
             elif response.status_code >= 500:
-                await self._backoff(attempt, deadline, message)
+                waited += await self._backoff(attempt, deadline, message)
             elif response.status_code in (401, 403):
                 raise NonRetryableError(message)  # bad API key: every call would fail
             elif "tool_use_failed" in response.text:
@@ -179,21 +187,23 @@ class GroqClient:
                 raise LLMError(message)  # e.g. 400 json_validate_failed
         raise LLMError(f"Groq call failed after {MAX_ATTEMPTS} attempts")
 
-    async def _wait_for_tokens(self, model: str, needed: int, deadline: float) -> None:
+    async def _wait_for_tokens(self, model: str, needed: int, deadline: float) -> float:
         remaining, reset_at = self._token_limits.get(model, (None, 0.0))
         now = self._clock()
         if remaining is not None and remaining < needed and reset_at > now:
-            await self._wait(reset_at - now, deadline)
+            return await self._wait(reset_at - now, deadline)
+        return 0.0
 
-    async def _backoff(self, attempt: int, deadline: float, message: str) -> None:
+    async def _backoff(self, attempt: int, deadline: float, message: str) -> float:
         if attempt == MAX_ATTEMPTS:
             raise LLMError(message)
-        await self._wait(2**attempt, deadline)
+        return await self._wait(2**attempt, deadline)
 
-    async def _wait(self, seconds: float, deadline: float) -> None:
+    async def _wait(self, seconds: float, deadline: float) -> float:
         if self._clock() + seconds >= deadline:
             raise DeadlineExceeded(f"waiting {seconds:.1f}s would pass the review deadline")
         await self._sleep(seconds)
+        return seconds
 
     def _record_token_limit(self, model: str, response: httpx.Response) -> None:
         remaining = response.headers.get("x-ratelimit-remaining-tokens")

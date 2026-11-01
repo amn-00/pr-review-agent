@@ -8,9 +8,17 @@ from datetime import UTC, datetime, timedelta
 import httpx
 from arq import Retry, cron, func
 
+from app.agent.verify import AgentResult, verify_findings
 from app.config import get_settings
 from app.db.models import RunStatus
-from app.db.queries import claim_run, finish_run, get_or_create_run, record_findings, release_run
+from app.db.queries import (
+    claim_run,
+    finish_run,
+    get_or_create_run,
+    mark_posted,
+    record_findings,
+    release_run,
+)
 from app.db.session import make_engine, make_sessionmaker
 from app.github.client import GitHubClient
 from app.github.diff import Hunk, parse_patch
@@ -20,7 +28,7 @@ from app.llm.groq import GroqClient
 from app.log import bind_log_context, set_log_context, setup_logging
 from app.pipeline.aggregate import aggregate
 from app.pipeline.chunking import Chunk, build_chunks, skip_reason
-from app.pipeline.lanes import Candidate, lane_models
+from app.pipeline.lanes import lane_models
 from app.pipeline.orchestrator import nothing_reviewed_for_daily_budget, run_lanes
 from app.pipeline.review import inline_comment, summary
 from app.queue import JOB_TIMEOUT_SECONDS, REVIEW_PR_JOB, arq_redis_settings
@@ -31,9 +39,12 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 JOB_MAX_TRIES = 5
-# The LLM work must end by this many seconds after the job starts; chunks not reached are
-# listed as skipped. The rest of the timeout covers fetching, posting and GitHub retries.
-REVIEW_DEADLINE_SECONDS = 600
+# Seconds after the job starts by which the lanes must finish (chunks not reached are listed
+# as skipped), and by which the verification agent must finish (findings not reached are
+# "not verified"). The rest of the timeout covers fetching and posting. The lane deadline is
+# the same with the agent off, so "pipeline only" and "pipeline + agent" review the same.
+LANES_DEADLINE_SECONDS = 300
+AGENT_DEADLINE_SECONDS = 720
 # Two reviews at once already use up Groq's tokens-per-minute limit; more would just queue
 # inside the worker and use memory.
 MAX_JOBS = 2
@@ -80,10 +91,10 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
             )
             return run.status
     logger.info("job started", extra={"fields": {"job_try": job_try}})
-    deadline = time.monotonic() + REVIEW_DEADLINE_SECONDS
+    started = time.monotonic()
 
     try:
-        status, review_id = await _review(ctx, payload, run.id, deadline)
+        status, review_id = await _review(ctx, payload, run.id, started)
     except RetryableError as exc:
         if job_try >= JOB_MAX_TRIES:
             error = f"gave up after {job_try} tries: {exc}"
@@ -114,7 +125,7 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
 
 
 async def _review(
-    ctx: dict, payload: PullRequestPayload, run_id: int, deadline: float
+    ctx: dict, payload: PullRequestPayload, run_id: int, started: float
 ) -> tuple[RunStatus, int | None]:
     github: GitHubClient = ctx["github"]
     installation_id = payload.installation.id
@@ -138,7 +149,13 @@ async def _review(
     )
     models = lane_models(settings.groq_model, settings.groq_small_model)
     lanes = await run_lanes(
-        ctx["groq"], ctx["sessionmaker"], models, payload.repository.id, run_id, chunks, deadline
+        ctx["groq"],
+        ctx["sessionmaker"],
+        models,
+        payload.repository.id,
+        run_id,
+        chunks,
+        started + LANES_DEADLINE_SECONDS,
     )
     if nothing_reviewed_for_daily_budget(lanes):
         # Nothing worth posting: wait for the budget to reset instead of posting an empty review.
@@ -147,17 +164,47 @@ async def _review(
             retry_after=seconds_until_utc_midnight() + DAILY_RESET_MARGIN_SECONDS,
         )
     candidates = aggregate(lanes.candidates, hunks_by_file)
-    to_post = [c for c in candidates if c.drop_reason is None]
+    # Saved before the agent runs: its steps and verdicts are stored per finding as they happen.
+    async with ctx["sessionmaker"]() as session:
+        finding_ids = await record_findings(session, run_id, candidates, settings.agent_enabled)
+    kept = [(fid, c) for fid, c in zip(finding_ids, candidates, strict=True) if not c.drop_reason]
 
-    # A new commit may have arrived while the lanes ran; don't post a stale review.
+    # to_post holds (finding ID, candidate, evidence) per comment. With the agent, only
+    # confirmed findings; without it (pipeline only), every finding that passed aggregation.
+    agent: AgentResult | None = None
+    if settings.agent_enabled and kept:
+        agent = await verify_findings(
+            ctx["groq"],
+            github,
+            ctx["sessionmaker"],
+            settings.groq_model,
+            installation_id,
+            repo,
+            sha,
+            run_id,
+            kept,
+            chunks,
+            started + AGENT_DEADLINE_SECONDS,
+        )
+        to_post = [
+            (check.finding_id, check.candidate, check.evidence)
+            for check in agent.checks
+            if check.verdict == "confirmed"
+        ]
+    else:
+        to_post = [(fid, c, []) for fid, c in kept]
+
+    # A new commit may have arrived while the lanes and the agent ran; don't post a stale
+    # review. The findings and verdicts are already saved.
     if await _moved_on(github, installation_id, repo, number, sha):
-        await _record(ctx, run_id, candidates, False)
         return RunStatus.SKIPPED, None
 
-    body = summary(marker, sha, models, to_post, list(hunks_by_file), skipped_files, lanes)
-    comments = [inline_comment(c) for c in to_post]
+    posted = [c for _, c, _ in to_post]
+    body = summary(marker, sha, models, posted, list(hunks_by_file), skipped_files, lanes, agent)
+    comments = [inline_comment(c, evidence) for _, c, evidence in to_post]
     review = await github.create_review(installation_id, repo, number, sha, body, comments)
-    await _record(ctx, run_id, candidates, True)
+    async with ctx["sessionmaker"]() as session:
+        await mark_posted(session, [fid for fid, _, _ in to_post])
     logger.info("review posted", extra={"fields": {"comments": len(comments)}})
     return RunStatus.COMPLETED, review["id"]
 
@@ -224,11 +271,6 @@ async def _load_chunks(
     tool_findings = await collect_tool_findings(contents, added_lines, settings.semgrep_enabled)
     attach_hints(chunks, tool_findings)
     return chunks, hunks_by_file, skipped_files
-
-
-async def _record(ctx: dict, run_id: int, candidates: list[Candidate], posted: bool) -> None:
-    async with ctx["sessionmaker"]() as session:
-        await record_findings(session, run_id, candidates, posted)
 
 
 def seconds_until_utc_midnight(now: datetime | None = None) -> float:

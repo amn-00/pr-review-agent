@@ -4,6 +4,7 @@ from decimal import Decimal
 
 import pytest
 
+from app.db.models import BudgetPurpose
 from app.db.queries import add_daily_tokens, daily_tokens_used
 from app.github.http import NonRetryableError
 from app.llm.groq import Completion, DeadlineExceeded, LLMError
@@ -11,8 +12,8 @@ from app.pipeline import orchestrator
 from app.pipeline.chunking import Chunk
 from app.pipeline.lanes import LANES, estimate_call_tokens
 from app.pipeline.orchestrator import (
-    DAILY_TOKEN_BUDGET,
     MAX_PARALLEL_CALLS,
+    PIPELINE_DAILY_TOKEN_BUDGET,
     SKIP_DAILY_BUDGET,
     SKIP_PR_BUDGET,
     SKIP_TIME,
@@ -24,6 +25,7 @@ from app.pipeline.orchestrator import (
 from tests.factories import lane_finding, make_chunk
 
 MAIN, SMALL = "openai/gpt-oss-120b", "openai/gpt-oss-20b"
+PIPELINE = BudgetPurpose.PIPELINE
 MODELS = {"correctness": MAIN, "security": MAIN, "maintainability": SMALL}
 REPO_ID = 1001
 
@@ -240,7 +242,9 @@ async def test_pr_budget_stops_new_calls(sessionmaker, monkeypatch):
 async def test_daily_budget_is_per_model(sessionmaker):
     # The main model has used up today's budget; the small model hasn't.
     async with sessionmaker() as session:
-        await add_daily_tokens(session, MAIN, utc_today(), DAILY_TOKEN_BUDGET)
+        await add_daily_tokens(
+            session, MAIN, utc_today(), BudgetPurpose.PIPELINE, PIPELINE_DAILY_TOKEN_BUDGET
+        )
     groq = ScriptedGroq(Clock())
 
     result = await run(groq, sessionmaker, [chunk("a.py")])
@@ -258,8 +262,20 @@ async def test_spent_tokens_are_added_to_todays_usage(sessionmaker):
     await run(ScriptedGroq(Clock()), sessionmaker, [chunk("a.py")])
 
     async with sessionmaker() as session:
-        assert await daily_tokens_used(session, MAIN, utc_today()) == 2 * 110
-        assert await daily_tokens_used(session, SMALL, utc_today()) == 110
+        assert await daily_tokens_used(session, MAIN, utc_today(), PIPELINE) == 2 * 110
+        assert await daily_tokens_used(session, SMALL, utc_today(), PIPELINE) == 110
+        assert await daily_tokens_used(session, MAIN, utc_today(), BudgetPurpose.AGENT) == 0
+
+
+async def test_the_agents_spending_doesnt_use_the_pipelines_budget(sessionmaker):
+    async with sessionmaker() as session:
+        await add_daily_tokens(session, MAIN, utc_today(), BudgetPurpose.AGENT, 10**6)
+    groq = ScriptedGroq(Clock())
+
+    result = await run(groq, sessionmaker, [chunk("a.py")])
+
+    assert len(groq.calls) == len(LANES)
+    assert result.skipped_calls == []
 
 
 def test_nothing_reviewed_for_daily_budget():

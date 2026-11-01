@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import re
 
 import asyncpg
 import httpx
@@ -39,7 +40,7 @@ from arq.connections import RedisSettings  # noqa: E402
 
 from app.db.session import make_engine, make_sessionmaker  # noqa: E402
 from app.github.client import GitHubClient  # noqa: E402
-from app.llm.groq import Completion  # noqa: E402
+from app.llm.groq import Completion, ToolCompletion  # noqa: E402
 from app.main import create_app  # noqa: E402
 
 TABLES = (
@@ -125,17 +126,41 @@ async def client(arq_redis):
 
 class FakeGroq:
     """Stands in for GroqClient: returns canned findings per lane and records every call,
-    so tests can check exactly what the model would have been sent."""
+    so tests can check exactly what the model would have been sent.
+
+    As the verification agent, it gives its verdict on the first step, citing the finding's
+    own line (which is in the excerpt, so it counts as evidence). The verdict comes from
+    `verdicts_by_title`; "confirmed" by default."""
 
     def __init__(self):
         self.findings_by_lane: dict[str, list[dict]] = {}
         self.calls: list[dict] = []
+        self.verdicts_by_title: dict[str, str] = {}
+        self.agent_calls: list[dict] = []
 
     async def complete_json(self, model, messages, schema_name, schema, deadline) -> Completion:
         self.calls.append({"model": model, "messages": messages, "schema_name": schema_name})
         lane = schema_name.removesuffix("_findings")
         content = json.dumps({"findings": self.findings_by_lane.get(lane, [])})
         return Completion(content=content, tokens_in=100, tokens_out=20)
+
+    async def complete_tools(self, model, messages, tools, tool_choice, deadline):
+        task = messages[1]["content"]
+        title = re.search(r"^Title: (.*)$", task, re.MULTILINE).group(1)
+        path, line = re.search(r"^Finding: \S+ \S+ in (\S+), lines? (\d+)", task, re.M).groups()
+        self.agent_calls.append({"model": model, "title": title, "messages": messages})
+        arguments = {
+            "verdict": self.verdicts_by_title.get(title, "confirmed"),
+            "reason": f"checked: {title}",
+            "evidence": [{"path": path, "line": int(line), "why": "the finding's line"}],
+        }
+        call = {
+            "id": "call_1",
+            "type": "function",
+            "function": {"name": "submit_verdict", "arguments": json.dumps(arguments)},
+        }
+        message = {"role": "assistant", "content": None, "tool_calls": [call]}
+        return ToolCompletion(message=message, tokens_in=200, tokens_out=30)
 
 
 @pytest.fixture

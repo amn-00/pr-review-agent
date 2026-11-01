@@ -7,7 +7,15 @@ from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
 from app.agent.loop import AgentStep as AgentStepRecord
-from app.db.models import AgentStep, Finding, PullRequest, Repo, ReviewRun, RunStatus
+from app.db.models import (
+    AgentStep,
+    BudgetPurpose,
+    Finding,
+    PullRequest,
+    Repo,
+    ReviewRun,
+    RunStatus,
+)
 from app.db.queries import (
     add_agent_step,
     add_daily_tokens,
@@ -17,9 +25,11 @@ from app.db.queries import (
     finish_run,
     get_cached,
     get_or_create_run,
+    mark_posted,
     put_cached,
     record_findings,
     release_run,
+    set_verdict,
 )
 from app.github.webhooks import PullRequestPayload
 from app.pipeline.lanes import Candidate
@@ -27,6 +37,7 @@ from app.pipeline.usage import Usage
 from tests.factories import SHA_1, SHA_2, pr_payload
 
 STALE_AFTER = 300
+PIPELINE, AGENT = BudgetPurpose.PIPELINE, BudgetPurpose.AGENT
 
 
 def payload(**kwargs) -> PullRequestPayload:
@@ -177,19 +188,41 @@ def candidate(title: str, drop_reason: str | None = None) -> Candidate:
     )
 
 
-async def test_record_findings_replaces_earlier_attempts_and_marks_posted(sessionmaker):
+async def test_record_findings_replaces_earlier_attempts(sessionmaker):
     async with sessionmaker() as session:
         run = await get_or_create_run(session, payload())
-        await record_findings(session, run.id, [candidate("first try")], True)
+        await record_findings(session, run.id, [candidate("first try")], False)
 
         # A retry records again: the first attempt's findings must not linger.
         kept, dup = candidate("kept"), candidate("dup", drop_reason="duplicate")
-        await record_findings(session, run.id, [kept, dup], True)
+        ids = await record_findings(session, run.id, [kept, dup], True)
 
         rows = list(await session.scalars(select(Finding).order_by(Finding.id)))
-        assert [(r.title, r.posted, r.drop_reason) for r in rows] == [
-            ("kept", True, None),
-            ("dup", False, "duplicate"),
+        assert [(r.id, r.title, r.posted, r.drop_reason) for r in rows] == [
+            (ids[0], "kept", False, None),
+            (ids[1], "dup", False, "duplicate"),
+        ]
+        await session.refresh(run)
+        assert run.agent_enabled is True
+
+
+async def test_verdicts_and_posting_are_saved_per_finding(sessionmaker):
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+        confirmed, dropped, unchecked = await record_findings(
+            session, run.id, [candidate("a"), candidate("b"), candidate("c")], True
+        )
+        evidence = [{"path": "app/x.py", "line": 3, "why": "w"}]
+        await set_verdict(session, confirmed, "confirmed", "real", evidence)
+        await set_verdict(session, dropped, "dropped", "guarded", [])
+        await set_verdict(session, unchecked, None, "agent daily token budget", [])
+        await mark_posted(session, [confirmed])
+
+        rows = list(await session.scalars(select(Finding).order_by(Finding.id)))
+        assert [(r.verdict, r.verdict_reason, r.evidence, r.posted) for r in rows] == [
+            ("confirmed", "real", evidence, True),
+            ("dropped", "guarded", [], False),
+            (None, "agent daily token budget", [], False),
         ]
 
 
@@ -223,14 +256,17 @@ async def test_cache_put_and_get_and_first_write_wins(sessionmaker):
 async def test_daily_tokens_add_up_per_model_and_day(sessionmaker):
     today, yesterday = date(2026, 11, 1), date(2026, 10, 31)
     async with sessionmaker() as session:
-        await add_daily_tokens(session, "big", today, 100)
-        await add_daily_tokens(session, "big", today, 50)
-        await add_daily_tokens(session, "small", today, 7)
-        await add_daily_tokens(session, "big", yesterday, 1000)
+        await add_daily_tokens(session, "big", today, PIPELINE, 100)
+        await add_daily_tokens(session, "big", today, PIPELINE, 50)
+        await add_daily_tokens(session, "small", today, PIPELINE, 7)
+        await add_daily_tokens(session, "big", yesterday, PIPELINE, 1000)
+        await add_daily_tokens(session, "big", today, AGENT, 30)
 
-        assert await daily_tokens_used(session, "big", today) == 150
-        assert await daily_tokens_used(session, "small", today) == 7
-        assert await daily_tokens_used(session, "unused", today) == 0
+        assert await daily_tokens_used(session, "big", today, PIPELINE) == 150
+        assert await daily_tokens_used(session, "small", today, PIPELINE) == 7
+        assert await daily_tokens_used(session, "unused", today, PIPELINE) == 0
+        # The agent's spending is counted separately, against its own budget.
+        assert await daily_tokens_used(session, "big", today, AGENT) == 30
 
 
 async def test_agent_steps_are_stored_and_go_away_with_their_findings(sessionmaker):

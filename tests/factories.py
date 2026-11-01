@@ -2,7 +2,9 @@
 
 import hashlib
 import hmac
+import io
 import json
+import tarfile
 
 import httpx
 
@@ -115,9 +117,25 @@ def mock_github_pr(
         github_api.get(f"/repos/{REPO}/contents/{path}").mock(
             return_value=httpx.Response(200, text=text)
         )
+    # The verification agent's repo snapshot: the same files, at any SHA.
+    github_api.get(path__regex=rf"^/repos/{REPO}/tarball/\w+$").mock(
+        return_value=httpx.Response(200, content=repo_tarball(contents))
+    )
     return github_api.post(f"{pulls}/reviews").mock(
         return_value=httpx.Response(200, json={"id": 777})
     )
+
+
+def repo_tarball(files: dict[str, str]) -> bytes:
+    """A gzipped tarball shaped like GitHub's: every file under one top folder."""
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode="w:gz") as tar:
+        for path, text in files.items():
+            data = text.encode()
+            info = tarfile.TarInfo(f"octo-hello-abc1234/{path}")
+            info.size = len(data)
+            tar.addfile(info, io.BytesIO(data))
+    return buffer.getvalue()
 
 
 def make_chunk(

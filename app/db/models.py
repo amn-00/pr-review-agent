@@ -45,6 +45,13 @@ class RunStatus(StrEnum):
     SKIPPED = "skipped"
 
 
+class BudgetPurpose(StrEnum):
+    """Who spent the tokens. Each model's daily budget is split between the two."""
+
+    PIPELINE = "pipeline"  # the lanes
+    AGENT = "agent"  # the verification agent
+
+
 class Installation(Base):
     __tablename__ = "installations"
 
@@ -106,6 +113,9 @@ class ReviewRun(Base):
     cached_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     tokens_saved: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     error: Mapped[str | None] = mapped_column(Text)
+    # Whether the verification agent checked this run's findings (AGENT_ENABLED at the time),
+    # so evals can tell "pipeline only" runs from "pipeline + agent" runs.
+    agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     # The review we posted for this run.
     github_review_id: Mapped[int | None] = mapped_column(BigInteger)
 
@@ -176,10 +186,11 @@ class ChunkCache(Base):
 
 
 class DailyTokenUsage(Base):
-    """Tokens spent per model per UTC day, across all PRs, for the daily budget."""
+    """Tokens spent per model, purpose and UTC day, across all PRs, for the daily budgets."""
 
     __tablename__ = "daily_token_usage"
 
     day: Mapped[date] = mapped_column(Date, primary_key=True)
     model: Mapped[str] = mapped_column(String(100), primary_key=True)
+    purpose: Mapped[str] = mapped_column(String(10), primary_key=True)  # a BudgetPurpose
     tokens: Mapped[int] = mapped_column(BigInteger, default=0)

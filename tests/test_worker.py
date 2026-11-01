@@ -6,25 +6,27 @@ import pytest
 from arq import Retry
 from sqlalchemy import select, update
 
-from app.db.models import Finding, ReviewRun, RunStatus
+from app.db.models import BudgetPurpose, Finding, ReviewRun, RunStatus
 from app.db.queries import add_daily_tokens, get_or_create_run
 from app.github.webhooks import PullRequestPayload
 from app.pipeline.lanes import LANES, system_prompt
-from app.pipeline.orchestrator import DAILY_TOKEN_BUDGET, utc_today
+from app.pipeline.orchestrator import PIPELINE_DAILY_TOKEN_BUDGET, utc_today
 from app.queue import REVIEW_PR_JOB
 from app.worker import (
+    AGENT_DEADLINE_SECONDS,
     BACKOFF_MAX_SECONDS,
     DAILY_RESET_MARGIN_SECONDS,
     JOB_MAX_TRIES,
     JOB_TIMEOUT_SECONDS,
+    LANES_DEADLINE_SECONDS,
     MAX_JOBS,
-    REVIEW_DEADLINE_SECONDS,
     WorkerSettings,
     retry_delay,
     review_pr,
     run_marker,
     seconds_until_utc_midnight,
 )
+from app.worker import settings as worker_settings
 from tests.factories import (
     BOT_LOGIN,
     BUGGY_FILE,
@@ -90,9 +92,11 @@ async def test_planted_bug_gets_an_inline_comment_on_the_right_line(ctx, github_
     run = await get_run(ctx["sessionmaker"])
     assert run_marker(run.id) in review["body"]
     assert (run.status, run.github_review_id) == (RunStatus.COMPLETED, 777)
-    assert (run.tokens_in, run.tokens_out) == (100 * len(LANES), 20 * len(LANES))
+    # Three lane calls, plus one agent step (the fake decides on its first step).
+    assert (run.tokens_in, run.tokens_out) == (100 * len(LANES) + 200, 20 * len(LANES) + 30)
     [finding] = await get_findings(ctx["sessionmaker"])
     assert (finding.lane, finding.line_start, finding.posted) == ("correctness", 3, True)
+    assert finding.verdict == "confirmed"
 
 
 async def test_clean_pr_still_gets_a_review_saying_so(ctx, github_api):
@@ -406,8 +410,8 @@ def test_worker_settings():
     assert WorkerSettings.job_timeout == JOB_TIMEOUT_SECONDS == 900
     assert WorkerSettings.max_jobs == MAX_JOBS == 2
     assert WorkerSettings.keep_result == 0
-    # The LLM deadline leaves room inside the job timeout for fetching and posting.
-    assert REVIEW_DEADLINE_SECONDS < JOB_TIMEOUT_SECONDS
+    # The agent runs after the lanes, and both leave room in the job timeout for posting.
+    assert LANES_DEADLINE_SECONDS < AGENT_DEADLINE_SECONDS < JOB_TIMEOUT_SECONDS
     [reconciler] = WorkerSettings.cron_jobs
     assert reconciler.name == "cron:reconcile"
     assert reconciler.run_at_startup is True
@@ -498,7 +502,9 @@ async def test_nothing_reviewable_under_the_daily_budget_waits_for_midnight(ctx,
     post = mock_github_pr(github_api)
     async with ctx["sessionmaker"]() as session:
         for model in ("openai/gpt-oss-120b", "openai/gpt-oss-20b"):
-            await add_daily_tokens(session, model, utc_today(), DAILY_TOKEN_BUDGET)
+            await add_daily_tokens(
+                session, model, utc_today(), BudgetPurpose.PIPELINE, PIPELINE_DAILY_TOKEN_BUDGET
+            )
 
     with pytest.raises(Retry) as retry:
         await review_pr(ctx, pr_payload(), "delivery-1")
@@ -534,3 +540,77 @@ async def test_ruff_findings_reach_the_matching_lane_as_hints(ctx, github_api):
     assert "line 1: F401" in sent["correctness"]  # unused import
     assert "line 2: B006" in sent["correctness"]  # mutable default argument
     assert "Tool findings" not in sent["security"]
+
+
+def three_findings(groq) -> None:
+    """Findings on lines 1-3 of the planted file, which the agent confirms, drops and is
+    unsure about."""
+    groq.findings_by_lane["correctness"] = [
+        lane_finding(3, 3, title="Real bug"),
+        lane_finding(2, 2, title="Guarded elsewhere"),
+        lane_finding(1, 1, title="Maybe a problem"),
+    ]
+    groq.verdicts_by_title = {
+        "Real bug": "confirmed",
+        "Guarded elsewhere": "dropped",
+        "Maybe a problem": "uncertain",
+    }
+
+
+async def test_only_confirmed_findings_are_posted(ctx, github_api):
+    post = mock_github_pr(github_api)
+    three_findings(ctx["groq"])
+
+    await review_pr(ctx, pr_payload(), "delivery-1")
+
+    review = posted_review(post)
+    [comment] = review["comments"]
+    assert comment["line"] == 3 and "Real bug" in comment["body"]
+    assert "_Checked against `app/stats.py:3`_" in comment["body"]
+    assert "1 confirmed, 1 dropped, 1 uncertain, 0 not verified" in review["body"]
+    assert "Maybe a problem — checked: Maybe a problem" in review["body"]
+    assert "Guarded elsewhere" not in review["body"]
+
+    findings = await get_findings(ctx["sessionmaker"])
+    # Same severity, so ranked by line.
+    assert [(f.title, f.verdict, f.posted) for f in findings] == [
+        ("Maybe a problem", "uncertain", False),
+        ("Guarded elsewhere", "dropped", False),
+        ("Real bug", "confirmed", True),
+    ]
+    assert (await get_run(ctx["sessionmaker"])).agent_enabled is True
+
+
+async def test_with_the_agent_off_every_finding_is_posted(ctx, github_api, monkeypatch):
+    monkeypatch.setattr(worker_settings, "agent_enabled", False)
+    post = mock_github_pr(github_api)
+    three_findings(ctx["groq"])
+
+    await review_pr(ctx, pr_payload(), "delivery-1")
+
+    review = posted_review(post)
+    assert len(review["comments"]) == 3
+    assert "Found 3 issue(s)" in review["body"]
+    assert "verification agent" not in review["body"]
+    assert ctx["groq"].agent_calls == []
+    findings = await get_findings(ctx["sessionmaker"])
+    assert [(f.verdict, f.posted) for f in findings] == [(None, True)] * 3
+    assert (await get_run(ctx["sessionmaker"])).agent_enabled is False
+
+
+async def test_used_up_agent_budget_posts_nothing_inline(ctx, github_api):
+    post = mock_github_pr(github_api)
+    ctx["groq"].findings_by_lane["correctness"] = [lane_finding(3, 3)]
+    async with ctx["sessionmaker"]() as session:
+        await add_daily_tokens(
+            session, "openai/gpt-oss-120b", utc_today(), BudgetPurpose.AGENT, 10**6
+        )
+
+    await review_pr(ctx, pr_payload(), "delivery-1")
+
+    review = posted_review(post)
+    assert review["comments"] == []
+    assert "<summary>Not verified (not posted): 1</summary>" in review["body"]
+    assert "agent daily token budget" in review["body"]
+    [finding] = await get_findings(ctx["sessionmaker"])
+    assert (finding.verdict, finding.posted) == (None, False)

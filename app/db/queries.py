@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agent.loop import AgentStep as AgentStepRecord
 from app.db.models import (
     AgentStep,
+    BudgetPurpose,
     ChunkCache,
     DailyTokenUsage,
     Finding,
@@ -151,12 +152,14 @@ async def record_findings(
     session: AsyncSession,
     run_id: int,
     candidates: list[Candidate],
-    posted: bool,
-) -> None:
-    """Replace the run's findings in one transaction. Replacing (not appending) means a
-    retry or a stale-run takeover never leaves duplicates behind."""
+    agent_enabled: bool,
+) -> list[int]:
+    """Replace the run's findings (and their agent steps) in one transaction, none posted
+    yet. Replacing (not appending) means a retry or a stale-run takeover never leaves
+    duplicates behind. Also records whether the agent checks this run. Returns the new
+    findings' IDs, in the same order as `candidates`."""
     await session.execute(delete(Finding).where(Finding.run_id == run_id))
-    session.add_all(
+    rows = [
         Finding(
             run_id=run_id,
             lane=c.lane,
@@ -169,11 +172,38 @@ async def record_findings(
             title=c.title,
             explanation=c.explanation,
             suggested_fix=c.suggested_fix,
-            posted=posted and c.drop_reason is None,
             drop_reason=c.drop_reason,
         )
         for c in candidates
+    ]
+    session.add_all(rows)
+    await session.execute(
+        update(ReviewRun).where(ReviewRun.id == run_id).values(agent_enabled=agent_enabled)
     )
+    await session.flush()  # assigns the IDs
+    ids = [row.id for row in rows]
+    await session.commit()
+    return ids
+
+
+async def set_verdict(
+    session: AsyncSession,
+    finding_id: int,
+    verdict: str | None,
+    reason: str,
+    evidence: list[dict],
+) -> None:
+    """Saved as soon as the agent is done with a finding. `verdict` None: not verified."""
+    await session.execute(
+        update(Finding)
+        .where(Finding.id == finding_id)
+        .values(verdict=verdict, verdict_reason=reason, evidence=evidence)
+    )
+    await session.commit()
+
+
+async def mark_posted(session: AsyncSession, finding_ids: list[int]) -> None:
+    await session.execute(update(Finding).where(Finding.id.in_(finding_ids)).values(posted=True))
     await session.commit()
 
 
@@ -214,21 +244,27 @@ async def put_cached(
     await session.commit()
 
 
-async def daily_tokens_used(session: AsyncSession, model: str, day: date) -> int:
+async def daily_tokens_used(
+    session: AsyncSession, model: str, day: date, purpose: BudgetPurpose
+) -> int:
     used = await session.scalar(
         select(DailyTokenUsage.tokens).where(
-            DailyTokenUsage.day == day, DailyTokenUsage.model == model
+            DailyTokenUsage.day == day,
+            DailyTokenUsage.model == model,
+            DailyTokenUsage.purpose == purpose,
         )
     )
     return used or 0
 
 
-async def add_daily_tokens(session: AsyncSession, model: str, day: date, tokens: int) -> None:
+async def add_daily_tokens(
+    session: AsyncSession, model: str, day: date, purpose: BudgetPurpose, tokens: int
+) -> None:
     """Atomic add: concurrent calls can't lose each other's tokens."""
-    statement = insert(DailyTokenUsage).values(day=day, model=model, tokens=tokens)
+    statement = insert(DailyTokenUsage).values(day=day, model=model, purpose=purpose, tokens=tokens)
     await session.execute(
         statement.on_conflict_do_update(
-            index_elements=[DailyTokenUsage.day, DailyTokenUsage.model],
+            index_elements=[DailyTokenUsage.day, DailyTokenUsage.model, DailyTokenUsage.purpose],
             set_={"tokens": DailyTokenUsage.tokens + statement.excluded.tokens},
         )
     )

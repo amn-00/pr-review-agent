@@ -596,7 +596,7 @@ In the real run, one `read_file` call failed with a 400 `tool_use_failed` ("Tool
 failed"). That raises `ToolCallFailed`, which costs the step, and the loop asks again; the next try
 worked. Any other Groq error ends the finding as `uncertain`, and a 401/403 still fails the run.
 
-**Stopping rules: a `for` loop over 6 steps, a 12K token cap and 120 s per finding.**
+**Stopping rules: a `for` loop over 6 steps, a 12K token cap and 120 s per finding.** *(Phase 4b: the 120 s is working time, rate-limit waits left out; see below.)*
 Before each call the request is estimated (characters ÷ 4, tool schemas included). If it doesn't
 fit what's left, the finding ends `uncertain` ("token limit"). If the call after it wouldn't fit,
 this call is forced to be the verdict, while there's still room for one. A repeated identical
@@ -664,3 +664,77 @@ The agent's 70K daily budget limits how many PRs a day can run in "pipeline + ag
 **A possible quota saver to measure: skip the agent for findings Ruff or Semgrep back up.**
 A lane finding on the same line as a static-tool finding is already corroborated. Phase 5 should
 measure how often the agent would have dropped those before skipping it for them.
+
+## Phase 4b — The agent in the review job
+
+**Rate-limit waits don't count against a finding's time.**
+In 4a, steps waited up to 54 s for Groq's per-minute reset, and with 120 s per finding passed to
+Groq as a deadline, good checks could end "uncertain (time limit)" because of the shared quota,
+not the agent. Now the client reports how long each call waited (`waited_seconds`: rate-limit
+waits, 429s and 5xx backoff), and the 120 s counts only working time: calls and tools. Once it's
+used up, the next step is the forced verdict rather than an `uncertain`. The agent's 720 s
+deadline counts waits and stays the hard limit. Chosen over simply raising the per-finding limit,
+which would let one slow finding use the whole window, and would still mix quota with agent
+time. In the real end-to-end run, a step that waited 51 s for the rate limit didn't count.
+
+**The flow: findings are saved before the agent runs.**
+Aggregate, then save every candidate (replacing the attempt's findings and their steps), then the
+agent, then the moved-on check, then post, then mark the posted ones. Each agent step and each
+verdict is written as it happens, so a crash keeps what was done. A new commit that arrives while
+the agent runs still skips posting, and the verdicts stay in the DB.
+
+**Only confirmed findings are posted.**
+- **Confirmed:** an inline comment, with "Checked against `path:line`" for up to 3 evidence
+  locations (locations only, through `safe()`).
+- **Uncertain:** a collapsed "Uncertain (not posted)" section with the agent's one-line reason.
+- **Not verified** (time or budget ran out before it started): a collapsed "Not verified (not
+  posted)" section with the reason. `verdict` stays NULL.
+- **Dropped:** only counted in the summary. Evidence and steps are in the DB.
+
+The summary says which model checked the findings, the verdict counts, and the agent's share of
+the cost.
+
+**The daily budget is split by purpose.**
+`daily_token_usage` gained a `purpose` column (`pipeline` or `agent`) in its primary key, so the
+lanes can't use the agent's share or the other way round. Per model: 110K for the lanes
+(`PIPELINE_DAILY_TOKEN_BUDGET`), 70K for the agent (`AGENT_DAILY_TOKEN_BUDGET`, used on
+`GROQ_MODEL` only), 20K left over. The migration is hand-written (autogenerate doesn't see
+primary key changes): existing rows become `pipeline`, and the downgrade folds agent tokens into
+the pipeline row for the same day and model, so no spend is forgotten (checked on the dev DB).
+
+**Agent budgets are checked before each finding starts, with an estimate.**
+A finding starts only if 5K tokens (about what one cost in the real runs) are left in both the
+attempt's 30K (`AGENT_PR_TOKEN_BUDGET`) and the day's 70K. In flight, a finding can spend up to
+its 12K cap, so the budgets can overshoot by at most the findings in flight (2 × 12K). If no
+finding could start, the repo isn't even downloaded. A finding isn't started with less than 30 s
+left before the agent's deadline.
+
+**Two findings at a time, most severe first, one shared snapshot.**
+Aggregate's ranking decides the order. The repo is downloaded once per attempt, after
+aggregation, and only if there's something to check; its temp folder is deleted afterwards.
+Two at a time keeps one finding's tool time from idling the quota; more wouldn't help, since
+Groq's tokens per minute are the bottleneck.
+
+**Deadlines: lanes by 300 s, agent by 720 s, job timeout 900 s.**
+Both counted from the job's start. The lanes keep the same 300 s with the agent off, so "pipeline
+only" and "pipeline + agent" review the same chunks.
+
+**`AGENT_ENABLED` (default true) and `review_runs.agent_enabled`.**
+Off means exactly Phase 3: every finding that passes aggregation is posted, `verdict` stays NULL,
+and nothing is downloaded. The run records the mode, so Phase 5 can tell the two kinds of run
+apart. The lane cache doesn't depend on the flag.
+
+**Run totals include the agent.**
+Agent steps add to the run's `tokens_in`, `tokens_out`, `llm_calls` and `cost_usd` after every
+step (the Phase 3a rule), and to the agent's daily count. The agent's share of a run is the sum of
+its `agent_steps`.
+
+**Known cost: a retry after the agent re-runs the agent.**
+There's no verdict cache: if posting fails and the job retries, the lanes come from the cache but
+the agent checks every finding again. Retries after a failed post are rare; a verdict cache keyed
+by (run, finding) can come later if Phase 6 shows otherwise.
+
+**The real end-to-end run (real Groq, mocked GitHub, nothing posted).**
+The whole job on the planted pair from 4a: the security lane's SQL injection finding was dropped,
+citing the allow-list, and the division by zero was confirmed and posted with "Checked against
+`app/orders.py:7`, `app/api.py:10`". 9 LLM calls in total, $0.0023, of which the agent $0.0015.

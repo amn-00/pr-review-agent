@@ -226,3 +226,16 @@ def test_the_tool_call_estimate_counts_the_tool_schemas():
     without_tools = estimate_tool_call_tokens(MESSAGES, [])
 
     assert estimate_tool_call_tokens(MESSAGES, TOOLS * 10) > without_tools
+
+
+async def test_tool_calls_report_time_spent_waiting(groq, groq_api, fake_time):
+    low = {"x-ratelimit-remaining-tokens": "50", "x-ratelimit-reset-tokens": "12s"}
+    first = tool_reply()
+    first.headers.update(low)
+    groq_api.mock(
+        side_effect=[first, httpx.Response(429, headers={"retry-after": "7"}), tool_reply()]
+    )
+
+    assert (await call_tools(groq, fake_time)).waited_seconds == 0
+    # Waits 12 s for the per-minute reset, then 7 s after a 429.
+    assert (await call_tools(groq, fake_time)).waited_seconds == 19
