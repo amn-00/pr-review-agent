@@ -749,4 +749,98 @@ maintainability note on the SQL query's lines vanished with the dropped SQL inje
 Possible fixes: verify before deduping (more agent calls), or give the next finding in line to
 the agent when the winner is dropped. Phase 5 should first measure how often a deduped finding
 was a real bug, from the `findings` table: duplicates whose winner was dropped. A duplicate doesn't
-store which finding beat it, so the match is by run, file and overlapping lines.
+store which finding beat it, so the match is by run, file and overlapping lines. *(Phase 5a adds
+`findings.duplicate_of`, so the match is exact.)*
+
+## Phase 5a — Eval harness and dataset
+
+The plan is in `docs/plans/phase-5.md`. 5a builds the harness and the cases; 5b runs them.
+
+**Evals run the real review job, with a fake GitHub.**
+The runner calls `review_pr` directly with the real Groq client and a `FakeGitHub` built from the
+case's files: the same claim, chunking, static tools, lanes, cache, budgets, aggregate, agent and
+posting code as prod, without arq. `FakeGitHub` has only the methods the job calls; patches come
+from stdlib `difflib` in GitHub's format, so `parse_patch` reads them unchanged. Chosen over respx:
+the GitHub client isn't what's being tested, and the tarball redirect makes respx clumsy.
+
+**A separate eval database, `pr_review_eval`.**
+It keeps the lane cache and the daily token counts between eval days, and keeps eval runs out of
+the dev data. The JSON files in `evals/results/` are the output; the database is working state.
+Groq's quota is per account, so eval days are kept free of dev testing (agreed in the plan).
+
+**Pipeline only vs pipeline + agent through the lane cache.**
+Each case has its own repo ID (no cache hits across cases). Pipeline mode is PR #1 and agent mode
+PR #2 at the same SHA; the cache key has no PR number, so agent mode gets every lane call from the
+cache and pays only for the agent. Both modes judge exactly the same candidates.
+
+**The mode switch sets `settings.agent_enabled` on the shared settings object.**
+The runner sets it before each run and restores it after (tested). An env var would need one
+process per mode; a flag in the job's `ctx` would add an eval-only path to prod code.
+
+**`findings.duplicate_of`: the finding that beat a duplicate.**
+Aggregate links each duplicate to the most severe kept finding it overlaps, and `record_findings`
+stores that finding's ID. The foreign key points into the same table. A retry still deletes a
+run's findings in one statement, and Postgres checks the key at the end of the statement (tested
+with linked rows).
+
+**`Completion.waited_seconds`, like `ToolCompletion`.**
+It lets the eval split lane latency into working time and rate-limit waits. A failed call reports
+no wait, so its wait counts as latency.
+
+**`load_chunks` is public.**
+The runner uses the job's own loader to estimate a run's tokens and to record the Ruff/Semgrep
+hints for the corroboration analysis.
+
+**Resumable: one result file per (case, mode).**
+A case's stand-in head SHA is a hash of its files, so editing a case's code makes its results
+stale and they run again. Labels are applied when the report is built, so fixing a label only
+needs `evals.report`, not another run.
+
+**What makes a run incomplete, and what doesn't.**
+Incomplete means the eval's quota ran out (lane calls skipped for the daily budget, a deferral,
+findings not verified for the agent's daily budget) or a call failed. Such runs run again another
+day: the runner deletes the run's rows first, and the lane calls already paid for come from the
+cache. Their cost includes the earlier attempts' calls, and their latency is left out. Running out
+of time or of the per-PR budget is the system's normal behaviour: recorded as a note, still
+complete.
+
+**Budget pre-flight before every run.**
+- **Lanes:** the estimate of every call not in the cache, against what's left of the day's budget.
+- **Agent:** 5K × the findings the pipeline kept, plus one finding at its 12K cap. There's no
+  verdict cache, so an agent run cut short pays again in full.
+
+Runs that don't fit wait for another day.
+
+**Scoring: line overlap and category, checked by eye, no LLM judge.**
+A posted finding catches a planted bug if it's in the same file, its lines overlap, and its
+category is allowed. `also_at` lists other places where reporting the bug counts, e.g. the call
+site. The smoke run showed why: the agent confirmed the division by zero at its call site, which
+had been labelled "acceptable", and that scored as a miss. The report lists every match.
+
+**20 cases, Python only.**
+- 11 planted-bug cases with 12 bugs; one line has two different bugs, to test cross-lane dedupe.
+- 5 clean PRs.
+- 3 false-positive traps, two of them flagged by Semgrep.
+- 1 prompt injection aimed at the agent.
+
+Notes on how they're written:
+- `evals/cases` is excluded from our Ruff config. The review's Ruff run uses `--isolated`, so it
+  still checks the cases.
+- The SQL cases call `execute(f"...")` directly, the shape our Semgrep rule matches.
+- The planted key doesn't use a real provider's prefix, so GitHub's secret scanning won't block
+  pushes.
+
+The dry run estimates ~98K tokens on gpt-oss-120b for all lanes (a day), and the agent's 70K a
+day makes the whole run about 3 days.
+
+**The smoke run (bug-01, real Groq, Semgrep off, separate database, nothing committed).**
+- **Pipeline:** 6 calls, 7.7K tokens, $0.0013, 3 s.
+- **Agent:** 10 calls, $0.0014. It confirmed one finding; the other ended "no verdict within 6
+  steps".
+- **Re-push:** 50% of tokens saved.
+
+4 of the agent's 10 calls failed Groq's tool schema check:
+- three `read_file` calls passed `line_start`/`line_end` instead of `start`/`end`;
+- the forced last step called `search_repo` instead of `submit_verdict`.
+
+Not changed in 5a. Whether to fix it before the 5b baseline is decided before 5b.

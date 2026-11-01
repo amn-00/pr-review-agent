@@ -47,6 +47,8 @@ class Completion:
     content: str
     tokens_in: int
     tokens_out: int
+    # Time spent waiting for rate limits or backoff (see ToolCompletion), for eval latency.
+    waited_seconds: float = 0.0
 
 
 @dataclass
@@ -109,11 +111,12 @@ class GroqClient:
         }
         prompt_chars = sum(len(m["content"]) for m in messages)
         needed_tokens = prompt_chars // 4 + EXPECTED_OUTPUT_TOKENS
-        data, _ = await self._post(model, body, needed_tokens, deadline)
+        data, waited = await self._post(model, body, needed_tokens, deadline)
         return Completion(
             content=data["choices"][0]["message"]["content"],
             tokens_in=data["usage"]["prompt_tokens"],
             tokens_out=data["usage"]["completion_tokens"],
+            waited_seconds=waited,
         )
 
     async def complete_tools(

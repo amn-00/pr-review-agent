@@ -1,0 +1,9 @@
+kind = "trap"
+title = "Show the git commit on the health page"
+
+# shell=True with a constant command: Semgrep flags it, but nothing from input reaches it.
+
+[[trap]]
+file = "ops/version.py"
+lines = [8, 10]
+note = "shell=True with a fixed command string, no input involved"

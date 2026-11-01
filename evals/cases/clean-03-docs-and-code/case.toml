@@ -1,0 +1,2 @@
+kind = "clean"
+title = "Add TTLCache.clear and document usage"

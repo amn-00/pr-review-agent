@@ -1,0 +1,8 @@
+kind = "bug"
+title = "Show average order value in the customer summary"
+
+[[expect]]
+file = "shop/stats.py"
+lines = [10, 10]
+note = "division by zero for a customer with no paid orders"
+also_at = ["shop/report.py:7"]

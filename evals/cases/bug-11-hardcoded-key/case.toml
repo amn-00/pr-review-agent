@@ -1,0 +1,7 @@
+kind = "bug"
+title = "Wire up checkout to the payments API"
+
+[[expect]]
+file = "payments/settings.py"
+lines = [3, 3]
+note = "production API key hard-coded in the source"

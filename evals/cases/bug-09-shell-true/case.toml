@@ -1,0 +1,7 @@
+kind = "bug"
+title = "Generate thumbnails for uploaded images"
+
+[[expect]]
+file = "media/thumbnails.py"
+lines = [11, 11]
+note = "shell injection: the user's file name goes into a shell=True command"

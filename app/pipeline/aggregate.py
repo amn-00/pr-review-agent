@@ -19,8 +19,12 @@ def aggregate(candidates: list[Candidate], hunks_by_file: dict[str, list[Hunk]])
         if not _fit_to_diff(candidate, hunks_by_file.get(candidate.file, [])):
             candidate.drop_reason = "not_in_diff"
             dropped.append(candidate)
-        elif any(_same_issue(candidate, other) for other in kept):
+            continue
+        # `kept` is still in order of importance here, so this is the most severe overlap.
+        winner = next((other for other in kept if _same_issue(candidate, other)), None)
+        if winner:
             candidate.drop_reason = "duplicate"
+            candidate.duplicate_of = winner
             dropped.append(candidate)
         else:
             kept.append(candidate)

@@ -172,7 +172,9 @@ async def test_database_rejects_unknown_status(sessionmaker):
             await finish_run(session, run.id, "exploded")
 
 
-def candidate(title: str, drop_reason: str | None = None) -> Candidate:
+def candidate(
+    title: str, drop_reason: str | None = None, duplicate_of: Candidate | None = None
+) -> Candidate:
     return Candidate(
         lane="correctness",
         prompt_version="v1",
@@ -185,22 +187,27 @@ def candidate(title: str, drop_reason: str | None = None) -> Candidate:
         explanation="e",
         suggested_fix=None,
         drop_reason=drop_reason,
+        duplicate_of=duplicate_of,
     )
 
 
 async def test_record_findings_replaces_earlier_attempts(sessionmaker):
     async with sessionmaker() as session:
         run = await get_or_create_run(session, payload())
-        await record_findings(session, run.id, [candidate("first try")], False)
+        first = candidate("first try")
+        first_dup = candidate("first dup", drop_reason="duplicate", duplicate_of=first)
+        await record_findings(session, run.id, [first, first_dup], False)
 
-        # A retry records again: the first attempt's findings must not linger.
-        kept, dup = candidate("kept"), candidate("dup", drop_reason="duplicate")
+        # A retry records again: the first attempt's findings must not linger, even though
+        # they point at each other. The duplicate points at its winner's new row.
+        kept = candidate("kept")
+        dup = candidate("dup", drop_reason="duplicate", duplicate_of=kept)
         ids = await record_findings(session, run.id, [kept, dup], True)
 
         rows = list(await session.scalars(select(Finding).order_by(Finding.id)))
-        assert [(r.id, r.title, r.posted, r.drop_reason) for r in rows] == [
-            (ids[0], "kept", False, None),
-            (ids[1], "dup", False, "duplicate"),
+        assert [(r.id, r.title, r.posted, r.drop_reason, r.duplicate_of) for r in rows] == [
+            (ids[0], "kept", False, None, None),
+            (ids[1], "dup", False, "duplicate", ids[0]),
         ]
         await session.refresh(run)
         assert run.agent_enabled is True

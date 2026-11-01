@@ -1,7 +1,7 @@
 """The three lanes: plain LLM calls (not agents), one per (lane, chunk)."""
 
 import secrets
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
 from typing import Literal
@@ -57,6 +57,8 @@ class Candidate:
     explanation: str
     suggested_fix: str | None
     drop_reason: str | None = None  # set by aggregate: "not_in_diff" or "duplicate"
+    # Set by aggregate on a duplicate: the candidate that beat it (stored as its finding ID).
+    duplicate_of: "Candidate | None" = field(default=None, compare=False, repr=False)
 
 
 @dataclass

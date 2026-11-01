@@ -68,6 +68,18 @@ def test_overlap_across_lanes_keeps_only_the_most_severe():
 
     assert kept(result) == [bug]
     assert idiom.drop_reason == "duplicate"
+    assert idiom.duplicate_of is bug
+
+
+def test_duplicate_points_at_the_most_severe_finding_it_overlaps():
+    critical = candidate(12, 12, severity="critical")
+    high = candidate(14, 14, severity="high")
+    low = candidate(12, 14, severity="low", lane="maintainability", category="idiom")
+
+    aggregate([low, high, critical], HUNKS)
+
+    assert low.duplicate_of is critical
+    assert critical.duplicate_of is None and high.duplicate_of is None
 
 
 def test_severity_tie_across_lanes_goes_by_lane_order():

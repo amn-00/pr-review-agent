@@ -20,6 +20,9 @@ dependencies = [
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Eval cases contain planted bugs on purpose. The review's own Ruff run uses --isolated, so
+# it still checks them.
+extend-exclude = ["evals/cases"]
 
 [tool.ruff.lint]
 # E/F: pycodestyle + pyflakes, I: import order, B: bugbear, UP: pyupgrade, ASYNC: async pitfalls

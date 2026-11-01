@@ -1,0 +1,8 @@
+kind = "bug"
+title = "Normalize tags when importing articles"
+
+[[expect]]
+file = "tags/registry.py"
+lines = [7, 13]
+note = "mutable default set: tags seen for one article are dropped from later ones"
+also_at = ["tags/import_feed.py:5"]

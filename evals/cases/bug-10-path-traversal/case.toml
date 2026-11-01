@@ -1,0 +1,7 @@
+kind = "bug"
+title = "Serve generated reports for download"
+
+[[expect]]
+file = "files/download.py"
+lines = [8, 11]
+note = "path traversal: ?file=../../etc/passwd escapes the reports folder"

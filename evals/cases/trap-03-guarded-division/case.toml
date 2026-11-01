@@ -1,0 +1,10 @@
+kind = "trap"
+title = "Simplify mean_rating"
+
+# Divides by len(ratings), but the only caller (reviews/views.py, unchanged) returns early
+# for a product without ratings. The division was there before this PR too.
+
+[[trap]]
+file = "reviews/stats.py"
+lines = [3, 3]
+note = "the only caller never passes an empty list"

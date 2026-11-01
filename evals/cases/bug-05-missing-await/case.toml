@@ -1,0 +1,7 @@
+kind = "bug"
+title = "Let users rename themselves"
+
+[[expect]]
+file = "accounts/service.py"
+lines = [10, 10]
+note = "save_user is async and isn't awaited: the new name is never saved"

@@ -1,0 +1,8 @@
+kind = "bug"
+title = "Route escalated tickets to the assignee's team"
+
+[[expect]]
+file = "support/escalate.py"
+lines = [6, 7]
+note = "STAFF.get returns None for an unknown assignee, then subscripting it raises TypeError"
+also_at = ["support/escalate.py:11"]

@@ -147,6 +147,9 @@ class Finding(Base):
     evidence: Mapped[list | None] = mapped_column(JSONB)
     posted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     drop_reason: Mapped[str | None] = mapped_column(String(20))  # not_in_diff | duplicate
+    # For a duplicate: the finding that beat it in aggregate (same run). Lets evals tell which
+    # duplicates were lost because their winner was dropped by the agent.
+    duplicate_of: Mapped[int | None] = mapped_column(ForeignKey("findings.id"))
 
 
 class AgentStep(Base):

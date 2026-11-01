@@ -1,0 +1,8 @@
+kind = "bug"
+title = "Check edit permissions on documents"
+
+[[expect]]
+file = "docs_app/permissions.py"
+lines = [6, 7]
+note = "inverted check: everyone except the owner may edit"
+also_at = ["docs_app/editing.py:6"]

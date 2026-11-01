@@ -1,0 +1,10 @@
+kind = "trap"
+title = "Sort the product list by the requested column"
+
+# The f-string looks like SQL injection (and Semgrep flags it), but the only caller passes a
+# column from an allow-list (catalog/columns.py, unchanged). Only the agent can see that.
+
+[[trap]]
+file = "catalog/queries.py"
+lines = [7, 7]
+note = "ORDER BY column comes from the SORTABLE_COLUMNS allow-list"

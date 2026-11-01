@@ -1,0 +1,17 @@
+kind = "bug"
+title = "Add an order total endpoint"
+
+# Two different bugs on the same line, which different lanes should find: a test of
+# cross-lane dedupe, which keeps only the most severe finding on overlapping lines.
+
+[[expect]]
+file = "orders/api.py"
+lines = [12, 12]
+note = "SQL injection: order_ref from the URL is formatted into the query"
+categories = ["security"]
+
+[[expect]]
+file = "orders/api.py"
+lines = [12, 12]
+note = "fetchone() is None for an unknown order, so [0] raises TypeError"
+categories = ["bug"]

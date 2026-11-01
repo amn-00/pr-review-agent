@@ -1,0 +1,2 @@
+kind = "clean"
+title = "Turn the settings dict into a frozen dataclass"

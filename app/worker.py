@@ -144,7 +144,7 @@ async def _review(
         logger.info("review already posted by an earlier try")
         return RunStatus.COMPLETED, posted["id"]
 
-    chunks, hunks_by_file, skipped_files = await _load_chunks(
+    chunks, hunks_by_file, skipped_files = await load_chunks(
         github, installation_id, repo, number, sha
     )
     models = lane_models(settings.groq_model, settings.groq_small_model)
@@ -241,11 +241,12 @@ async def _find_our_review(
     return None
 
 
-async def _load_chunks(
+async def load_chunks(
     github: GitHubClient, installation_id: int, repo: str, number: int, sha: str
 ) -> tuple[list[Chunk], dict[str, list[Hunk]], dict[str, str]]:
     """Returns the chunks to review, the hunks of each reviewed file (for the hallucination
-    guard), and the files not reviewed with the reason."""
+    guard), and the files not reviewed with the reason. The eval runner uses it too, to
+    estimate a case's tokens and record the static-tool hints."""
     chunks: list[Chunk] = []
     hunks_by_file: dict[str, list[Hunk]] = {}
     skipped_files: dict[str, str] = {}

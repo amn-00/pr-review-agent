@@ -1,0 +1,7 @@
+kind = "bug"
+title = "Paginate the items endpoint"
+
+[[expect]]
+file = "api/pagination.py"
+lines = [6, 7]
+note = "off by one: each page drops its last item"

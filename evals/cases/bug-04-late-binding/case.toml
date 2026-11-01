@@ -1,0 +1,7 @@
+kind = "bug"
+title = "Schedule trial-ending reminders"
+
+[[expect]]
+file = "notify/reminders.py"
+lines = [11, 11]
+note = "the lambda binds the loop variable late: every reminder goes to the last user"

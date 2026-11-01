@@ -181,6 +181,11 @@ async def record_findings(
         update(ReviewRun).where(ReviewRun.id == run_id).values(agent_enabled=agent_enabled)
     )
     await session.flush()  # assigns the IDs
+    # A duplicate's winner is always among `candidates`; match by identity, not by value.
+    row_for = {id(c): row for c, row in zip(candidates, rows, strict=True)}
+    for c, row in zip(candidates, rows, strict=True):
+        if c.duplicate_of is not None:
+            row.duplicate_of = row_for[id(c.duplicate_of)].id
     ids = [row.id for row in rows]
     await session.commit()
     return ids
