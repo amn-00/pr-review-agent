@@ -4,6 +4,7 @@ from enum import StrEnum
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     DateTime,
     ForeignKey,
@@ -95,5 +96,30 @@ class ReviewRun(Base):
     tokens_out: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(10, 6), default=0, server_default="0")
     error: Mapped[str | None] = mapped_column(Text)
-    # The comment we posted for this run, so a retry can tell it already posted.
-    github_comment_id: Mapped[int | None] = mapped_column(BigInteger)
+    # The review we posted for this run.
+    github_review_id: Mapped[int | None] = mapped_column(BigInteger)
+
+
+class Finding(Base):
+    """Every candidate a lane produced for a run, posted or not. Dropped ones are kept (with
+    drop_reason) so evals can measure how often the hallucination guard and dedupe fire."""
+
+    __tablename__ = "findings"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    # Indexed: "all findings of a run" is the main lookup.
+    run_id: Mapped[int] = mapped_column(ForeignKey("review_runs.id"), index=True)
+    lane: Mapped[str] = mapped_column(String(20))
+    prompt_version: Mapped[str] = mapped_column(String(20))
+    file: Mapped[str] = mapped_column(Text)
+    line_start: Mapped[int] = mapped_column(Integer)
+    line_end: Mapped[int] = mapped_column(Integer)
+    category: Mapped[str] = mapped_column(String(20))
+    severity: Mapped[str] = mapped_column(String(10))
+    title: Mapped[str] = mapped_column(Text)
+    explanation: Mapped[str] = mapped_column(Text)
+    suggested_fix: Mapped[str | None] = mapped_column(Text)
+    # Set by the verification agent in Phase 4: confirmed | dropped | uncertain.
+    verdict: Mapped[str | None] = mapped_column(String(10))
+    posted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    drop_reason: Mapped[str | None] = mapped_column(String(20))  # not_in_diff | duplicate

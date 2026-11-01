@@ -11,11 +11,14 @@ ENV_VARS = [
     "GITHUB_APP_ID",
     "GITHUB_APP_PRIVATE_KEY",
     "GITHUB_WEBHOOK_SECRET",
+    "GROQ_API_KEY",
+    "GROQ_MODEL",
 ]
 REQUIRED = {
     "github_app_id": "1",
     "github_app_private_key": "key",
     "github_webhook_secret": "secret",
+    "groq_api_key": "gsk_test",
 }
 
 
@@ -36,6 +39,7 @@ def test_defaults_are_local_dev():
     assert settings.environment == "dev"
     assert settings.log_level == "INFO"
     assert str(settings.redis_url) == "redis://localhost:6379/0"
+    assert settings.groq_model == "openai/gpt-oss-120b"
 
 
 def test_reads_values_from_env(monkeypatch):
@@ -43,7 +47,9 @@ def test_reads_values_from_env(monkeypatch):
     monkeypatch.setenv("REDIS_URL", "rediss://user:pass@example.com:6380/0")
     monkeypatch.setenv("GITHUB_WEBHOOK_SECRET", "from-env")
 
-    settings = Settings(_env_file=None, github_app_id="1", github_app_private_key="key")
+    settings = Settings(
+        _env_file=None, github_app_id="1", github_app_private_key="key", groq_api_key="k"
+    )
 
     assert settings.environment == "prod"
     assert settings.redis_url.scheme == "rediss"
@@ -52,9 +58,10 @@ def test_reads_values_from_env(monkeypatch):
 
 
 def test_secrets_are_hidden_when_printed():
-    settings = make_settings(github_webhook_secret="hunter2")
+    settings = make_settings(github_webhook_secret="hunter2", groq_api_key="gsk_secret")
 
     assert "hunter2" not in repr(settings)
+    assert "gsk_secret" not in repr(settings)
 
 
 def test_private_key_newlines_are_unescaped():
@@ -64,7 +71,7 @@ def test_private_key_newlines_are_unescaped():
 
 
 @pytest.mark.parametrize("missing", list(REQUIRED))
-def test_rejects_missing_github_settings(missing):
+def test_rejects_missing_required_settings(missing):
     values = {k: v for k, v in REQUIRED.items() if k != missing}
 
     with pytest.raises(ValidationError):

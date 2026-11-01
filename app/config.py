@@ -32,6 +32,10 @@ class Settings(DatabaseSettings):
     github_app_private_key: SecretStr
     github_webhook_secret: SecretStr
 
+    groq_api_key: SecretStr
+    # Must support strict structured outputs (json_schema). gpt-oss-120b and gpt-oss-20b do.
+    groq_model: str = "openai/gpt-oss-120b"
+
     def github_private_key_pem(self) -> str:
         return self.github_app_private_key.get_secret_value().replace("\\n", "\n")
 

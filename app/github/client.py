@@ -1,5 +1,6 @@
 import time
 from collections.abc import Callable
+from urllib.parse import quote
 
 import httpx
 
@@ -30,6 +31,7 @@ class GitHubClient:
         # installation id -> (requests remaining, unix time the limit resets), from the
         # X-RateLimit-* headers of the last response.
         self._rate_limits: dict[int, tuple[int, float]] = {}
+        self._bot_login: str | None = None
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "GitHubClient":
@@ -44,37 +46,77 @@ class GitHubClient:
         response = await self._request(installation_id, "GET", f"/repos/{repo}/pulls/{number}")
         return response.json()
 
-    async def list_issue_comments(self, installation_id: int, repo: str, number: int) -> list[dict]:
-        """All top-level comments on a PR (PRs are issues in GitHub's API), following pagination."""
-        comments: list[dict] = []
-        url: str | None = f"/repos/{repo}/issues/{number}/comments"
-        params: dict | None = {"per_page": 100}
-        while url:
-            response = await self._request(installation_id, "GET", url, params=params)
-            comments.extend(response.json())
-            url = response.links.get("next", {}).get("url")
-            params = None  # the "next" URL already carries the query string
-        return comments
+    async def list_pull_files(self, installation_id: int, repo: str, number: int) -> list[dict]:
+        """Changed files with their `patch` (missing for binary or very large diffs)."""
+        return await self._get_all_pages(installation_id, f"/repos/{repo}/pulls/{number}/files")
 
-    async def create_issue_comment(
-        self, installation_id: int, repo: str, number: int, body: str
+    async def get_file_content(self, installation_id: int, repo: str, path: str, ref: str) -> str:
+        """A file's full text at a commit. The raw media type returns the bytes directly
+        instead of base64 JSON, and works for files over 1 MB."""
+        response = await self._request(
+            installation_id,
+            "GET",
+            f"/repos/{repo}/contents/{quote(path)}",
+            params={"ref": ref},
+            headers={"Accept": "application/vnd.github.raw+json"},
+        )
+        return response.text
+
+    async def list_reviews(self, installation_id: int, repo: str, number: int) -> list[dict]:
+        return await self._get_all_pages(installation_id, f"/repos/{repo}/pulls/{number}/reviews")
+
+    async def create_review(
+        self,
+        installation_id: int,
+        repo: str,
+        number: int,
+        commit_id: str,
+        body: str,
+        comments: list[dict],
     ) -> dict:
         response = await self._request(
             installation_id,
             "POST",
-            f"/repos/{repo}/issues/{number}/comments",
-            json={"body": body},
+            f"/repos/{repo}/pulls/{number}/reviews",
+            json={"commit_id": commit_id, "event": "COMMENT", "body": body, "comments": comments},
         )
         return response.json()
 
+    async def bot_login(self) -> str:
+        """The login our App posts as, e.g. "my-app[bot]". Looked up once via GET /app.
+
+        Humans can't register logins containing "[" or "]", so only our App can author as
+        this account.
+        """
+        if self._bot_login is None:
+            response = await send(
+                self._http,
+                "GET",
+                "/app",
+                headers={"Authorization": f"Bearer {self._auth.make_jwt()}"},
+            )
+            raise_for_status(response)
+            self._bot_login = f"{response.json()['slug']}[bot]"
+        return self._bot_login
+
+    async def _get_all_pages(self, installation_id: int, url: str) -> list[dict]:
+        items: list[dict] = []
+        next_url: str | None = url
+        params: dict | None = {"per_page": 100}
+        while next_url:
+            response = await self._request(installation_id, "GET", next_url, params=params)
+            items.extend(response.json())
+            next_url = response.links.get("next", {}).get("url")
+            params = None  # the "next" URL already carries the query string
+        return items
+
     async def _request(
-        self, installation_id: int, method: str, url: str, **kwargs
+        self, installation_id: int, method: str, url: str, headers: dict | None = None, **kwargs
     ) -> httpx.Response:
         self._wait_if_rate_limited(installation_id)
         token = await self._auth.installation_token(installation_id)
-        response = await send(
-            self._http, method, url, headers={"Authorization": f"Bearer {token}"}, **kwargs
-        )
+        headers = {**(headers or {}), "Authorization": f"Bearer {token}"}
+        response = await send(self._http, method, url, headers=headers, **kwargs)
         self._record_rate_limit(installation_id, response)
         raise_for_status(response)
         return response

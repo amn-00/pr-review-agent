@@ -1,3 +1,4 @@
+import json
 import time
 
 import httpx
@@ -7,7 +8,8 @@ from app.github.http import NonRetryableError, RetryableError
 from tests.factories import INSTALLATION_ID, PR_NUMBER, REPO, pull_response
 
 PULL_URL = f"/repos/{REPO}/pulls/{PR_NUMBER}"
-COMMENTS_URL = f"/repos/{REPO}/issues/{PR_NUMBER}/comments"
+FILES_URL = f"{PULL_URL}/files"
+REVIEWS_URL = f"{PULL_URL}/reviews"
 
 
 def rate_limit_headers(remaining: int, reset_in: float = 600) -> dict:
@@ -26,29 +28,62 @@ async def test_get_pull_sends_installation_token(github, github_api):
     assert route.calls.last.request.headers["Authorization"] == "Bearer test-token"
 
 
-async def test_list_issue_comments_follows_pagination(github, github_api):
-    next_page = f"https://api.github.com{COMMENTS_URL}?per_page=100&page=2"
-    github_api.get(COMMENTS_URL, params={"page": "2"}).mock(
-        return_value=httpx.Response(200, json=[{"id": 3}])
+async def test_list_pull_files_follows_pagination(github, github_api):
+    next_page = f"https://api.github.com{FILES_URL}?per_page=100&page=2"
+    github_api.get(FILES_URL, params={"page": "2"}).mock(
+        return_value=httpx.Response(200, json=[{"filename": "c.py"}])
     )
-    github_api.get(COMMENTS_URL).mock(
+    github_api.get(FILES_URL).mock(
         return_value=httpx.Response(
-            200, json=[{"id": 1}, {"id": 2}], headers={"Link": f'<{next_page}>; rel="next"'}
+            200,
+            json=[{"filename": "a.py"}, {"filename": "b.py"}],
+            headers={"Link": f'<{next_page}>; rel="next"'},
         )
     )
 
-    comments = await github.list_issue_comments(INSTALLATION_ID, REPO, PR_NUMBER)
+    files = await github.list_pull_files(INSTALLATION_ID, REPO, PR_NUMBER)
 
-    assert [c["id"] for c in comments] == [1, 2, 3]
+    assert [f["filename"] for f in files] == ["a.py", "b.py", "c.py"]
 
 
-async def test_create_issue_comment_posts_body(github, github_api):
-    route = github_api.post(COMMENTS_URL).mock(return_value=httpx.Response(201, json={"id": 9}))
+async def test_get_file_content_asks_for_raw_text_at_the_commit(github, github_api):
+    route = github_api.get(f"/repos/{REPO}/contents/src/my%20file.py").mock(
+        return_value=httpx.Response(200, text="print('hi')\n")
+    )
 
-    comment = await github.create_issue_comment(INSTALLATION_ID, REPO, PR_NUMBER, "hello")
+    text = await github.get_file_content(INSTALLATION_ID, REPO, "src/my file.py", "abc123")
 
-    assert comment["id"] == 9
-    assert route.calls.last.request.content == b'{"body":"hello"}'
+    assert text == "print('hi')\n"
+    request = route.calls.last.request
+    assert request.headers["Accept"] == "application/vnd.github.raw+json"
+    assert request.headers["Authorization"] == "Bearer test-token"
+    assert request.url.params["ref"] == "abc123"
+
+
+async def test_create_review_posts_a_comment_review(github, github_api):
+    route = github_api.post(REVIEWS_URL).mock(return_value=httpx.Response(200, json={"id": 9}))
+    comments = [{"path": "a.py", "line": 3, "side": "RIGHT", "body": "x"}]
+
+    review = await github.create_review(INSTALLATION_ID, REPO, PR_NUMBER, "abc", "sum", comments)
+
+    assert review["id"] == 9
+    assert json.loads(route.calls.last.request.content) == {
+        "commit_id": "abc",
+        "event": "COMMENT",
+        "body": "sum",
+        "comments": comments,
+    }
+
+
+async def test_bot_login_comes_from_the_app_slug_and_is_cached(github, github_api):
+    route = github_api.get("/app").mock(
+        return_value=httpx.Response(200, json={"slug": "my-reviewer"})
+    )
+
+    assert await github.bot_login() == "my-reviewer[bot]"
+    assert await github.bot_login() == "my-reviewer[bot]"
+    assert route.call_count == 1
+    assert route.calls.last.request.headers["Authorization"] == "Bearer test-jwt"
 
 
 @pytest.mark.parametrize("status", [500, 502, 503])

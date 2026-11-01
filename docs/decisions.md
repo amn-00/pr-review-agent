@@ -51,7 +51,7 @@ Upstash's free tier caps commands, and arq polls Redis constantly. Render Key Va
 cap, but it loses data on restart: queued jobs and dedupe keys disappear. The reconciler re-enqueues
 lost work, and the run marker plus the DB prevent duplicate reviews.
 
-**A global Redis-backed rate limiter for Groq.**
+**A global Redis-backed rate limiter for Groq.** *(Superseded in Phase 2a: per-process limiter, see below.)*
 Groq free-tier limits are per account, not per PR, so every worker shares one limiter. The eval
 set is sized to fit the daily free quota.
 
@@ -138,7 +138,7 @@ hour. Sharing them via Redis would mean storing credentials in Redis for no real
 That works the same in `.env`, docker-compose and Render's env settings, with no secret files to
 mount.
 
-**Worker crashes: arq re-runs the job, and the run marker prevents a second post.**
+**Worker crashes: arq re-runs the job, and the run marker prevents a second post.** *(Since Phase 2a the marker is in the review body and is searched in our bot's reviews.)*
 arq keeps a job in its queue until it finishes. While running, the job holds an in-progress key
 that expires after the job timeout, after which another worker picks the job up again. Before
 posting, the job looks for `<!-- pr-review-agent run:{id} -->` among the PR's comments. Tested
@@ -202,7 +202,7 @@ are queued or running. Tested end to end with a real arq `Worker`, and the tests
 `failed` and `skipped` runs are retried whenever a new job arrives for that commit, e.g. after
 the App's permissions are fixed, or when a PR closed before its job ran is reopened.
 
-**Claiming a run: one atomic `UPDATE`, with stale takeover.**
+**Claiming a run: one atomic `UPDATE`, with stale takeover.** *(Phase 2a raised the job timeout, and so the stale threshold, to 900 s.)*
 Runs are created `queued`. A job starts only if a single `UPDATE ... WHERE ... RETURNING` turns the
 run into `running`. That succeeds for `queued`, `failed` and `skipped` runs, and for `running`
 runs whose `started_at` is older than the job timeout (300 s). The check and the write are one
@@ -228,7 +228,7 @@ downgrade turns `queued` runs into `failed`, which keeps them retryable.
 `env.py` loads only that, so `alembic upgrade` runs without the GitHub secrets. Checked by running
 upgrade, downgrade and upgrade with no `.env` and no GitHub env vars.
 
-**The marker search reads every page of comments.**
+**The marker search reads every page of comments.** *(The fake-marker gap is closed in Phase 2a: see "Trusting the marker".)*
 `list_issue_comments` asks for 100 per page and follows the `Link: rel="next"` header until the
 end, so the marker is found on busy PRs. Tested with the marker on page 2. We don't filter to our
 App's own comments, so a PR author could post a fake marker and suppress the placeholder comment
@@ -238,3 +238,113 @@ marker, by checking `performed_via_github_app.id`.
 **The installation token cache is keyed by installation ID.**
 `GitHubAppAuth._tokens` maps installation ID to (token, expiry), so one installation's token is
 never used for another installation's repos. Tested in `test_tokens_are_cached_per_installation`.
+
+## Phase 2a — Pipeline and real reviews
+
+**One review per run, no placeholder comment.**
+The spec asks for one review per run with a summary, so the "review started" comment is gone and
+the run marker lives in the review body. A clean PR still gets a review ("No issues found"), so
+every run's outcome is visible on the PR.
+
+**Trusting the marker: only reviews authored by our bot account.**
+Reviews have no `performed_via_github_app` field (issue comments do), so we compare the review's
+author with `<app-slug>[bot]`, looked up once via `GET /app`. GitHub usernames can't contain `[`
+or `]`, so no human can author as that account. A pasted marker in a human's review is ignored
+(tested).
+
+**Job duration: a 900 s timeout plus a 600 s deadline, no heartbeat.**
+Reviews wait on Groq's 8K tokens/minute, so 300 s was too short. The LLM work must end 600 s after
+the job starts; chunks not reached are listed as skipped, and the rest of the 900 s covers fetching,
+posting and GitHub retries. `claim_run` uses the same `JOB_TIMEOUT_SECONDS`, so a `running` run is
+stale after 900 s (tested at 600 s: not taken over).
+
+**Why not a heartbeat.**
+arq re-runs a crashed job only once its in-progress key expires (`job_timeout + 10 s`), and until
+then the crashed job's ID blocks a replacement from the webhook or reconciler. A heartbeat could
+notice a dead worker sooner, but nothing could act on it without giving up arq's job-ID dedupe.
+It would also add a background writer whose failure (a blocked event loop) makes a live job look
+dead. The cost of this choice: a crashed review restarts after 15 minutes, not 5.
+
+**Under the deadline, the least important chunks are skipped first.**
+Chunks are ordered source code, then tests, then docs (`*.md`, `*.rst`, `*.txt`, `docs/`), keeping
+diff order within each group. All lanes of a chunk are queued together, and workers take calls in
+that order, so the time limit cuts off the tail.
+
+**Prompt injection: PR content is data, in several layers.**
+- **Separation:** PR content, file names included, goes only in the user message, between
+  `BEGIN/END UNTRUSTED PR CONTENT <id>` lines, with a random ID per call so the PR can't forge
+  the end marker. The system prompt is a fixed file that says to treat that block as code and
+  never follow instructions in it.
+- **No power:** lanes have no tools, and strict structured output means the model can only return
+  findings. The worst an injection can do is suppress or invent findings. Invented lines are
+  dropped by the hallucination guard, and Phase 4's agent verifies the rest.
+- **Output sanitizing:** before our bot posts model text or file names, `<!--` is escaped (a
+  planted fake marker could stop a later run from posting) and `@mentions` are defused.
+- **Limit:** no prompt can guarantee the model is never swayed into staying quiet. Phase 5's eval
+  set should include an injection PR to measure it. Tests cover the separation and the sanitizing.
+
+**Cross-lane duplicates aren't merged yet.**
+Dedupe merges candidates with the same file, category and overlapping lines, keeping the most
+severe. Each lane has its own categories, so the same lines flagged by two lanes (e.g. a bug and a
+readability note) both get posted. Phase 5 will measure how often that happens before we add a rule.
+
+**Groq rate limiting is per process, driven by Groq's headers.**
+This supersedes the spec-review plan for a Redis-backed limiter. Every response reports the tokens
+left this minute (`x-ratelimit-remaining-tokens`, `x-ratelimit-reset-tokens`), per model, and the
+client waits for the reset before sending a call that won't fit. In prod the worker runs inside the
+single API process, so this is effectively global. Phase 6 load tests will show whether Redis is
+needed.
+
+**Groq errors.**
+- **429:** wait `retry-after`, then retry.
+- **5xx and timeouts:** back off 2 s, then 4 s, for up to 3 attempts.
+- **400** (e.g. output that fails the schema): that one call fails and the review goes on.
+- **401/403:** `NonRetryableError`, so the run fails. Otherwise a bad key would post a misleading
+  "No issues found".
+
+No wait may pass the deadline: if it would, the call counts as skipped instead.
+
+**Structured output: strict JSON schema, written by hand, validated again with Pydantic.**
+Strict mode guarantees the shape, but needs every field `required` and
+`additionalProperties: false`, so the schema is written out rather than generated (a test keeps it
+in sync with the model). Each lane's schema only allows that lane's categories. `reasoning_effort`
+is `low` and output is capped at 2048 tokens, to save the token budget.
+
+**The model doesn't return the file name.**
+The spec's lane output includes `file`, but a chunk is always one file, so we set it from the chunk.
+That removes one thing the model could get wrong.
+
+**Chunking: one hunk plus 20 lines of context, merged when windows overlap, split at about 2000 tokens.**
+Context comes from the full file at the head SHA (Contents API, raw media type). Tokens are
+estimated as characters ÷ 4, which is enough for sizing and needs no tokenizer dependency.
+
+**Files not reviewed.**
+Deleted files, files without a patch (binary or too large for GitHub to diff), and lockfiles are
+skipped and listed in the summary. Lockfiles would burn the token budget and find nothing.
+
+**Hallucination guard details.**
+A finding's first line must be inside a hunk on the new side. A range that leaves that hunk shrinks
+to its first line, because GitHub rejects multi-line comments that span hunks. Findings about deleted
+lines are dropped, since we only comment on the new side.
+
+**The `findings` table keeps every candidate.**
+Dropped candidates are stored with `drop_reason` (`not_in_diff` or `duplicate`), so evals can see
+how often the guard and dedupe fire. Each attempt replaces the run's findings in one transaction,
+so retries never leave duplicates. Indexed on `run_id`, for loading a run's findings.
+
+**`github_comment_id` is renamed to `github_review_id`.**
+The migration renames the column by hand, because autogenerate would drop it and add a new one.
+`alembic check` confirms the migrations match the models.
+
+**The head SHA is checked again before posting.**
+If a new commit arrived while the lanes ran, the run is `skipped` and nothing is posted. The
+findings are still saved, so the work isn't lost for evals.
+
+**`max_jobs = 2`.**
+Two reviews at once already use up Groq's tokens-per-minute limit, and more would hold memory on
+a 512 MB instance while they wait. The per-installation limit waits for Phase 6, where load tests
+make it measurable.
+
+**Known cost: retries re-run the lanes.**
+If posting fails with a temporary error after the lanes ran, the retry starts over and spends the
+tokens again. Phase 3's cache fixes this.

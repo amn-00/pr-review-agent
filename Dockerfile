@@ -16,6 +16,7 @@ RUN uv sync --locked --no-dev --no-install-project
 
 COPY alembic.ini ./
 COPY app ./app
+COPY prompts ./prompts
 
 RUN useradd --create-home appuser
 USER appuser

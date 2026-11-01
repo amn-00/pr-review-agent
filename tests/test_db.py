@@ -5,9 +5,16 @@ import pytest
 from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 
-from app.db.models import PullRequest, Repo, ReviewRun, RunStatus
-from app.db.queries import claim_run, finish_run, get_or_create_run, release_run
+from app.db.models import Finding, PullRequest, Repo, ReviewRun, RunStatus
+from app.db.queries import (
+    claim_run,
+    finish_run,
+    get_or_create_run,
+    record_findings,
+    release_run,
+)
 from app.github.webhooks import PullRequestPayload
+from app.pipeline.lanes import Candidate
 from tests.factories import SHA_1, SHA_2, pr_payload
 
 STALE_AFTER = 300
@@ -143,3 +150,37 @@ async def test_database_rejects_unknown_status(sessionmaker):
 
         with pytest.raises(IntegrityError):
             await finish_run(session, run.id, "exploded")
+
+
+def candidate(title: str, drop_reason: str | None = None) -> Candidate:
+    return Candidate(
+        lane="correctness",
+        prompt_version="v1",
+        file="a.py",
+        line_start=3,
+        line_end=3,
+        category="bug",
+        severity="high",
+        title=title,
+        explanation="e",
+        suggested_fix=None,
+        drop_reason=drop_reason,
+    )
+
+
+async def test_record_findings_replaces_earlier_attempts_and_marks_posted(sessionmaker):
+    async with sessionmaker() as session:
+        run = await get_or_create_run(session, payload())
+        await record_findings(session, run.id, [candidate("first try")], True, 10, 1)
+
+        # A retry records again: the first attempt's findings must not linger.
+        kept, dup = candidate("kept"), candidate("dup", drop_reason="duplicate")
+        await record_findings(session, run.id, [kept, dup], True, 300, 60)
+
+        rows = list(await session.scalars(select(Finding).order_by(Finding.id)))
+        assert [(r.title, r.posted, r.drop_reason) for r in rows] == [
+            ("kept", True, None),
+            ("dup", False, "duplicate"),
+        ]
+        await session.refresh(run)
+        assert (run.tokens_in, run.tokens_out) == (300, 60)

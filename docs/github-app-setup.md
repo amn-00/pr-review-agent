@@ -73,6 +73,17 @@ Paste the output between double quotes:
 GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\nMIIE...\n-----END RSA PRIVATE KEY-----\n"
 ```
 
+Then the Groq key, from https://console.groq.com/keys:
+
+```
+GROQ_API_KEY=gsk_...
+GROQ_MODEL=openai/gpt-oss-120b   # optional; this is the default
+```
+
+Your real limits are under Settings → Limits in the Groq console. On the free plan each model
+has its own budget (about 8K tokens/minute and 200K tokens/day for `gpt-oss-120b`), which is
+roughly 40 small chunks a day.
+
 ## 5. Run it
 
 ```sh
@@ -80,8 +91,10 @@ docker compose up --build                     # terminal 1
 npx smee-client --url https://smee.io/AbC123xyz --target http://localhost:8000/webhook   # terminal 2
 ```
 
-Open a PR on the test repo. Within a few seconds a comment appears:
-"Review started for commit `abc1234`."
+Open a PR on the test repo. After a short wait (longer for big PRs: reviews wait on Groq's
+rate limit, up to a 10-minute time limit), a review from the App appears, with inline comments
+on the problems it found and a summary. A PR with nothing to report still gets a review saying
+"No issues found."
 
 ## Checking it worked
 
@@ -90,7 +103,9 @@ Open a PR on the test repo. Within a few seconds a comment appears:
   the API should answer `{"status": "duplicate"}` and no second comment appears.
 - **Logs:** every line is JSON with `delivery_id`, `repo`, `pr`, `sha` (and `run_id` in the
   worker). To follow one PR: `docker compose logs -f api worker | grep '"pr": 7'`.
-- **Database:** `docker compose exec postgres psql -U postgres -d pr_review -c "select * from review_runs"`
+- **Database:** `docker compose exec postgres psql -U postgres -d pr_review -c "select * from review_runs"`,
+  and `select lane, file, line_start, severity, title, posted, drop_reason from findings` for
+  everything the lanes reported, including what was dropped.
 
 ## Troubleshooting
 
@@ -101,4 +116,6 @@ Open a PR on the test repo. Within a few seconds a comment appears:
 | Run `failed`, error `-> 403 ... Resource not accessible` | App permissions are missing, or you changed them and haven't accepted the new permissions on the installation. |
 | Nothing in the API logs | The smee client isn't running, or the App's webhook URL isn't your smee URL. |
 | smee-client says Connected but prints no `POST` lines, while GitHub's Recent Deliveries show `200 OK` | The App's webhook URL and the client's `--url` are different channels. smee.io answers 200 for any channel, even one nobody listens on, so GitHub reports success. Compare them character by character (look-alikes such as `I`/`l` are easy to miss), and copy-paste the URL instead of retyping it. Then redeliver: smee doesn't replay events sent before the client connected. |
-| Draft PR gets no comment | Expected: drafts are skipped until marked "Ready for review". |
+| Draft PR gets no review | Expected: drafts are skipped until marked "Ready for review". |
+| Run `failed`, error `Groq 401 ... invalid_api_key` | `GROQ_API_KEY` is wrong or missing from `.env` (saved?). After fixing it, `docker compose up -d` to reload `.env`. |
+| Review says "N lane call(s) not run (time limit)" | Groq's tokens-per-minute (or daily) limit ran out before the 10-minute deadline. Source files are reviewed first, then tests, then docs. |

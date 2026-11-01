@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 
 import asyncpg
@@ -27,6 +28,7 @@ os.environ.update(
         "GITHUB_APP_ID": "12345",
         "GITHUB_APP_PRIVATE_KEY": "not-used-in-tests",
         "GITHUB_WEBHOOK_SECRET": WEBHOOK_SECRET,
+        "GROQ_API_KEY": "test-groq-key",
     }
 )
 
@@ -37,9 +39,10 @@ from arq.connections import RedisSettings  # noqa: E402
 
 from app.db.session import make_engine, make_sessionmaker  # noqa: E402
 from app.github.client import GitHubClient  # noqa: E402
+from app.llm.groq import Completion  # noqa: E402
 from app.main import create_app  # noqa: E402
 
-TABLES = "review_runs, pull_requests, repos, installations"
+TABLES = "findings, review_runs, pull_requests, repos, installations"
 
 
 async def _create_database_if_missing(url: str) -> None:
@@ -95,6 +98,9 @@ class StubAuth:
     async def installation_token(self, installation_id: int) -> str:
         return "test-token"
 
+    def make_jwt(self) -> str:
+        return "test-jwt"
+
 
 @pytest.fixture
 async def github():
@@ -112,3 +118,23 @@ async def client(arq_redis):
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+
+class FakeGroq:
+    """Stands in for GroqClient: returns canned findings per lane and records every call,
+    so tests can check exactly what the model would have been sent."""
+
+    def __init__(self):
+        self.findings_by_lane: dict[str, list[dict]] = {}
+        self.calls: list[dict] = []
+
+    async def complete_json(self, model, messages, schema_name, schema, deadline) -> Completion:
+        self.calls.append({"model": model, "messages": messages, "schema_name": schema_name})
+        lane = schema_name.removesuffix("_findings")
+        content = json.dumps({"findings": self.findings_by_lane.get(lane, [])})
+        return Completion(content=content, tokens_in=100, tokens_out=20)
+
+
+@pytest.fixture
+def groq():
+    return FakeGroq()
