@@ -738,3 +738,15 @@ by (run, finding) can come later if Phase 6 shows otherwise.
 The whole job on the planted pair from 4a: the security lane's SQL injection finding was dropped,
 citing the allow-list, and the division by zero was confirmed and posted with "Checked against
 `app/orders.py:7`, `app/api.py:10`". 9 LLM calls in total, $0.0023, of which the agent $0.0015.
+
+### Known issue for Phase 5
+
+**Dedupe runs before verification, so a dropped winner takes its duplicates with it.**
+Aggregate keeps only the most severe of findings on overlapping lines, and only that one goes to
+the agent. If the agent drops it, the findings deduped against it are gone too: they're stored
+with `drop_reason = 'duplicate'`, but never checked or posted. Seen on the real PR #5: a
+maintainability note on the SQL query's lines vanished with the dropped SQL injection finding.
+Possible fixes: verify before deduping (more agent calls), or give the next finding in line to
+the agent when the winner is dropped. Phase 5 should first measure how often a deduped finding
+was a real bug, from the `findings` table: duplicates whose winner was dropped. A duplicate doesn't
+store which finding beat it, so the match is by run, file and overlapping lines.
