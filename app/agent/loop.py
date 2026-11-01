@@ -2,7 +2,9 @@
 
 Groq can't combine strict structured output with tool calling, so the verdict is itself a tool
 (submit_verdict). Every step must call a tool, and the last allowed step is forced to call
-submit_verdict, so the answer is never guessed from prose (see docs/decisions.md).
+submit_verdict, so the answer is never guessed from prose. If that forced step brings no
+verdict, there is one more forced call, then one strict-JSON call without tools: at most
+MAX_AGENT_STEPS + 2 calls (see docs/decisions.md).
 """
 
 import json
@@ -50,6 +52,16 @@ RESULT_SUMMARY_CHARS = 300
 # every step; the tools can read more when needed.
 EXCERPT_CONTEXT_LINES = 20
 FORCE_VERDICT = {"type": "function", "function": {"name": VERDICT_TOOL}}
+# The last-resort verdict call answers with JSON in submit_verdict's shape (strict mode).
+VERDICT_SCHEMA = next(
+    t["function"]["parameters"] for t in TOOL_SCHEMAS if t["function"]["name"] == VERDICT_TOOL
+)
+# agent_steps.tool for that call, which has no tools.
+VERDICT_JSON = "verdict_json"
+ASK_FOR_JSON_VERDICT = (
+    "Give your verdict now as JSON with verdict, reason and evidence, exactly as you would "
+    "pass them to submit_verdict. Evidence must point at lines shown above."
+)
 # How much one more step adds to the next request, at most: a full tool result plus the call.
 STEP_GROWTH_TOKENS = MAX_RESULT_CHARS // 4 + EXPECTED_TOOL_CALL_OUTPUT_TOKENS
 NOT_RUN = "Not run: one tool call per step."
@@ -151,10 +163,51 @@ async def verify_finding(
         latency_ms = round((clock() - started) * 1000)
         await on_step(AgentStep(step_no, tool, args, len(text), summary, *tokens, latency_ms))
 
+    def done(verdict: Verdict) -> Verdict:
+        verdict.steps = result.steps
+        verdict.tokens_in, verdict.tokens_out = result.tokens_in, result.tokens_out
+        return verdict
+
+    def fits(estimate: int) -> bool:
+        return result.tokens_in + result.tokens_out + estimate <= FINDING_TOKEN_LIMIT
+
+    async def forced_retry() -> Verdict | None:
+        """One more call forced to submit_verdict. None if it brings no valid verdict."""
+        step_no, started = result.steps + 1, clock()
+        try:
+            completion = await groq.complete_tools(
+                model, messages, TOOL_SCHEMAS, FORCE_VERDICT, deadline
+            )
+        except ToolCallFailed as exc:  # e.g. the model called another tool again
+            await step_done(step_no, started, text=str(exc))
+            return None
+        tokens = (completion.tokens_in, completion.tokens_out)
+        calls = completion.message.get("tool_calls") or []
+        name = calls[0]["function"]["name"] if calls else None
+        if name != VERDICT_TOOL:
+            await step_done(step_no, started, name, text="no verdict", tokens=tokens)
+            return None
+        arguments = calls[0]["function"]["arguments"] or "{}"
+        verdict, error = _parse_verdict(arguments, seen)
+        text = f"{verdict.verdict}: {verdict.reason}" if verdict else error
+        await step_done(step_no, started, name, arguments, text, tokens)
+        return verdict
+
+    async def json_verdict(plain: list[dict]) -> Verdict | None:
+        """Last resort: the conversation as plain text, answered in strict JSON. There are no
+        tools, so the model can't call one instead. The same evidence rules apply."""
+        step_no, started = result.steps + 1, clock()
+        completion = await groq.complete_json(model, plain, VERDICT_TOOL, VERDICT_SCHEMA, deadline)
+        tokens = (completion.tokens_in, completion.tokens_out)
+        verdict, error = _parse_verdict(completion.content, seen)
+        text = f"{verdict.verdict}: {verdict.reason}" if verdict else error
+        await step_done(step_no, started, VERDICT_JSON, completion.content, text, tokens)
+        return verdict
+
     for step_no in range(1, MAX_AGENT_STEPS + 1):
         estimate = estimate_tool_call_tokens(messages, TOOL_SCHEMAS)
         used = result.tokens_in + result.tokens_out
-        if used + estimate > FINDING_TOKEN_LIMIT:
+        if not fits(estimate):
             result.reason = "token limit"
             return result
         # Force the verdict on the last step, while there's still room for it (the call after
@@ -172,6 +225,8 @@ async def verify_finding(
             )
         except ToolCallFailed as exc:  # a malformed tool call: this step is lost, ask again
             await step_done(step_no, started, text=str(exc))
+            if last_chance:
+                break  # the forced verdict didn't come: recover below
             continue
         except DeadlineExceeded:
             result.reason = "time limit"
@@ -189,6 +244,8 @@ async def verify_finding(
             messages.append({"role": "assistant", "content": content or ""})
             messages.append({"role": "user", "content": "Call one of the tools."})
             await step_done(step_no, started, text="no tool call", tokens=tokens)
+            if last_chance:
+                break
             continue
 
         messages.append({"role": "assistant", "content": content, "tool_calls": calls})
@@ -201,9 +258,7 @@ async def verify_finding(
             if verdict is not None:
                 text = f"{verdict.verdict}: {verdict.reason}"
                 await step_done(step_no, started, name, arguments, text, tokens)
-                verdict.steps = result.steps
-                verdict.tokens_in, verdict.tokens_out = result.tokens_in, result.tokens_out
-                return verdict
+                return done(verdict)
             tool_result = ToolResult(error)
         elif tool_call_key(name, arguments) in already_called:
             tool_result = ToolResult("Already called with these arguments; the result is above.")
@@ -219,6 +274,33 @@ async def verify_finding(
         for extra in extra_calls:
             messages.append({"role": "tool", "tool_call_id": extra["id"], "content": NOT_RUN})
         await step_done(step_no, started, name, arguments, tool_result.text, tokens)
+        if last_chance:
+            break  # a forced step that brought no valid verdict
+
+    # The forced verdict didn't come. Groq rejects a call to another tool when one is forced,
+    # and the model sometimes makes it anyway (Phase 5 smoke run). Ask once more, forcing it;
+    # then once for plain JSON, where no tool can be called instead.
+    try:
+        if not fits(estimate_tool_call_tokens(messages, TOOL_SCHEMAS)):
+            result.reason = "token limit"
+            return result
+        verdict = await forced_retry()
+        if verdict is not None:
+            return done(verdict)
+        plain = _plain_messages(messages)
+        if not fits(estimate_tool_call_tokens(plain, [])):
+            result.reason = "token limit"
+            return result
+        verdict = await json_verdict(plain)
+        if verdict is not None:
+            return done(verdict)
+    except DeadlineExceeded:
+        result.reason = "time limit"
+        return result
+    except LLMError as exc:
+        result.reason = f"agent error: {str(exc)[:200]}"
+        return result
+    result.reason = "no verdict, even when forced and asked for JSON"
     return result
 
 
@@ -244,6 +326,25 @@ def _parse_verdict(arguments: str, seen: set[tuple[str, int]]) -> tuple[Verdict 
         reason = f"{args.verdict} without evidence from code it read: {args.reason}"
         return Verdict("uncertain", reason), ""
     return Verdict(args.verdict, args.reason, evidence), ""
+
+
+def _plain_messages(messages: list[dict]) -> list[dict]:
+    """The conversation for a call without tools: each tool call becomes a line of assistant
+    text, and each tool result (still wrapped as untrusted) a user message."""
+    plain = []
+    for message in messages:
+        if message["role"] == "tool":
+            plain.append({"role": "user", "content": message["content"]})
+        elif message["role"] == "assistant":
+            lines = [message.get("content") or ""]
+            for call in message.get("tool_calls") or []:
+                function = call["function"]
+                lines.append(f"Called {function['name']}({function['arguments']})")
+            plain.append({"role": "assistant", "content": "\n".join(lines).strip()})
+        else:
+            plain.append(message)
+    plain.append({"role": "user", "content": ASK_FOR_JSON_VERDICT})
+    return plain
 
 
 def _args(arguments: str) -> dict:

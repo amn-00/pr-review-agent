@@ -258,6 +258,19 @@ async def test_tools_run_with_valid_arguments(tmp_path, github):
     assert ("app/report.py", 7) in result.seen
 
 
+async def test_read_file_takes_line_start_and_line_end(tmp_path, github):
+    tools = AgentTools(snapshot_of(tmp_path, REPO_FILES), github, INSTALLATION_ID, REPO, SHA_1)
+
+    args = {"path": "app/report.py", "line_start": 4, "line_end": 7}
+    result = await tools.run("read_file", json.dumps(args))
+    old_names = await tools.run(
+        "read_file", json.dumps({"path": "app/report.py", "start": 4, "end": 7})
+    )
+
+    assert result.seen == {("app/report.py", n) for n in range(4, 8)}
+    assert "Invalid arguments for read_file" in old_names.text
+
+
 async def test_ci_results_are_fetched_once_and_summarized(tmp_path, github, github_api):
     route = github_api.get(f"/repos/{REPO}/commits/{SHA_1}/check-runs").mock(
         return_value=httpx.Response(

@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from statistics import mean
 
-from app.agent.loop import MAX_AGENT_STEPS
+from app.agent.loop import MAX_AGENT_STEPS, VERDICT_JSON
 from app.llm.pricing import cost_usd
 from evals.dataset import Case, Label, load_cases
 
@@ -381,14 +381,24 @@ def _agent(paired: list) -> list[str]:
     steps = [len(f["agent_steps"]) for f in with_steps]
     tokens = [sum(s["tokens_in"] + s["tokens_out"] for s in f["agent_steps"]) for f in with_steps]
     reasons = Counter(f["verdict_reason"] for f in checked if f["verdict"] in (None, "uncertain"))
+    # Past MAX_AGENT_STEPS: the forced verdict didn't come, so it was retried, then asked for
+    # as JSON (app/agent/loop.py).
+    retried = sum(1 for n in steps if n > MAX_AGENT_STEPS)
+    json_fallback = sum(
+        1 for f in with_steps if any(s["tool"] == VERDICT_JSON for s in f["agent_steps"])
+    )
+    failed_calls = sum(1 for f in with_steps for s in f["agent_steps"] if s["tool"] is None)
     lines = ["## Verification agent", ""]
     if not with_steps:
         return lines + ["No agent steps yet.", ""]
     lines += [
         "Verdicts: " + ", ".join(f"{v} {n}" for v, n in sorted(verdicts.items())) + ".",
         f"Steps per finding: mean {mean(steps):.1f}, max {max(steps)}; "
-        f"{sum(1 for n in steps if n == MAX_AGENT_STEPS)} reached the {MAX_AGENT_STEPS}-step "
-        "limit.",
+        f"{sum(1 for n in steps if n >= MAX_AGENT_STEPS)} reached the {MAX_AGENT_STEPS}-step "
+        f"limit. The forced verdict had to be retried for {retried}, and asked for as JSON "
+        f"for {json_fallback}.",
+        f"Steps that failed or called no tool (e.g. rejected by Groq): {failed_calls} of "
+        f"{sum(steps)}.",
         f"Tokens per finding: mean {mean(tokens):.0f}, max {max(tokens)}.",
         "",
         "Why findings ended uncertain or not verified:",

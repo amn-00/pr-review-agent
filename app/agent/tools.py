@@ -41,9 +41,11 @@ class SearchArgs(BaseModel):
 
 
 class ReadFileArgs(BaseModel):
+    # line_start/line_end, like the candidate finding the model is shown: with start/end, the
+    # model kept writing line_start/line_end and Groq rejected the call (Phase 5 smoke run).
     path: str = Field(min_length=1)
-    start: int
-    end: int
+    line_start: int
+    line_end: int
 
 
 class CallersArgs(BaseModel):
@@ -88,11 +90,12 @@ TOOL_SCHEMAS = [
     ),
     _function(
         "read_file",
-        "Read lines start..end (inclusive, at most 80) of a file in the repository, numbered.",
+        "Read lines line_start..line_end (inclusive, at most 80) of a file in the repository, "
+        "numbered.",
         {
             "path": {"type": "string", "description": "Path from the repository root."},
-            "start": {"type": "integer"},
-            "end": {"type": "integer"},
+            "line_start": {"type": "integer"},
+            "line_end": {"type": "integer"},
         },
     ),
     _function(
@@ -161,7 +164,7 @@ class AgentTools:
             if name == "read_file":
                 args = ReadFileArgs.model_validate_json(arguments)
                 return await asyncio.to_thread(
-                    read_file, self._snapshot, args.path, args.start, args.end
+                    read_file, self._snapshot, args.path, args.line_start, args.line_end
                 )
             if name == "find_callers":
                 symbol = CallersArgs.model_validate_json(arguments).symbol

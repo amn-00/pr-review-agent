@@ -843,4 +843,38 @@ day makes the whole run about 3 days.
 - three `read_file` calls passed `line_start`/`line_end` instead of `start`/`end`;
 - the forced last step called `search_repo` instead of `submit_verdict`.
 
-Not changed in 5a. Whether to fix it before the 5b baseline is decided before 5b.
+Both are fixed before the 5b baseline (below).
+
+### Agent fixes before the baseline
+
+**`read_file` takes `line_start`/`line_end`.**
+Those are the names the candidate finding uses, and the model kept writing them. Since Groq
+checks tool arguments against the schema, every such call was rejected and cost a step. The
+Python function's own parameter names don't reach the model and stay `start`/`end`.
+
+**When the forced verdict doesn't come: one more forced call, then one strict-JSON call.**
+A forced step "doesn't come" when Groq rejects it (the model called another tool), the model
+calls another tool anyway, sends no tool call, or sends invalid verdict arguments. The loop
+stops right there, even when the step was forced early by the token or time limit. Then:
+1. **Retry:** one more call, forced to `submit_verdict`.
+2. **JSON fallback:** one strict-JSON call in `submit_verdict`'s shape, with no tools, so no
+   tool can be called instead. Groq can't send tool messages without tools, so the conversation
+   is rewritten as plain text: each call becomes a line like `Called read_file({...})`, and each
+   result a user message, still wrapped as untrusted. This is the fallback rejected in 4a as the
+   normal path; here it runs only when the forced verdict has failed.
+
+The same evidence rules apply to both. Each call is checked against the per-finding token limit
+first and stored as an agent step: the JSON call's `tool` is `verdict_json`. So a finding makes
+at most `MAX_AGENT_STEPS + 2` = 8 LLM calls (tested); the agent's budgets already allow for
+that. If both fail, the finding is `uncertain`.
+
+**Rerun of the smoke case (bug-01, agent mode only, lanes from the cache).**
+- **Before:** 10 calls, 4 rejected by Groq; one confirmed, one "no verdict within 6 steps";
+  62 s.
+- **After:** 6 calls. `read_file` was called twice with the new names, and Groq rejected
+  neither. One finding confirmed in 3 steps; 48 s, $0.0012 for the agent.
+
+The second finding didn't reach a forced step. At step 3 Groq answered 400 `output_parse_failed`
+(the model wrote prose instead of a tool call). The client treats that as a plain `LLMError`,
+not as a lost step, so the finding ended "agent error". The retry and the JSON fallback weren't
+needed in this run; they're covered by the loop tests.
