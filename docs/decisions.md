@@ -891,6 +891,19 @@ on both sides (`shop/stats.py:10` and the caller `shop/report.py:7`). 6 calls, n
 8.9K agent tokens, 49 s (46 s of it waiting for the per-minute limit). `output_parse_failed`
 didn't recur in this run, so the new mapping is covered by the tests only.
 
+**`--agent-budget`: an eval-only way to give the agent more of the day.**
+On day 1 of the baseline the lanes use most of their 110K; after that they have little left to
+do, while the agent's 70K holds back how many cases run each day. `evals.run --agent-budget N`
+sets the job's `AGENT_DAILY_TOKEN_BUDGET` to N for each agent run and restores it after (tested),
+like the runner already does with `agent_enabled`. Production's 70K and the lanes' 110K don't
+change.
+- **Groq's 200K stays the hard limit.** The runner never plans past it minus the 20K headroom
+  prod keeps for calls in flight. Its pre-flight checks also require lanes + agent + this run's
+  estimate ≤ 180K for the model. The budget the job sees during an agent run is
+  `min(N, 180K − lane tokens used today)`, so the agent's own in-flight check honours it too.
+- **With the default budgets nothing changes:** 110K + 70K is exactly 180K, so the combined
+  check never binds.
+
 **A flaky eval test, fixed.** `test_a_case_runs_in_every_mode_and_scores` checked the order of
 the lane calls. They run in parallel, so they're recorded in whatever order they finish, and
 the test failed about one full-suite run in two. It now compares them sorted.

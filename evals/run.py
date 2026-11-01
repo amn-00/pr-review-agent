@@ -1,6 +1,7 @@
 """Run the eval cases through the real review job: real Groq, a fake GitHub, its own database.
 
     uv run python -m evals.run --name baseline [--only CASE ...] [--mode MODE ...] [--dry-run]
+                               [--agent-budget TOKENS]
 
 Each case runs in up to three modes, in this order:
 - pipeline: AGENT_ENABLED off, PR #1 at the case's head. Pays for the lanes.
@@ -14,6 +15,10 @@ complete result for the current case files is never run again; an incomplete one
 by the daily token budget, or a failed call) runs again from scratch, and the lane calls it
 already paid for come from the cache. Runs that don't fit today's budget are left for
 another day.
+
+--agent-budget raises the agent's daily budget for this session only (prod keeps 70K): on
+later days the lanes have little left to do, so the agent can use their room. Lanes plus agent
+still never plan past Groq's 200K per model per day, minus the 20K headroom prod keeps.
 """
 
 import argparse
@@ -37,6 +42,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from app.agent import verify
 from app.agent.loop import FINDING_TOKEN_LIMIT
 from app.agent.verify import (
     AGENT_DAILY_TOKEN_BUDGET,
@@ -70,6 +76,11 @@ INSTALLATION_ID = 1
 # Each run starts with a fresh per-minute Groq window, so latencies are comparable.
 COOLDOWN_SECONDS = 60
 SEMGREP_VERSION = "1.180.0"
+# Groq's free tier allows 200K tokens per model per day. Lanes plus agent are planned to stay
+# 20K under it: the headroom prod keeps for calls in flight, which can overshoot a budget. With
+# the default budgets (110K + 70K) this never binds.
+GROQ_DAILY_TOKEN_LIMIT = 200_000
+DAILY_HEADROOM = 20_000
 
 settings = get_settings()
 
@@ -162,22 +173,43 @@ async def lane_estimate(sessionmaker: async_sessionmaker, case: Case, chunks) ->
     return needed
 
 
+async def used_today(sessionmaker: async_sessionmaker, model: str) -> dict[str, int]:
+    """Tokens this model spent today, per purpose (pipeline, agent)."""
+    async with sessionmaker() as session:
+        return {
+            purpose: await daily_tokens_used(session, model, utc_today(), purpose)
+            for purpose in BudgetPurpose
+        }
+
+
 async def over_budget(
-    sessionmaker: async_sessionmaker, needed: dict[str, int], purpose: BudgetPurpose
+    sessionmaker: async_sessionmaker,
+    needed: dict[str, int],
+    purpose: BudgetPurpose,
+    agent_budget: int = AGENT_DAILY_TOKEN_BUDGET,
 ) -> list[str]:
     """Models whose daily budget left can't cover what's needed, e.g. ["openai/gpt-oss-120b
-    needs 14000, 9000 left"]. Empty when the run fits."""
+    needs 14000, 9000 left"]. Empty when the run fits. What's left is the purpose's own
+    budget, and never more than Groq's daily limit (minus the headroom) leaves for both."""
     if purpose == BudgetPurpose.PIPELINE:
         budget = PIPELINE_DAILY_TOKEN_BUDGET
     else:
-        budget = AGENT_DAILY_TOKEN_BUDGET
+        budget = agent_budget
     problems = []
-    async with sessionmaker() as session:
-        for model, tokens in needed.items():
-            left = budget - await daily_tokens_used(session, model, utc_today(), purpose)
-            if tokens > left:
-                problems.append(f"{model} needs {tokens}, {left} left")
+    for model, tokens in needed.items():
+        used = await used_today(sessionmaker, model)
+        total_left = GROQ_DAILY_TOKEN_LIMIT - DAILY_HEADROOM - sum(used.values())
+        left = min(budget - used[purpose], total_left)
+        if tokens > left:
+            problems.append(f"{model} needs {tokens}, {left} left")
     return problems
+
+
+async def agent_cap(sessionmaker: async_sessionmaker, agent_budget: int) -> int:
+    """The agent daily budget the job checks during an agent run: the session's, lowered so
+    that today's lane tokens plus the agent's stay within Groq's limit minus the headroom."""
+    lanes = (await used_today(sessionmaker, settings.groq_model))[BudgetPurpose.PIPELINE]
+    return min(agent_budget, GROQ_DAILY_TOKEN_LIMIT - DAILY_HEADROOM - lanes)
 
 
 async def delete_run(sessionmaker: async_sessionmaker, case: Case, number: int, sha: str) -> None:
@@ -207,15 +239,18 @@ async def run_one(
     case: Case,
     mode: str,
     tool_findings: list[dict],
+    agent_budget: int = AGENT_DAILY_TOKEN_BUDGET,
 ) -> dict:
-    """Run the review job once and collect everything the report needs."""
+    """Run the review job once and collect everything the report needs. For this run only,
+    the job's agent setting and agent daily budget are the eval's; both are restored after."""
     tree, sha = case.target(mode)
     number = PR_NUMBERS[mode]
     github = FakeGitHub(case.base, tree, sha, case.check_runs)
     groq.calls = []
     deferred = None
-    agent_was_enabled = settings.agent_enabled
+    agent_was_enabled, budget_was = settings.agent_enabled, verify.AGENT_DAILY_TOKEN_BUDGET
     settings.agent_enabled = mode == "agent"
+    verify.AGENT_DAILY_TOKEN_BUDGET = await agent_cap(sessionmaker, agent_budget)
     started_at = datetime.now(UTC)
     started = time.monotonic()
     try:
@@ -226,6 +261,7 @@ async def run_one(
         deferred = f"deferred by the job: {exc!r}"
     finally:
         settings.agent_enabled = agent_was_enabled
+        verify.AGENT_DAILY_TOKEN_BUDGET = budget_was
     wall_seconds = time.monotonic() - started
 
     run, findings = await _load_run(sessionmaker, case, number, sha)
@@ -325,6 +361,7 @@ async def run_session(
     results_dir: Path,
     cooldown_seconds: float = COOLDOWN_SECONDS,
     dry_run: bool = False,
+    agent_budget: int = AGENT_DAILY_TOKEN_BUDGET,
 ) -> None:
     for case in cases:
         for mode in modes:
@@ -362,7 +399,7 @@ async def run_session(
                 warning = " (over the per-PR budget!)" if too_big else ""
                 print(f"{label}: {len(chunks)} chunk(s), {estimate}{warning}")
                 continue
-            problems = await over_budget(sessionmaker, needed, purpose)
+            problems = await over_budget(sessionmaker, needed, purpose, agent_budget)
             if problems:
                 print(f"{label}: left for another day ({'; '.join(problems)})")
                 continue
@@ -380,7 +417,7 @@ async def run_session(
                 for hints in chunk.hints.values()
                 for hint in hints
             ]
-            result = await run_one(sessionmaker, groq, case, mode, tool_findings)
+            result = await run_one(sessionmaker, groq, case, mode, tool_findings, agent_budget)
             result["earlier_calls"] = earlier
             write_result(path, result)
             posted = sum(1 for f in result["findings"] if f["posted"])
@@ -424,6 +461,7 @@ async def _main(args: argparse.Namespace, cases: list[Case], url: str) -> None:
             groq,
             RESULTS_DIR / args.name,
             dry_run=args.dry_run,
+            agent_budget=args.agent_budget,
         )
     finally:
         await groq.aclose()
@@ -436,6 +474,13 @@ def main() -> None:
     parser.add_argument("--only", nargs="+", metavar="CASE", help="run only these case IDs")
     parser.add_argument("--mode", nargs="+", choices=MODES, default=list(MODES))
     parser.add_argument("--dry-run", action="store_true", help="estimate tokens, call no LLM")
+    parser.add_argument(
+        "--agent-budget",
+        type=int,
+        default=AGENT_DAILY_TOKEN_BUDGET,
+        metavar="TOKENS",
+        help=f"the agent's daily budget, this session only (default {AGENT_DAILY_TOKEN_BUDGET})",
+    )
     args = parser.parse_args()
 
     # A missing Semgrep would silently remove every Semgrep hint (a tool problem never fails a

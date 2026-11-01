@@ -1,0 +1,165 @@
+{
+ "case": "bug-01-empty-average",
+ "mode": "repush",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "24ebb3ce97c4e7f9b8e95fa33c2ec0e2157a31b6",
+ "started_at": "2026-11-01T18:02:45.701769+00:00",
+ "wall_seconds": 5.8,
+ "run": {
+  "id": 3,
+  "head_sha": "24ebb3ce97c4e7f9b8e95fa33c2ec0e2157a31b6",
+  "status": "completed",
+  "started_at": "2026-11-01 18:02:46.073400+00:00",
+  "finished_at": "2026-11-01 18:02:51.448221+00:00",
+  "tokens_in": 3430,
+  "tokens_out": 526,
+  "cost_usd": "0.000705225",
+  "llm_calls": 3,
+  "cached_calls": 3,
+  "tokens_saved": 4037,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1137,
+   "tokens_out": 132,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.59
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1142,
+   "tokens_out": 94,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.84
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1151,
+   "tokens_out": 300,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.11
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 9,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "shop/report.py",
+   "line_start": 7,
+   "line_end": 9,
+   "category": "bug",
+   "severity": "high",
+   "title": "ZeroDivisionError when computing average for customers with no orders",
+   "explanation": "The added call to average_order_value(customer.orders) will raise a division\u2011by\u2011zero error if the customer has an empty orders list, causing the function to crash for such customers.",
+   "suggested_fix": "Guard against empty orders, e.g.,\n```python\nif customer.orders:\n    average = average_order_value(customer.orders)\nelse:\n    average = 0.0\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "high",
+   "title": "ZeroDivisionError when no paid orders",
+   "explanation": "The function divides by len(paid) without checking if the list is empty. If there are no paid orders, len(paid) is zero and a ZeroDivisionError is raised.",
+   "suggested_fix": "Add a guard for an empty list, e.g., return 0.0 or None when len(paid) == 0 before performing the division.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 11,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 6,
+   "line_end": 7,
+   "category": "readability",
+   "severity": "low",
+   "title": "Unnecessary blank lines added",
+   "explanation": "Two consecutive blank lines were added after the function definition, which adds no value and increases file length.",
+   "suggested_fix": "Remove the extra blank lines.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 12,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Duplicate filtering of paid orders",
+   "explanation": "The function filters paid orders into a list and then iterates over that list again for sum and length. This repeats work and makes the code harder to read.",
+   "suggested_fix": "Use a single generator expression: `return sum(order.total for order in orders if order.paid) / len([order for order in orders if order.paid])` or store the generator once.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 10,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:3 -->\n### Automated review of `24ebb3c`\nFound 3 issue(s): 2 high, 1 low.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0007 at list prices (free tier); 3 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "shop/report.py",
+    "line": 9,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 ZeroDivisionError when computing average for customers with no orders\n\nThe added call to average_order_value(customer.orders) will raise a division\u2011by\u2011zero error if the customer has an empty orders list, causing the function to crash for such customers.\n\n**Suggested fix:** Guard against empty orders, e.g.,\n```python\nif customer.orders:\n    average = average_order_value(customer.orders)\nelse:\n    average = 0.0\n```",
+    "start_line": 7,
+    "start_side": "RIGHT"
+   },
+   {
+    "path": "shop/stats.py",
+    "line": 10,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 ZeroDivisionError when no paid orders\n\nThe function divides by len(paid) without checking if the list is empty. If there are no paid orders, len(paid) is zero and a ZeroDivisionError is raised.\n\n**Suggested fix:** Add a guard for an empty list, e.g., return 0.0 or None when len(paid) == 0 before performing the division."
+   },
+   {
+    "path": "shop/stats.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**low** \u00b7 readability \u00b7 Unnecessary blank lines added\n\nTwo consecutive blank lines were added after the function definition, which adds no value and increases file length.\n\n**Suggested fix:** Remove the extra blank lines.",
+    "start_line": 6,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

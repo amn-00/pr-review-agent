@@ -1,0 +1,482 @@
+{
+ "case": "bug-01-empty-average",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "e7c12a694d92668df2d73807d45e4a798d43521d",
+ "started_at": "2026-11-01T17:59:38.976288+00:00",
+ "wall_seconds": 122.4,
+ "run": {
+  "id": 2,
+  "head_sha": "e7c12a694d92668df2d73807d45e4a798d43521d",
+  "status": "completed",
+  "started_at": "2026-11-01 17:59:38.999619+00:00",
+  "finished_at": "2026-11-01 18:01:41.364613+00:00",
+  "tokens_in": 12453,
+  "tokens_out": 940,
+  "cost_usd": "0.002431950",
+  "llm_calls": 13,
+  "cached_calls": 6,
+  "tokens_saved": 7846,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1256,
+   "tokens_out": 41,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.49
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1268,
+   "tokens_out": 52,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.49
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1350,
+   "tokens_out": 42,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.42
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1370,
+   "tokens_out": 54,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.59
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1547,
+   "tokens_out": 169,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.66
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See \\'failed_generation\\' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We see average_order_value may ",
+   "latency_s": 55.64
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1249,
+   "tokens_out": 94,
+   "waited_s": 54.44,
+   "error": null,
+   "latency_s": 55.2
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See \\'failed_generation\\' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need see if zero division ca",
+   "latency_s": 0.72
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1448,
+   "tokens_out": 227,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.02
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1554,
+   "tokens_out": 61,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.48
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'read_file\\' which does not match request.tool_choice: \\'submit_verdict\\'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"rea",
+   "latency_s": 58.19
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'read_file\\' which does not match request.tool_choice: \\'submit_verdict\\'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"rea",
+   "latency_s": 0.47
+  },
+  {
+   "kind": "submit_verdict",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1411,
+   "tokens_out": 200,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.16
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 5,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "shop/report.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "high",
+   "title": "Potential division by zero when calculating average order value",
+   "explanation": "The added call to `average_order_value(customer.orders)` may raise a ZeroDivisionError if the customer has no orders, causing the function to crash for valid customers with an empty order list.",
+   "suggested_fix": "Add a guard for empty orders, e.g., `average = average_order_value(customer.orders) if customer.orders else 0`",
+   "verdict": "confirmed",
+   "verdict_reason": "average_order_value divides by the number of paid orders without guarding against an empty list, so calling it with an empty orders list can raise ZeroDivisionError, confirming the finding.",
+   "evidence": [
+    {
+     "why": "creates list of paid orders",
+     "line": 9,
+     "path": "shop/stats.py"
+    },
+    {
+     "why": "divides sum by len(paid) without zero check",
+     "line": 10,
+     "path": "shop/stats.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def average_order_value"
+     },
+     "result_chars": 115,
+     "result_summary": "Lines containing 'def average_order_value':\nshop/stats.py:8: def average_order_value(orders: list[Order]) -> float:",
+     "tokens_in": 1256,
+     "tokens_out": 41,
+     "latency_ms": 500
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "shop/stats.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 411,
+     "result_summary": "shop/stats.py, lines 1-10 of 10:\n    1  from shop.models import Order\n    2  \n    3  \n    4  def total_spent(orders: list[Order]) -> float:\n    5      return sum(order.total for order in orders if order.paid)\n    6  \n    7  \n    8  def average_order_value(orders: list[Order]) -> float:\n    9      pa",
+     "tokens_in": 1350,
+     "tokens_out": 42,
+     "latency_ms": 422
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "average_order_value divides by the number of paid orders without guarding against an empty list, so calling it with an empty orders list can raise ZeroDivisionError, confirming the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "creates list of paid orders",
+        "line": 9,
+        "path": "shop/stats.py"
+       },
+       {
+        "why": "divides sum by len(paid) without zero check",
+        "line": 10,
+        "path": "shop/stats.py"
+       }
+      ]
+     },
+     "result_chars": 200,
+     "result_summary": "confirmed: average_order_value divides by the number of paid orders without guarding against an empty list, so calling it with an empty orders list can raise ZeroDivisionError, confirming the finding.",
+     "tokens_in": 1547,
+     "tokens_out": 169,
+     "latency_ms": 657
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "high",
+   "title": "ZeroDivisionError when no paid orders",
+   "explanation": "The function divides by len(paid) without checking if the list is empty. If there are no paid orders, len(paid) is zero and a ZeroDivisionError is raised.",
+   "suggested_fix": "Add a guard for an empty list, e.g., return 0.0 or None when len(paid) == 0 before performing the division.",
+   "verdict": "confirmed",
+   "verdict_reason": "average_order_value divides by len(paid) without checking for zero, and it is called with a customer's orders which may be empty, leading to a potential ZeroDivisionError.",
+   "evidence": [
+    {
+     "why": "division by len(paid) with no zero check",
+     "line": 10,
+     "path": "shop/stats.py"
+    },
+    {
+     "why": "calls average_order_value with customer.orders which may be empty",
+     "line": 7,
+     "path": "shop/report.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "average_order_value"
+     },
+     "result_chars": 169,
+     "result_summary": "Uses of 'average_order_value':\nshop/report.py:2: from shop.stats import average_order_value, total_spent\nshop/report.py:7: average = average_order_value(customer.orders)",
+     "tokens_in": 1268,
+     "tokens_out": 52,
+     "latency_ms": 500
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "shop/report.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 393,
+     "result_summary": "shop/report.py, lines 1-8 of 8:\n    1  from shop.models import Customer\n    2  from shop.stats import average_order_value, total_spent\n    3  \n    4  \n    5  def customer_summary(customer: Customer) -> str:\n    6      spent = total_spent(customer.orders)\n    7      average = average_order_value(cust",
+     "tokens_in": 1370,
+     "tokens_out": 54,
+     "latency_ms": 594
+    },
+    {
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We see average_order_value may be called with cus",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 55641
+    },
+    {
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need see if zero division can occur. average_o",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 718
+    },
+    {
+     "step_no": 5,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class Customer"
+     },
+     "result_chars": 69,
+     "result_summary": "Lines containing 'class Customer':\nshop/models.py:12: class Customer:",
+     "tokens_in": 1554,
+     "tokens_out": 61,
+     "latency_ms": 484
+    },
+    {
+     "step_no": 6,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 58188
+    },
+    {
+     "step_no": 7,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 469
+    },
+    {
+     "step_no": 8,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "average_order_value divides by len(paid) without checking for zero, and it is called with a customer's orders which may be empty, leading to a potential ZeroDivisionError.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "division by len(paid) with no zero check",
+        "line": 10,
+        "path": "shop/stats.py"
+       },
+       {
+        "why": "calls average_order_value with customer.orders which may be empty",
+        "line": 7,
+        "path": "shop/report.py"
+       }
+      ]
+     },
+     "result_chars": 182,
+     "result_summary": "confirmed: average_order_value divides by len(paid) without checking for zero, and it is called with a customer's orders which may be empty, leading to a potential ZeroDivisionError.",
+     "tokens_in": 1411,
+     "tokens_out": 200,
+     "latency_ms": 1157
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 6,
+   "line_end": 7,
+   "category": "readability",
+   "severity": "low",
+   "title": "Unnecessary blank lines added",
+   "explanation": "Two consecutive blank lines were added after the function definition, which adds no value and increases file length.",
+   "suggested_fix": "Remove the extra blank lines.",
+   "verdict": "confirmed",
+   "verdict_reason": "The file contains two consecutive blank lines after the total_spent function before the next definition, matching the finding.",
+   "evidence": [
+    {
+     "why": "blank line",
+     "line": 6,
+     "path": "shop/stats.py"
+    },
+    {
+     "why": "blank line",
+     "line": 7,
+     "path": "shop/stats.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "shop/stats.py",
+      "line_end": 20,
+      "line_start": 1
+     },
+     "result_chars": 411,
+     "result_summary": "shop/stats.py, lines 1-10 of 10:\n    1  from shop.models import Order\n    2  \n    3  \n    4  def total_spent(orders: list[Order]) -> float:\n    5      return sum(order.total for order in orders if order.paid)\n    6  \n    7  \n    8  def average_order_value(orders: list[Order]) -> float:\n    9      pa",
+     "tokens_in": 1249,
+     "tokens_out": 94,
+     "latency_ms": 55219
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The file contains two consecutive blank lines after the total_spent function before the next definition, matching the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "blank line",
+        "line": 6,
+        "path": "shop/stats.py"
+       },
+       {
+        "why": "blank line",
+        "line": 7,
+        "path": "shop/stats.py"
+       }
+      ]
+     },
+     "result_chars": 137,
+     "result_summary": "confirmed: The file contains two consecutive blank lines after the total_spent function before the next definition, matching the finding.",
+     "tokens_in": 1448,
+     "tokens_out": 227,
+     "latency_ms": 1016
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Duplicate filtering of paid orders",
+   "explanation": "The function filters paid orders into a list and then iterates over that list again for sum and length. This repeats work and makes the code harder to read.",
+   "suggested_fix": "Use a single generator expression: `return sum(order.total for order in orders if order.paid) / len([order for order in orders if order.paid])` or store the generator once.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 6,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:2 -->\n### Automated review of `e7c12a6`\nFound 3 confirmed issue(s): 2 high, 1 low.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 3 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0024 at list prices (free tier; agent $0.0024); 6 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "shop/report.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Potential division by zero when calculating average order value\n\nThe added call to `average_order_value(customer.orders)` may raise a ZeroDivisionError if the customer has no orders, causing the function to crash for valid customers with an empty order list.\n\n**Suggested fix:** Add a guard for empty orders, e.g., `average = average_order_value(customer.orders) if customer.orders else 0`\n\n_Checked against `shop/stats.py:9`, `shop/stats.py:10`_"
+   },
+   {
+    "path": "shop/stats.py",
+    "line": 10,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 ZeroDivisionError when no paid orders\n\nThe function divides by len(paid) without checking if the list is empty. If there are no paid orders, len(paid) is zero and a ZeroDivisionError is raised.\n\n**Suggested fix:** Add a guard for an empty list, e.g., return 0.0 or None when len(paid) == 0 before performing the division.\n\n_Checked against `shop/stats.py:10`, `shop/report.py:7`_"
+   },
+   {
+    "path": "shop/stats.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**low** \u00b7 readability \u00b7 Unnecessary blank lines added\n\nTwo consecutive blank lines were added after the function definition, which adds no value and increases file length.\n\n**Suggested fix:** Remove the extra blank lines.\n\n_Checked against `shop/stats.py:6`, `shop/stats.py:7`_",
+    "start_line": 6,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

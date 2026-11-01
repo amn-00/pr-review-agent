@@ -4,6 +4,8 @@ import json
 
 from sqlalchemy import func, select
 
+from app.agent import verify
+from app.agent.verify import AGENT_DAILY_TOKEN_BUDGET
 from app.config import get_settings
 from app.db.models import BudgetPurpose, ReviewRun
 from app.db.queries import add_daily_tokens
@@ -11,7 +13,15 @@ from app.llm.groq import LLMError
 from app.pipeline.orchestrator import PIPELINE_DAILY_TOKEN_BUDGET, utc_today
 from evals.dataset import load_case
 from evals.report import load_results, render
-from evals.run import MODES, RecordingGroq, read_result, run_one, run_session
+from evals.run import (
+    MODES,
+    RecordingGroq,
+    agent_cap,
+    over_budget,
+    read_result,
+    run_one,
+    run_session,
+)
 from tests.conftest import FakeGroq
 from tests.factories import lane_finding
 from tests.test_evals_dataset import write_case
@@ -128,6 +138,51 @@ async def test_a_run_that_doesnt_fit_todays_budget_waits(tmp_path, sessionmaker,
     output = capsys.readouterr().out
     assert "c [pipeline]: left for another day" in output
     assert "c [agent]: waiting for the pipeline run" in output
+
+
+async def spent_today(sessionmaker, purpose: BudgetPurpose, tokens: int) -> None:
+    async with sessionmaker() as session:
+        await add_daily_tokens(session, settings.groq_model, utc_today(), purpose, tokens)
+
+
+async def test_a_higher_agent_budget_lets_the_agent_use_the_days_room(
+    tmp_path, sessionmaker, groq, capsys
+):
+    case, results = tiny_case(tmp_path), tmp_path / "results"
+    recording = scripted(groq)
+    await run_session([case], ["pipeline"], sessionmaker, recording, results, 0)
+    # The agent already spent 68K today: the default 70K has no room for one more finding.
+    await spent_today(sessionmaker, BudgetPurpose.AGENT, 68_000)
+
+    await run_session([case], ["agent"], sessionmaker, recording, results, 0)
+    assert "c [agent]: left for another day" in capsys.readouterr().out
+
+    await run_session([case], ["agent"], sessionmaker, recording, results, 0, agent_budget=160_000)
+
+    agent = read_result(results / "c.agent.json")
+    # Complete with a verdict, so the job's own check used the raised budget too...
+    assert agent["status"] == "complete"
+    assert [f["verdict"] for f in agent["findings"]] == ["confirmed"]
+    # ...and only for that run: production's default is back.
+    assert verify.AGENT_DAILY_TOKEN_BUDGET == AGENT_DAILY_TOKEN_BUDGET == 70_000
+
+
+async def test_lanes_and_agent_never_plan_past_groqs_daily_limit(sessionmaker):
+    # 175K of Groq's 200K used today; the runner keeps 20K headroom, so 5K is left for both.
+    await spent_today(sessionmaker, BudgetPurpose.PIPELINE, 100_000)
+    await spent_today(sessionmaker, BudgetPurpose.AGENT, 75_000)
+    model = settings.groq_model
+
+    agent = await over_budget(sessionmaker, {model: 17_000}, BudgetPurpose.AGENT, 160_000)
+    lanes = await over_budget(sessionmaker, {model: 6_000}, BudgetPurpose.PIPELINE, 160_000)
+    small = await over_budget(sessionmaker, {model: 5_000}, BudgetPurpose.PIPELINE, 160_000)
+
+    assert agent == [f"{model} needs 17000, 5000 left"]  # its own budget has 85K left
+    assert lanes == [f"{model} needs 6000, 5000 left"]  # its own budget has 10K left
+    assert small == []
+    # The job's agent budget is lowered to what the lanes leave under the limit.
+    assert await agent_cap(sessionmaker, 160_000) == 80_000
+    assert await agent_cap(sessionmaker, AGENT_DAILY_TOKEN_BUDGET) == 70_000
 
 
 async def test_job_deferred_for_the_daily_budget_is_incomplete(tmp_path, sessionmaker, groq):
