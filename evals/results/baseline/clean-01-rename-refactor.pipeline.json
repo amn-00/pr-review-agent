@@ -1,0 +1,118 @@
+{
+ "case": "clean-01-rename-refactor",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "1e965807811d8dcf54f227bd77f68c65d675f7a3",
+ "started_at": "2026-11-01T18:28:59.358337+00:00",
+ "wall_seconds": 6.0,
+ "run": {
+  "id": 22,
+  "head_sha": "1e965807811d8dcf54f227bd77f68c65d675f7a3",
+  "status": "completed",
+  "started_at": "2026-11-01 18:28:59.381606+00:00",
+  "finished_at": "2026-11-01 18:29:05.386415+00:00",
+  "tokens_in": 6916,
+  "tokens_out": 584,
+  "cost_usd": "0.001119450",
+  "llm_calls": 6,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1195,
+   "tokens_out": 55,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.48
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1202,
+   "tokens_out": 64,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.61
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1185,
+   "tokens_out": 209,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.66
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1117,
+   "tokens_out": 76,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.48
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1109,
+   "tokens_out": 112,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.48
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1108,
+   "tokens_out": 68,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.58
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 70,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "inventory/stock.py",
+   "line_start": 15,
+   "line_end": 17,
+   "category": "readability",
+   "severity": "low",
+   "title": "Unnecessary generator expression in sorted",
+   "explanation": "Using a generator expression inside sorted is redundant; a list comprehension would be clearer and slightly more efficient because sorted will iterate over the generator anyway. Future readers might be confused by the extra parentheses and the fact that sorted consumes any iterable.",
+   "suggested_fix": "Replace the generator with a list comprehension: `return sorted([item for item in items if needs_reorder(item)], key=lambda item: item.quantity)`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:22 -->\n### Automated review of `1e96580`\nFound 1 issue(s): 1 low.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0011 at list prices (free tier); 0 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "inventory/stock.py",
+    "line": 17,
+    "side": "RIGHT",
+    "body": "**low** \u00b7 readability \u00b7 Unnecessary generator expression in sorted\n\nUsing a generator expression inside sorted is redundant; a list comprehension would be clearer and slightly more efficient because sorted will iterate over the generator anyway. Future readers might be confused by the extra parentheses and the fact that sorted consumes any iterable.\n\n**Suggested fix:** Replace the generator with a list comprehension: `return sorted([item for item in items if needs_reorder(item)], key=lambda item: item.quantity)`",
+    "start_line": 15,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

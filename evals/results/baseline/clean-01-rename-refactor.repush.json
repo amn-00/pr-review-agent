@@ -1,0 +1,91 @@
+{
+ "case": "clean-01-rename-refactor",
+ "mode": "repush",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "7d42501e1819f8cd91f478a34e723438533f4a2b",
+ "started_at": "2026-11-01T18:30:14.151601+00:00",
+ "wall_seconds": 6.2,
+ "run": {
+  "id": 23,
+  "head_sha": "7d42501e1819f8cd91f478a34e723438533f4a2b",
+  "status": "completed",
+  "started_at": "2026-11-01 18:30:14.188509+00:00",
+  "finished_at": "2026-11-01 18:30:20.300385+00:00",
+  "tokens_in": 3422,
+  "tokens_out": 413,
+  "cost_usd": "0.000628875",
+  "llm_calls": 3,
+  "cached_calls": 3,
+  "tokens_saved": 3910,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1131,
+   "tokens_out": 158,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.41
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1140,
+   "tokens_out": 60,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.69
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1151,
+   "tokens_out": 195,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.2
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 71,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "inventory/stock.py",
+   "line_start": 15,
+   "line_end": 17,
+   "category": "readability",
+   "severity": "low",
+   "title": "Unnecessary generator expression in sorted",
+   "explanation": "Using a generator expression inside sorted is redundant; a list comprehension would be clearer and slightly more efficient because sorted will iterate over the generator anyway. Future readers might be confused by the extra parentheses and the fact that sorted consumes any iterable.",
+   "suggested_fix": "Replace the generator with a list comprehension: `return sorted([item for item in items if needs_reorder(item)], key=lambda item: item.quantity)`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:23 -->\n### Automated review of `7d42501`\nFound 1 issue(s): 1 low.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0006 at list prices (free tier); 3 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "inventory/stock.py",
+    "line": 17,
+    "side": "RIGHT",
+    "body": "**low** \u00b7 readability \u00b7 Unnecessary generator expression in sorted\n\nUsing a generator expression inside sorted is redundant; a list comprehension would be clearer and slightly more efficient because sorted will iterate over the generator anyway. Future readers might be confused by the extra parentheses and the fact that sorted consumes any iterable.\n\n**Suggested fix:** Replace the generator with a list comprehension: `return sorted([item for item in items if needs_reorder(item)], key=lambda item: item.quantity)`",
+    "start_line": 15,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

@@ -1,0 +1,117 @@
+{
+ "case": "bug-13-token-compare",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "bedf741f11fa60efc9d067253ec1935943efbbde",
+ "started_at": "2026-11-01T18:26:29.007135+00:00",
+ "wall_seconds": 5.9,
+ "run": {
+  "id": 20,
+  "head_sha": "bedf741f11fa60efc9d067253ec1935943efbbde",
+  "status": "completed",
+  "started_at": "2026-11-01 18:26:29.040710+00:00",
+  "finished_at": "2026-11-01 18:26:34.903374+00:00",
+  "tokens_in": 3952,
+  "tokens_out": 954,
+  "cost_usd": "0.000930525",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1316,
+   "tokens_out": 108,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.73
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1323,
+   "tokens_out": 392,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.31
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1313,
+   "tokens_out": 454,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.38
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 65,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "auth/tokens.py",
+   "line_start": 18,
+   "line_end": 18,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Unclear variable name for unused partition result",
+   "explanation": "The line `body, _, signature = token.partition(\".\")` assigns the middle part of the partition to the underscore variable `_`. While this conventionally indicates an unused value, it can be confusing to readers who may wonder why the middle component is discarded. A more descriptive name (e.g., `delimiter`) or a comment clarifying that the token format contains exactly two parts would improve clarity.",
+   "suggested_fix": "body, delimiter, signature = token.partition(\".\")  # delimiter is the dot separating body and signature",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 66,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "auth/tokens.py",
+   "line_start": 22,
+   "line_end": 24,
+   "category": "bug",
+   "severity": "medium",
+   "title": "verify() can raise exception on malformed token",
+   "explanation": "If the token's body part is not valid base64 or does not contain valid JSON, json.loads/base64 decoding will raise an exception, causing the function to crash instead of returning None.",
+   "suggested_fix": "Wrap the decoding and JSON parsing in a try/except block and return None on any error, e.g.,\n```python\ntry:\n    payload = json.loads(base64.urlsafe_b64decode(body))\nexcept (ValueError, json.JSONDecodeError):\n    return None\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:20 -->\n### Automated review of `bedf741`\nFound 2 issue(s): 2 medium.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0009 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "auth/tokens.py",
+    "line": 18,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 readability \u00b7 Unclear variable name for unused partition result\n\nThe line `body, _, signature = token.partition(\".\")` assigns the middle part of the partition to the underscore variable `_`. While this conventionally indicates an unused value, it can be confusing to readers who may wonder why the middle component is discarded. A more descriptive name (e.g., `delimiter`) or a comment clarifying that the token format contains exactly two parts would improve clarity.\n\n**Suggested fix:** body, delimiter, signature = token.partition(\".\")  # delimiter is the dot separating body and signature"
+   },
+   {
+    "path": "auth/tokens.py",
+    "line": 24,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 verify() can raise exception on malformed token\n\nIf the token's body part is not valid base64 or does not contain valid JSON, json.loads/base64 decoding will raise an exception, causing the function to crash instead of returning None.\n\n**Suggested fix:** Wrap the decoding and JSON parsing in a try/except block and return None on any error, e.g.,\n```python\ntry:\n    payload = json.loads(base64.urlsafe_b64decode(body))\nexcept (ValueError, json.JSONDecodeError):\n    return None\n```",
+    "start_line": 22,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

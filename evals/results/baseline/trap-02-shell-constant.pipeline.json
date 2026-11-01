@@ -1,0 +1,122 @@
+{
+ "case": "trap-02-shell-constant",
+ "mode": "pipeline",
+ "status": "incomplete",
+ "problems": [
+  "1 lane call(s) failed"
+ ],
+ "notes": [],
+ "head_sha": "b0f0e893040da22cbea3b0d8a084eb5276134891",
+ "started_at": "2026-11-01T18:42:04.246645+00:00",
+ "wall_seconds": 5.4,
+ "run": {
+  "id": 33,
+  "head_sha": "b0f0e893040da22cbea3b0d8a084eb5276134891",
+  "status": "completed",
+  "started_at": "2026-11-01 18:42:04.274553+00:00",
+  "finished_at": "2026-11-01 18:42:09.604820+00:00",
+  "tokens_in": 2379,
+  "tokens_out": 644,
+  "cost_usd": "0.000539025",
+  "llm_calls": 2,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1212,
+   "tokens_out": 255,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.88
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1167,
+   "tokens_out": 389,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.02
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See \\'failed_generation\\' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need to report any bug or pe",
+   "latency_s": 1.34
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "ops/version.py",
+   "tool": "semgrep",
+   "line": 8,
+   "code": "subprocess-shell-true",
+   "message": "subprocess call with shell=True. If any part of the command comes from input, this allows shell injection.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 89,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 9,
+   "category": "security",
+   "severity": "low",
+   "title": "Use of subprocess.run with shell=True can enable command injection",
+   "explanation": "The code executes a fixed git command using subprocess.run with shell=True. While the current command string is static, using shell=True unnecessarily expands the attack surface and could become vulnerable if the command string is ever modified to include user input.",
+   "suggested_fix": "Replace the shell invocation with a list argument and set shell=False, e.g., subprocess.run([\"git\", \"rev-parse\", \"--short\", \"HEAD\"], capture_output=True, text=True, check=True).",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 90,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Avoid shell=True with string arguments in subprocess.run",
+   "explanation": "Using shell=True with a single string argument bypasses the typical subprocess interface and can lead to security and portability issues. The idiomatic way is to pass the command as a list of arguments and omit shell=True.",
+   "suggested_fix": "Replace the call with\n```python\ncommit = subprocess.check_output([\"git\", \"rev-parse\", \"--short\", \"HEAD\"], text=True).strip()\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 89,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:33 -->\n### Automated review of `b0f0e89`\nFound 1 issue(s): 1 low.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0005 at list prices (free tier); 0 of 2 lane call(s) answered from cache.\n\n<details><summary>Not fully reviewed</summary>\n\n- 1 lane call(s) failed\n\n</details>",
+  "comments": [
+   {
+    "path": "ops/version.py",
+    "line": 9,
+    "side": "RIGHT",
+    "body": "**low** \u00b7 security \u00b7 Use of subprocess.run with shell=True can enable command injection\n\nThe code executes a fixed git command using subprocess.run with shell=True. While the current command string is static, using shell=True unnecessarily expands the attack surface and could become vulnerable if the command string is ever modified to include user input.\n\n**Suggested fix:** Replace the shell invocation with a list argument and set shell=False, e.g., subprocess.run([\"git\", \"rev-parse\", \"--short\", \"HEAD\"], capture_output=True, text=True, check=True).",
+    "start_line": 8,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

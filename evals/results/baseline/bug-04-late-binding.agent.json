@@ -1,0 +1,294 @@
+{
+ "case": "bug-04-late-binding",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "1db8948bc06cc113176bfd692f0b7e1bc53458d4",
+ "started_at": "2026-11-01T18:11:29.557856+00:00",
+ "wall_seconds": 6.6,
+ "run": {
+  "id": 9,
+  "head_sha": "1db8948bc06cc113176bfd692f0b7e1bc53458d4",
+  "status": "completed",
+  "started_at": "2026-11-01 18:11:29.590001+00:00",
+  "finished_at": "2026-11-01 18:11:36.197714+00:00",
+  "tokens_in": 5683,
+  "tokens_out": 445,
+  "cost_usd": "0.001119450",
+  "llm_calls": 5,
+  "cached_calls": 3,
+  "tokens_saved": 4643,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1348,
+   "tokens_out": 37,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.42
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1440,
+   "tokens_out": 43,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.42
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1338,
+   "tokens_out": 215,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.94
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'json\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"json\\\\\", \\\\\"arguments\\\\\": {\\\\n    \\\\\"e",
+   "latency_s": 0.75
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1557,
+   "tokens_out": 150,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.64
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "notify/reminders.py",
+   "tool": "ruff",
+   "line": 11,
+   "code": "B023",
+   "message": "Function definition does not bind loop variable `user`",
+   "lane": "correctness"
+  },
+  {
+   "file": "notify/reminders.py",
+   "tool": "ruff",
+   "line": 11,
+   "code": "B023",
+   "message": "Function definition does not bind loop variable `subject`",
+   "lane": "correctness"
+  }
+ ],
+ "findings": [
+  {
+   "id": 27,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "notify/reminders.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "bug",
+   "severity": "high",
+   "title": "Late-binding closure captures loop variables",
+   "explanation": "The lambda defined in the loop captures the variables `user` and `subject` by reference. All callbacks will use the values from the last iteration, sending emails to the wrong recipient and subject.",
+   "suggested_fix": "Bind the current values in the lambda default arguments, e.g., `reminders.append(lambda u=user, s=subject: send_email(u[\"email\"], s))`.",
+   "verdict": "confirmed",
+   "verdict_reason": "The lambda defined inside the loop captures the loop variables by reference, so all callbacks will use the final values of user and subject, leading to incorrect emails.",
+   "evidence": [
+    {
+     "why": "subject defined per loop iteration",
+     "line": 10,
+     "path": "notify/reminders.py"
+    },
+    {
+     "why": "lambda captures user and subject by reference causing late-binding issue",
+     "line": 11,
+     "path": "notify/reminders.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The lambda defined inside the loop captures the loop variables by reference, so all callbacks will use the final values of user and subject, leading to incorrect emails.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "subject defined per loop iteration",
+        "line": 10,
+        "path": "notify/reminders.py"
+       },
+       {
+        "why": "lambda captures user and subject by reference causing late-binding issue",
+        "line": 11,
+        "path": "notify/reminders.py"
+       }
+      ]
+     },
+     "result_chars": 180,
+     "result_summary": "confirmed: The lambda defined inside the loop captures the loop variables by reference, so all callbacks will use the final values of user and subject, leading to incorrect emails.",
+     "tokens_in": 1338,
+     "tokens_out": 215,
+     "latency_ms": 938
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "notify/reminders.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "security",
+   "severity": "medium",
+   "title": "Potential email header injection via user-provided name",
+   "explanation": "The subject line is built directly from `user['name']` without any sanitisation. If the name contains newline or other header\u2011control characters, an attacker could inject additional email headers when `send_email` constructs the message.",
+   "suggested_fix": "Sanitize or escape the user-provided name before inserting it into the email subject, e.g., remove newline characters or use a safe formatting library.",
+   "verdict": "dropped",
+   "verdict_reason": "send_email does not construct email headers; it only prints the subject, so injection cannot occur.",
+   "evidence": [
+    {
+     "why": "send_email just prints, no header handling",
+     "line": 1,
+     "path": "notify/sender.py"
+    },
+    {
+     "why": "subject built from user name but safe because not used in email headers",
+     "line": 10,
+     "path": "notify/reminders.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def send_email"
+     },
+     "result_chars": 106,
+     "result_summary": "Lines containing 'def send_email':\nnotify/sender.py:1: def send_email(address: str, subject: str) -> None:",
+     "tokens_in": 1348,
+     "tokens_out": 37,
+     "latency_ms": 438
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "notify/sender.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 137,
+     "result_summary": "notify/sender.py, lines 1-2 of 2:\n    1  def send_email(address: str, subject: str) -> None:\n    2      print(f\"to {address}: {subject}\")",
+     "tokens_in": 1440,
+     "tokens_out": 43,
+     "latency_ms": 422
+    },
+    {
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'json' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"json\\\", \\\"arguments\\\": {\\n    \\\"evidence\\\": [\\n        {\\n ",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 750
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "send_email does not construct email headers; it only prints the subject, so injection cannot occur.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "send_email just prints, no header handling",
+        "line": 1,
+        "path": "notify/sender.py"
+       },
+       {
+        "why": "subject built from user name but safe because not used in email headers",
+        "line": 10,
+        "path": "notify/reminders.py"
+       }
+      ]
+     },
+     "result_chars": 108,
+     "result_summary": "dropped: send_email does not construct email headers; it only prints the subject, so injection cannot occur.",
+     "tokens_in": 1557,
+     "tokens_out": 150,
+     "latency_ms": 640
+    }
+   ]
+  },
+  {
+   "id": 29,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "notify/reminders.py",
+   "line_start": 9,
+   "line_end": 11,
+   "category": "idiom",
+   "severity": "high",
+   "title": "Lambda captures loop variable",
+   "explanation": "Using a lambda inside a loop captures the loop variable by reference, so all callbacks will send to the last user instead of the intended one. This is a common Python pitfall and will cause incorrect behavior.",
+   "suggested_fix": "Use a default argument or a helper function to bind the current user, e.g. \"reminders.append(lambda u=user: send_email(u['email'], subject))\".",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 27,
+   "agent_steps": []
+  },
+  {
+   "id": 30,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "notify/reminders.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "security",
+   "severity": "medium",
+   "title": "Unvalidated email address may lead to injection in email sending routine",
+   "explanation": "`send_email` is called with `user[\"email\"]` taken directly from input data. If `send_email` builds a command line or email headers from this value, a malicious email address could result in command injection or header injection.",
+   "suggested_fix": "Validate the email address format and escape any characters that could be interpreted by the email-sending implementation before passing it to `send_email`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 27,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:9 -->\n### Automated review of `1db8948`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 1 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0011 at list prices (free tier; agent $0.0011); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "notify/reminders.py",
+    "line": 11,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Late-binding closure captures loop variables\n\nThe lambda defined in the loop captures the variables `user` and `subject` by reference. All callbacks will use the values from the last iteration, sending emails to the wrong recipient and subject.\n\n**Suggested fix:** Bind the current values in the lambda default arguments, e.g., `reminders.append(lambda u=user, s=subject: send_email(u[\"email\"], s))`.\n\n_Checked against `notify/reminders.py:10`, `notify/reminders.py:11`_"
+   }
+  ]
+ }
+}

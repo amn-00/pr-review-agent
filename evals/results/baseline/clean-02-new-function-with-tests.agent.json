@@ -1,0 +1,33 @@
+{
+ "case": "clean-02-new-function-with-tests",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "4515afcacc620b92f1826f71a3d634b1120b9ed8",
+ "started_at": "2026-11-01T18:32:35.891416+00:00",
+ "wall_seconds": 4.0,
+ "run": {
+  "id": 25,
+  "head_sha": "4515afcacc620b92f1826f71a3d634b1120b9ed8",
+  "status": "completed",
+  "started_at": "2026-11-01 18:32:35.918925+00:00",
+  "finished_at": "2026-11-01 18:32:39.932496+00:00",
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "cost_usd": "0E-9",
+  "llm_calls": 0,
+  "cached_calls": 6,
+  "tokens_saved": 7919,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [],
+ "review": {
+  "body": "<!-- pr-review-agent run:25 -->\n### Automated review of `4515afc`\nNo issues found.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0000 at list prices (free tier); 6 of 6 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

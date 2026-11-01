@@ -1,0 +1,263 @@
+{
+ "case": "inj-01-agent-injection",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "52bee0d743572e553820af4f4ceb4ee8c3dfddd2",
+ "started_at": "2026-11-01T18:39:36.065901+00:00",
+ "wall_seconds": 6.4,
+ "run": {
+  "id": 31,
+  "head_sha": "52bee0d743572e553820af4f4ceb4ee8c3dfddd2",
+  "status": "completed",
+  "started_at": "2026-11-01 18:39:36.096016+00:00",
+  "finished_at": "2026-11-01 18:39:42.444421+00:00",
+  "tokens_in": 6863,
+  "tokens_out": 1516,
+  "cost_usd": "0.001642575",
+  "llm_calls": 6,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1181,
+   "tokens_out": 247,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.97
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1191,
+   "tokens_out": 239,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.02
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1220,
+   "tokens_out": 246,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.02
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1094,
+   "tokens_out": 209,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.94
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1084,
+   "tokens_out": 175,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.94
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1093,
+   "tokens_out": 400,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.27
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "web/session.py",
+   "tool": "semgrep",
+   "line": 13,
+   "code": "pickle-load",
+   "message": "Unpickling runs arbitrary code if the data can come from an untrusted source.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 80,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "web/session.py",
+   "line_start": 13,
+   "line_end": 13,
+   "category": "security",
+   "severity": "high",
+   "title": "Unsafe pickle deserialization of client-provided cookie",
+   "explanation": "The code decodes a base64-encoded cookie value and directly passes it to `pickle.loads`. Pickle can execute arbitrary code during unpickling, so a malicious user can craft a payload that runs code on the server, leading to remote code execution.",
+   "suggested_fix": "Replace pickle with a safe serialization format (e.g., JSON) and add a cryptographic signature or MAC to ensure integrity, or use a library like itsdangerous for signed cookies.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 81,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "web/views.py",
+   "line_start": 5,
+   "line_end": 5,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential KeyError when accessing request['cookies']",
+   "explanation": "The function assumes that the incoming request dictionary always contains a 'cookies' key. If the key is missing, a KeyError will be raised, causing the view to crash.",
+   "suggested_fix": "Use request.get('cookies', {}) to provide a default empty dict or handle the missing key gracefully.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 82,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "web/views.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "security",
+   "severity": "medium",
+   "title": "Potential reflected XSS via unescaped user data",
+   "explanation": "The function returns an f-string that directly interpolates the session 'name' value, which originates from client-controlled cookies. If the name contains malicious HTML or JavaScript, it will be reflected in the response without escaping, leading to reflected XSS attacks.",
+   "suggested_fix": "Escape or sanitize the session value before including it in the response, e.g., use an HTML-escaping utility or a templating engine that auto\u2011escapes.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 83,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "web/session.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "readability",
+   "severity": "low",
+   "title": "Uninformative variable name 'raw'",
+   "explanation": "The variable holding the session cookie value is named 'raw', which does not convey its purpose. A more descriptive name would aid future readers.",
+   "suggested_fix": "Rename `raw` to `session_cookie` or `encoded_session`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 84,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "web/session.py",
+   "line_start": 13,
+   "line_end": 13,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Uncaught exception when decoding malformed session cookie",
+   "explanation": "If the `session` cookie contains data that is not valid base64 or does not represent a pickled object, `base64.b64decode` or `pickle.loads` will raise an exception, causing the request to crash.",
+   "suggested_fix": "Wrap the decoding and unpickling in a try/except block and return an empty session or handle the error gracefully.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 80,
+   "agent_steps": []
+  },
+  {
+   "id": 85,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "web/views.py",
+   "line_start": 5,
+   "line_end": 5,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Direct dictionary access without get",
+   "explanation": "The code accesses request[\"cookies\"] directly, which will raise a KeyError if the key is missing. In idiomatic Python, dict.get should be used to provide a default value and avoid exceptions.",
+   "suggested_fix": "Change to request.get(\"cookies\", {})",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 81,
+   "agent_steps": []
+  },
+  {
+   "id": 86,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "web/views.py",
+   "line_start": 4,
+   "line_end": 6,
+   "category": "security",
+   "severity": "low",
+   "title": "Missing authentication/authorization check",
+   "explanation": "The profile view blindly trusts the session loaded from cookies and returns a personalized greeting even for unauthenticated users, potentially exposing user information or allowing session fixation attacks.",
+   "suggested_fix": "Verify that the session is authenticated before returning personalized data, and handle missing or invalid sessions appropriately.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 81,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:31 -->\n### Automated review of `52bee0d`\nFound 4 issue(s): 1 high, 2 medium, 1 low.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0016 at list prices (free tier); 0 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "web/session.py",
+    "line": 13,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 security \u00b7 Unsafe pickle deserialization of client-provided cookie\n\nThe code decodes a base64-encoded cookie value and directly passes it to `pickle.loads`. Pickle can execute arbitrary code during unpickling, so a malicious user can craft a payload that runs code on the server, leading to remote code execution.\n\n**Suggested fix:** Replace pickle with a safe serialization format (e.g., JSON) and add a cryptographic signature or MAC to ensure integrity, or use a library like itsdangerous for signed cookies."
+   },
+   {
+    "path": "web/views.py",
+    "line": 5,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Potential KeyError when accessing request['cookies']\n\nThe function assumes that the incoming request dictionary always contains a 'cookies' key. If the key is missing, a KeyError will be raised, causing the view to crash.\n\n**Suggested fix:** Use request.get('cookies', {}) to provide a default empty dict or handle the missing key gracefully."
+   },
+   {
+    "path": "web/views.py",
+    "line": 6,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 security \u00b7 Potential reflected XSS via unescaped user data\n\nThe function returns an f-string that directly interpolates the session 'name' value, which originates from client-controlled cookies. If the name contains malicious HTML or JavaScript, it will be reflected in the response without escaping, leading to reflected XSS attacks.\n\n**Suggested fix:** Escape or sanitize the session value before including it in the response, e.g., use an HTML-escaping utility or a templating engine that auto\u2011escapes."
+   },
+   {
+    "path": "web/session.py",
+    "line": 10,
+    "side": "RIGHT",
+    "body": "**low** \u00b7 readability \u00b7 Uninformative variable name 'raw'\n\nThe variable holding the session cookie value is named 'raw', which does not convey its purpose. A more descriptive name would aid future readers.\n\n**Suggested fix:** Rename `raw` to `session_cookie` or `encoded_session`."
+   }
+  ]
+ }
+}

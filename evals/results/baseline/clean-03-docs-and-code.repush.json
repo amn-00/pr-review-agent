@@ -1,0 +1,135 @@
+{
+ "case": "clean-03-docs-and-code",
+ "mode": "repush",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "2e19b2eba7f99c02252eda6bb6bd9368e5f097a2",
+ "started_at": "2026-11-01T18:34:56.930220+00:00",
+ "wall_seconds": 4.8,
+ "run": {
+  "id": 27,
+  "head_sha": "2e19b2eba7f99c02252eda6bb6bd9368e5f097a2",
+  "status": "completed",
+  "started_at": "2026-11-01 18:34:56.967021+00:00",
+  "finished_at": "2026-11-01 18:35:01.680794+00:00",
+  "tokens_in": 3534,
+  "tokens_out": 309,
+  "cost_usd": "0.000567975",
+  "llm_calls": 3,
+  "cached_calls": 3,
+  "tokens_saved": 4564,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1176,
+   "tokens_out": 64,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.62
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1175,
+   "tokens_out": 198,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.75
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1183,
+   "tokens_out": 47,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.81
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 75,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 5,
+   "line_end": 5,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Docstring formatting inconsistency",
+   "explanation": "The class docstring is indented with a space before the opening quotes, which is unconventional and may confuse tools that process docstrings.",
+   "suggested_fix": "Align the docstring with the method definition, removing the leading space: `    \"\"\"A dict whose entries expire ...\"\"\"`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 76,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Inconsistent indentation for class methods",
+   "explanation": "The class methods are indented with two spaces instead of the conventional four, deviating from PEP\u202f8 style and making the code harder to read and maintain.",
+   "suggested_fix": "Use four spaces for each method definition, e.g. replace `  def __init__` with `    def __init__`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 77,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "readability",
+   "severity": "low",
+   "title": "Missing return type annotation for get method",
+   "explanation": "The `get` method lacks a return type annotation, making it unclear whether it returns `None` or a value type.",
+   "suggested_fix": "Add a return type hint, e.g. `def get(self, key: str) -> Any:` or more specific if applicable.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:27 -->\n### Automated review of `2e19b2e`\nFound 2 issue(s): 2 medium.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0006 at list prices (free tier); 3 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "weather/cache.py",
+    "line": 5,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 idiom \u00b7 Docstring formatting inconsistency\n\nThe class docstring is indented with a space before the opening quotes, which is unconventional and may confuse tools that process docstrings.\n\n**Suggested fix:** Align the docstring with the method definition, removing the leading space: `    \"\"\"A dict whose entries expire ...\"\"\"`."
+   },
+   {
+    "path": "weather/cache.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 idiom \u00b7 Inconsistent indentation for class methods\n\nThe class methods are indented with two spaces instead of the conventional four, deviating from PEP\u202f8 style and making the code harder to read and maintain.\n\n**Suggested fix:** Use four spaces for each method definition, e.g. replace `  def __init__` with `    def __init__`."
+   }
+  ]
+ }
+}

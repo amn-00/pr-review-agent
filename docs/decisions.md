@@ -907,3 +907,23 @@ change.
 **A flaky eval test, fixed.** `test_a_case_runs_in_every_mode_and_scores` checked the order of
 the lane calls. They run in parallel, so they're recorded in whatever order they finish, and
 the test failed about one full-suite run in two. It now compares them sorted.
+
+## Phase 5b — Baseline run
+
+### Known issue, to fix after the baseline (no code changes mid-baseline)
+
+**Lane calls aren't retried on `output_parse_failed`, so one Groq glitch drops a lane's
+coverage of a chunk.**
+Day 1, trap-02: Groq answered the correctness lane's call with 400 `output_parse_failed`. The
+model wrote prose ("We need to report any bug or performance issues…") instead of the JSON
+the schema asks for. Since the 5a fix it raises `ToolCallFailed`, but only the agent loop asks
+again. The orchestrator catches it as any `LLMError` (`app/pipeline/orchestrator.py`): the call
+is counted as failed, and that lane never reviews that chunk for this run. The review is still
+posted, with "1 lane call(s) failed" in its summary.
+- **In the baseline:** the runner marks such a run incomplete, and the next session reruns it.
+  The lane calls that worked come from the cache and only the failed one is paid for again, so
+  the eval's numbers aren't affected. Prod has no such rerun.
+- **Frequency:** 1 of 75 lane calls on day 1.
+- **To consider after the baseline:** retry a lane call once on `ToolCallFailed` (an unusable
+  generation, not a bad request), within the existing deadline and budget checks. Other
+  `LLMError`s stay as they are.
