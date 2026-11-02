@@ -1,0 +1,73 @@
+# Load-test stack (Phase 6). Its own project name, ports, database, Redis and fake settings,
+# so it never touches the dev stack or the eval database, and its workers only reach the fakes.
+#
+#   docker compose -f loadtest/docker-compose.yml up -d --build [--scale worker=2]
+#   docker compose -f loadtest/docker-compose.yml down -v      # fresh state between runs
+
+name: pr-review-load
+
+x-app: &app
+  build: ..
+  env_file: .env.loadtest
+  volumes:
+    # The image holds only app/ and prompts/; the load-test code and the evals' patch and
+    # tarball helpers are mounted.
+    - ../loadtest:/app/loadtest:ro
+    - ../evals:/app/evals:ro
+
+services:
+  migrate:
+    <<: *app
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    ports:
+      - "18000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ["arq", "loadtest.worker.LoadTestWorkerSettings"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+      fakes:
+        condition: service_started
+
+  fakes:
+    <<: *app
+    command: ["uvicorn", "loadtest.fakes:app", "--host", "0.0.0.0", "--port", "9000", "--log-level", "warning"]
+    ports:
+      - "19000:9000"
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pr_review_load
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d pr_review_load"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # No persistence, like Render Key Value: a restart loses queued jobs and dedupe keys.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10

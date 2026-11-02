@@ -985,3 +985,46 @@ the same evidence rule, so at worst a finding is hidden or kept, as before.
 
 **Not separable:** the prompt and the wrong-name handling ship together, so the re-run measures
 them as one. Whether to rerun v1 to measure run-to-run noise is decided after seeing v2.
+
+## Phase 6a — Load-test harness
+
+The plan is in `docs/plans/phase-6.md`. 6a builds the harness; the measured runs and any fixes
+wait until the agent-v2 eval has finished.
+
+**The fakes are an HTTP server, not objects in the job's process.**
+Workers run in separate containers and get killed, so the fake GitHub and Groq are one FastAPI
+app (`loadtest/fakes.py`). Every worker sees the same PRs, and every posted review lands in one
+place where duplicates are counted. The real `GitHubClient` and `GroqClient` talk to it, so their
+handling of 5xx, 429 and rate-limit headers is part of what's tested.
+
+**An isolated stack that can't reach the real services.**
+`loadtest/docker-compose.yml` has its own project name, ports, database and Redis, and only fake
+settings (`loadtest/.env.loadtest`); the real `.env` is never loaded. The worker's transport sends
+`api.github.com` and `api.groq.com` to the fakes and refuses any other host. So a load test can't
+touch the dev stack, the eval database or the Groq quota.
+
+**The load-test worker copies the prod settings' `__dict__`.**
+arq reads only the settings class's own `__dict__`: a plain subclass of `WorkerSettings` ran with
+no functions and no cron (checked). `LoadTestWorkerSettings` copies every prod setting and
+replaces only `on_startup`, which runs the prod startup and swaps in clients aimed at the fakes.
+A test compares what arq reads from both.
+
+**Fake Groq reports 1 token per call.**
+Otherwise the daily budgets would stop a 500-webhook run after about 15 PRs. The budget paths are
+already tested. The fake's tokens-per-minute mode (for 6b) counts its own estimate of each request.
+
+**Timing without database timestamps.**
+- **Job start:** the first file-content request for a head SHA.
+- **Review posted:** when the fake stores the review.
+- **Webhook sent:** the generator's own clock. The offset between the two clocks is measured at
+  the start of each run, because Docker's VM clock can drift from the host's.
+
+**Webhooks that refer to an earlier one wait for its answer.**
+Replays, pushes and same-head deliveries name the event they follow. With 20 parallel senders, a
+replay could otherwise race its original, and which of the two got the 202 would be luck. With
+the wait, every webhook's expected status is fixed in advance, and any other status is reported.
+
+**Smoke run (20 webhooks, 1 worker, fake Groq at 0.5 s per call; not committed).**
+12 reviews, 0 duplicates, 0 lost, every status as expected. Enqueue latency p95 110 ms, review
+time p95 9.8 s (1.2 s of work, the rest waiting behind `max_jobs = 2`). 7.7 GitHub requests per
+review. Peak memory 67 MB each for the API and the worker.
