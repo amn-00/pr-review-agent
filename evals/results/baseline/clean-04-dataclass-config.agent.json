@@ -1,0 +1,312 @@
+{
+ "case": "clean-04-dataclass-config",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "d4a39dc4e191d9812643e06fdec3b1dcd3f62d24",
+ "started_at": "2026-11-02T11:35:14.665052+00:00",
+ "wall_seconds": 14.3,
+ "run": {
+  "id": 45,
+  "head_sha": "d4a39dc4e191d9812643e06fdec3b1dcd3f62d24",
+  "status": "completed",
+  "started_at": "2026-11-02 11:35:14.728567+00:00",
+  "finished_at": "2026-11-02 11:35:28.955679+00:00",
+  "tokens_in": 10054,
+  "tokens_out": 628,
+  "cost_usd": "0.001884900",
+  "llm_calls": 8,
+  "cached_calls": 6,
+  "tokens_saved": 7877,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1223,
+   "tokens_out": 36,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.58
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1328,
+   "tokens_out": 41,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.27
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1298,
+   "tokens_out": 43,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.8
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1438,
+   "tokens_out": 40,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.56
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1555,
+   "tokens_out": 65,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.76
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'json\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"json\\\\\", \\\\\"arguments\\\\\": {\\\\n  \\\\\"evi",
+   "latency_s": 0.89
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1630,
+   "tokens_out": 228,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.17
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1582,
+   "tokens_out": 175,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.39
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 119,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "app_config/settings.py",
+   "line_start": 15,
+   "line_end": 15,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Uncaught exception when APP_PORT is non-integer",
+   "explanation": "The code casts the APP_PORT environment variable to int without handling ValueError. If the variable contains a non-numeric value, the application will crash at startup.",
+   "suggested_fix": "Wrap the int conversion in a try/except block and fallback to the default port, e.g.,\n```\ntry:\n    port = int(os.environ.get(\"APP_PORT\", Settings.port))\nexcept ValueError:\n    port = Settings.port\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "load_settings converts the environment variable APP_PORT directly to int, and server_address invokes load_settings during startup, so a non-integer value will raise ValueError and crash the app.",
+   "evidence": [
+    {
+     "why": "casts APP_PORT to int without try/except",
+     "line": 15,
+     "path": "app_config/settings.py"
+    },
+    {
+     "why": "calls load_settings at startup",
+     "line": 5,
+     "path": "app_config/server.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "load_settings"
+     },
+     "result_chars": 214,
+     "result_summary": "Lines containing 'load_settings':\napp_config/server.py:1: from app_config.settings import load_settings\napp_config/server.py:5: settings = load_settings()\napp_config/settings.py:12: def load_settings() -> Settings:",
+     "tokens_in": 1328,
+     "tokens_out": 41,
+     "latency_ms": 1266
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "app_config/server.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 240,
+     "result_summary": "app_config/server.py, lines 1-6 of 6:\n    1  from app_config.settings import load_settings\n    2  \n    3  \n    4  def server_address() -> str:\n    5      settings = load_settings()\n    6      return f\"http://{settings.host}:{settings.port}\"",
+     "tokens_in": 1438,
+     "tokens_out": 40,
+     "latency_ms": 563
+    },
+    {
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'json' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"json\\\", \\\"arguments\\\": {\\n  \\\"evidence\\\": [\\n    {\\n      \\",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 891
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "load_settings converts the environment variable APP_PORT directly to int, and server_address invokes load_settings during startup, so a non-integer value will raise ValueError and crash the app.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "casts APP_PORT to int without try/except",
+        "line": 15,
+        "path": "app_config/settings.py"
+       },
+       {
+        "why": "calls load_settings at startup",
+        "line": 5,
+        "path": "app_config/server.py"
+       }
+      ]
+     },
+     "result_chars": 205,
+     "result_summary": "confirmed: load_settings converts the environment variable APP_PORT directly to int, and server_address invokes load_settings during startup, so a non-integer value will raise ValueError and crash the app.",
+     "tokens_in": 1582,
+     "tokens_out": 175,
+     "latency_ms": 1390
+    }
+   ]
+  },
+  {
+   "id": 120,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "app_config/server.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "security",
+   "severity": "low",
+   "title": "Potential unsafe use of unvalidated host in URL construction",
+   "explanation": "The added line builds an HTTP URL directly from settings.host and settings.port without validation. If these values can be influenced by an attacker, they could craft malicious host values leading to SSRF or other injection attacks when the URL is later used in network requests.",
+   "suggested_fix": "Validate and sanitize settings.host (e.g., ensure it matches an allowed whitelist or is a proper hostname) before embedding it in the URL.",
+   "verdict": "dropped",
+   "verdict_reason": "Although the function constructs a URL from unvalidated host and port values, the function is not used anywhere in the repository, so the risk of SSRF is effectively nonexistent.",
+   "evidence": [
+    {
+     "why": "host comes from environment variable without validation",
+     "line": 14,
+     "path": "app_config/settings.py"
+    },
+    {
+     "why": "function builds URL directly from settings.host and settings.port",
+     "line": 6,
+     "path": "app_config/server.py"
+    },
+    {
+     "why": "no callers found for server_address, function likely unused",
+     "line": 1,
+     "path": "app_config/server.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def load_settings"
+     },
+     "result_chars": 97,
+     "result_summary": "Lines containing 'def load_settings':\napp_config/settings.py:12: def load_settings() -> Settings:",
+     "tokens_in": 1223,
+     "tokens_out": 36,
+     "latency_ms": 609
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "app_config/settings.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 568,
+     "result_summary": "app_config/settings.py, lines 1-17 of 17:\n    1  import os\n    2  from dataclasses import dataclass\n    3  \n    4  \n    5  @dataclass(frozen=True)\n    6  class Settings:\n    7      host: str = \"127.0.0.1\"\n    8      port: int = 8000\n    9      debug: bool = False\n   10  \n   11  \n   12  def load_sett",
+     "tokens_in": 1298,
+     "tokens_out": 43,
+     "latency_ms": 797
+    },
+    {
+     "step_no": 3,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "server_address"
+     },
+     "result_chars": 37,
+     "result_summary": "Uses of 'server_address': no matches.",
+     "tokens_in": 1555,
+     "tokens_out": 65,
+     "latency_ms": 781
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "Although the function constructs a URL from unvalidated host and port values, the function is not used anywhere in the repository, so the risk of SSRF is effectively nonexistent.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "host comes from environment variable without validation",
+        "line": 14,
+        "path": "app_config/settings.py"
+       },
+       {
+        "why": "function builds URL directly from settings.host and settings.port",
+        "line": 6,
+        "path": "app_config/server.py"
+       },
+       {
+        "why": "no callers found for server_address, function likely unused",
+        "line": 1,
+        "path": "app_config/server.py"
+       }
+      ]
+     },
+     "result_chars": 187,
+     "result_summary": "dropped: Although the function constructs a URL from unvalidated host and port values, the function is not used anywhere in the repository, so the risk of SSRF is effectively nonexistent.",
+     "tokens_in": 1630,
+     "tokens_out": 228,
+     "latency_ms": 1171
+    }
+   ]
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:45 -->\n### Automated review of `d4a39dc`\nFound 1 confirmed issue(s): 1 medium.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 1 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0019 at list prices (free tier; agent $0.0019); 6 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "app_config/settings.py",
+    "line": 15,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Uncaught exception when APP_PORT is non-integer\n\nThe code casts the APP_PORT environment variable to int without handling ValueError. If the variable contains a non-numeric value, the application will crash at startup.\n\n**Suggested fix:** Wrap the int conversion in a try/except block and fallback to the default port, e.g.,\n```\ntry:\n    port = int(os.environ.get(\"APP_PORT\", Settings.port))\nexcept ValueError:\n    port = Settings.port\n```\n\n_Checked against `app_config/settings.py:15`, `app_config/server.py:5`_"
+   }
+  ]
+ }
+}

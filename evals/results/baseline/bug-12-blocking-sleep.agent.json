@@ -1,0 +1,229 @@
+{
+ "case": "bug-12-blocking-sleep",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "070dbba1ec109da05270dcf1554f54d5b8f56e12",
+ "started_at": "2026-11-02T11:25:53.656079+00:00",
+ "wall_seconds": 58.6,
+ "run": {
+  "id": 40,
+  "head_sha": "070dbba1ec109da05270dcf1554f54d5b8f56e12",
+  "status": "completed",
+  "started_at": "2026-11-02 11:25:53.719741+00:00",
+  "finished_at": "2026-11-02 11:26:52.228129+00:00",
+  "tokens_in": 4386,
+  "tokens_out": 315,
+  "cost_usd": "0.000846900",
+  "llm_calls": 6,
+  "cached_calls": 3,
+  "tokens_saved": 4056,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1331,
+   "tokens_out": 63,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.67
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1400,
+   "tokens_out": 98,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.75
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'commentary\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"commentary\\\\\", \\\\\"arguments\\\\\": ",
+   "latency_s": 0.62
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'commentary\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"commentary\\\\\", \\\\\"arguments\\\\\": ",
+   "latency_s": 1.11
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'json\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"json\\\\\", \\\\\"arguments\\\\\": {\\\\n  \\\\\"evi",
+   "latency_s": 0.62
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1655,
+   "tokens_out": 154,
+   "waited_s": 43.77,
+   "error": null,
+   "latency_s": 45.31
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 108,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "jobs/poller.py",
+   "line_start": 14,
+   "line_end": 14,
+   "category": "bug",
+   "severity": "high",
+   "title": "Blocking call in async function",
+   "explanation": "The async function `wait_until_ready` uses `time.sleep`, which blocks the event loop and prevents other async tasks from running during the sleep period. This can cause performance degradation and deadlocks in an async application.",
+   "suggested_fix": "Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and import asyncio at the top of the file.",
+   "verdict": "confirmed",
+   "verdict_reason": "The async function wait_until_ready calls time.sleep, which blocks the event loop, confirming the finding.",
+   "evidence": [
+    {
+     "why": "imports time module",
+     "line": 1,
+     "path": "jobs/poller.py"
+    },
+    {
+     "why": "calls blocking time.sleep in async function",
+     "line": 14,
+     "path": "jobs/poller.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "wait_until_ready"
+     },
+     "result_chars": 39,
+     "result_summary": "Uses of 'wait_until_ready': no matches.",
+     "tokens_in": 1331,
+     "tokens_out": 63,
+     "latency_ms": 703
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "jobs/poller.py",
+      "line_end": 20,
+      "line_start": 1
+     },
+     "result_chars": 601,
+     "result_summary": "jobs/poller.py, lines 1-15 of 15:\n    1  import time\n    2  \n    3  import httpx\n    4  \n    5  from jobs.client import fetch_status\n    6  \n    7  \n    8  async def wait_until_ready(client: httpx.AsyncClient, url: str, attempts: int = 10) -> bool:\n    9      \"\"\"Poll a health URL until it answers 20",
+     "tokens_in": 1400,
+     "tokens_out": 98,
+     "latency_ms": 766
+    },
+    {
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'commentary' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"commentary\\\", \\\"arguments\\\": {\\n  \\\"evidence\\\": [\\n  ",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 625
+    },
+    {
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'commentary' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"commentary\\\", \\\"arguments\\\": {\\n    \\\"evidence\\\": [\\n",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 1110
+    },
+    {
+     "step_no": 5,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'json' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"json\\\", \\\"arguments\\\": {\\n  \\\"evidence\\\": [\\n    {\\\"line\\\":",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 625
+    },
+    {
+     "step_no": 6,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The async function wait_until_ready calls time.sleep, which blocks the event loop, confirming the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "imports time module",
+        "line": 1,
+        "path": "jobs/poller.py"
+       },
+       {
+        "why": "calls blocking time.sleep in async function",
+        "line": 14,
+        "path": "jobs/poller.py"
+       }
+      ]
+     },
+     "result_chars": 117,
+     "result_summary": "confirmed: The async function wait_until_ready calls time.sleep, which blocks the event loop, confirming the finding.",
+     "tokens_in": 1655,
+     "tokens_out": 154,
+     "latency_ms": 45312
+    }
+   ]
+  },
+  {
+   "id": 109,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "jobs/poller.py",
+   "line_start": 14,
+   "line_end": 14,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Blocking sleep in async function",
+   "explanation": "Using time.sleep inside an async function blocks the event loop, preventing other coroutines from running. The idiomatic approach is to use await asyncio.sleep for non-blocking delays.",
+   "suggested_fix": "Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and remove the unnecessary import of `time`. ",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 108,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:40 -->\n### Automated review of `070dbba`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 1 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0008 at list prices (free tier; agent $0.0008); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "jobs/poller.py",
+    "line": 14,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Blocking call in async function\n\nThe async function `wait_until_ready` uses `time.sleep`, which blocks the event loop and prevents other async tasks from running during the sleep period. This can cause performance degradation and deadlocks in an async application.\n\n**Suggested fix:** Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and import asyncio at the top of the file.\n\n_Checked against `jobs/poller.py:1`, `jobs/poller.py:14`_"
+   }
+  ]
+ }
+}

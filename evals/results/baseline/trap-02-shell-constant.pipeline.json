@@ -1,30 +1,39 @@
 {
  "case": "trap-02-shell-constant",
  "mode": "pipeline",
- "status": "incomplete",
- "problems": [
-  "1 lane call(s) failed"
- ],
+ "status": "complete",
+ "problems": [],
  "notes": [],
  "head_sha": "b0f0e893040da22cbea3b0d8a084eb5276134891",
- "started_at": "2026-11-01T18:42:04.246645+00:00",
- "wall_seconds": 5.4,
+ "started_at": "2026-11-02T11:42:04.917601+00:00",
+ "wall_seconds": 11.4,
  "run": {
-  "id": 33,
+  "id": 48,
   "head_sha": "b0f0e893040da22cbea3b0d8a084eb5276134891",
   "status": "completed",
-  "started_at": "2026-11-01 18:42:04.274553+00:00",
-  "finished_at": "2026-11-01 18:42:09.604820+00:00",
-  "tokens_in": 2379,
-  "tokens_out": 644,
-  "cost_usd": "0.000539025",
-  "llm_calls": 2,
-  "cached_calls": 0,
-  "tokens_saved": 0,
+  "started_at": "2026-11-02 11:42:04.989109+00:00",
+  "finished_at": "2026-11-02 11:42:16.269231+00:00",
+  "tokens_in": 1173,
+  "tokens_out": 268,
+  "cost_usd": "0.000336750",
+  "llm_calls": 1,
+  "cached_calls": 2,
+  "tokens_saved": 3023,
   "error": null,
   "agent_enabled": false
  },
  "calls": [
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1173,
+   "tokens_out": 268,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.16
+  }
+ ],
+ "earlier_calls": [
   {
    "kind": "security",
    "model": "openai/gpt-oss-120b",
@@ -53,7 +62,6 @@
    "latency_s": 1.34
   }
  ],
- "earlier_calls": [],
  "tool_findings": [
   {
    "file": "ops/version.py",
@@ -66,7 +74,27 @@
  ],
  "findings": [
   {
-   "id": 89,
+   "id": 130,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Uncaught subprocess error if git command fails",
+   "explanation": "The function directly runs a git command with check=True, which raises a CalledProcessError when git is not installed or the command fails (e.g., not a git repository). This exception is not caught, causing the application to crash at runtime.",
+   "suggested_fix": "Wrap the subprocess call in a try/except block, returning a fallback label (e.g., just APP_NAME) when the command fails.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 131,
    "lane": "security",
    "prompt_version": "v3",
    "file": "ops/version.py",
@@ -80,13 +108,13 @@
    "verdict": null,
    "verdict_reason": null,
    "evidence": null,
-   "posted": true,
-   "drop_reason": null,
-   "duplicate_of": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 130,
    "agent_steps": []
   },
   {
-   "id": 90,
+   "id": 132,
    "lane": "maintainability",
    "prompt_version": "v3",
    "file": "ops/version.py",
@@ -102,18 +130,18 @@
    "evidence": null,
    "posted": false,
    "drop_reason": "duplicate",
-   "duplicate_of": 89,
+   "duplicate_of": 130,
    "agent_steps": []
   }
  ],
  "review": {
-  "body": "<!-- pr-review-agent run:33 -->\n### Automated review of `b0f0e89`\nFound 1 issue(s): 1 low.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0005 at list prices (free tier); 0 of 2 lane call(s) answered from cache.\n\n<details><summary>Not fully reviewed</summary>\n\n- 1 lane call(s) failed\n\n</details>",
+  "body": "<!-- pr-review-agent run:48 -->\n### Automated review of `b0f0e89`\nFound 1 issue(s): 1 medium.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0003 at list prices (free tier); 2 of 3 lane call(s) answered from cache.",
   "comments": [
    {
     "path": "ops/version.py",
-    "line": 9,
+    "line": 10,
     "side": "RIGHT",
-    "body": "**low** \u00b7 security \u00b7 Use of subprocess.run with shell=True can enable command injection\n\nThe code executes a fixed git command using subprocess.run with shell=True. While the current command string is static, using shell=True unnecessarily expands the attack surface and could become vulnerable if the command string is ever modified to include user input.\n\n**Suggested fix:** Replace the shell invocation with a list argument and set shell=False, e.g., subprocess.run([\"git\", \"rev-parse\", \"--short\", \"HEAD\"], capture_output=True, text=True, check=True).",
+    "body": "**medium** \u00b7 bug \u00b7 Uncaught subprocess error if git command fails\n\nThe function directly runs a git command with check=True, which raises a CalledProcessError when git is not installed or the command fails (e.g., not a git repository). This exception is not caught, causing the application to crash at runtime.\n\n**Suggested fix:** Wrap the subprocess call in a try/except block, returning a fallback label (e.g., just APP_NAME) when the command fails.",
     "start_line": 8,
     "start_side": "RIGHT"
    }

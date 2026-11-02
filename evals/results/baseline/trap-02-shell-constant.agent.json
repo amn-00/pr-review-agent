@@ -1,0 +1,311 @@
+{
+ "case": "trap-02-shell-constant",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "b0f0e893040da22cbea3b0d8a084eb5276134891",
+ "started_at": "2026-11-02T11:43:25.764231+00:00",
+ "wall_seconds": 60.0,
+ "run": {
+  "id": 49,
+  "head_sha": "b0f0e893040da22cbea3b0d8a084eb5276134891",
+  "status": "completed",
+  "started_at": "2026-11-02 11:43:25.833073+00:00",
+  "finished_at": "2026-11-02 11:44:25.782415+00:00",
+  "tokens_in": 7074,
+  "tokens_out": 489,
+  "cost_usd": "0.001354500",
+  "llm_calls": 8,
+  "cached_calls": 3,
+  "tokens_saved": 4464,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1306,
+   "tokens_out": 44,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.61
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1375,
+   "tokens_out": 40,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.56
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1459,
+   "tokens_out": 56,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.77
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1545,
+   "tokens_out": 56,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.56
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'output\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"output\\\\\", \\\\\"arguments\\\\\": {\\\\n  \\\\",
+   "latency_s": 0.89
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'search_repo\\' which does not match request.tool_choice: \\'submit_verdict\\'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"s",
+   "latency_s": 0.47
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'c\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"c\\\\\", \\\\\"arguments\\\\\": {\\\\n  \\\\\"verdict\\\\",
+   "latency_s": 44.08
+  },
+  {
+   "kind": "submit_verdict",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1389,
+   "tokens_out": 293,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.12
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "ops/version.py",
+   "tool": "semgrep",
+   "line": 8,
+   "code": "subprocess-shell-true",
+   "message": "subprocess call with shell=True. If any part of the command comes from input, this allows shell injection.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 133,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Uncaught subprocess error if git command fails",
+   "explanation": "The function directly runs a git command with check=True, which raises a CalledProcessError when git is not installed or the command fails (e.g., not a git repository). This exception is not caught, causing the application to crash at runtime.",
+   "suggested_fix": "Wrap the subprocess call in a try/except block, returning a fallback label (e.g., just APP_NAME) when the command fails.",
+   "verdict": "dropped",
+   "verdict_reason": "The function build_label uses subprocess.run with check=True, which could raise an exception, but there are no callers of build_label in the repository, so this code path is never exercised and cannot cause a runtime crash.",
+   "evidence": [
+    {
+     "why": "subprocess.run called with check=True may raise CalledProcessError",
+     "line": 8,
+     "path": "ops/version.py"
+    },
+    {
+     "why": "continuation of the risky subprocess call",
+     "line": 9,
+     "path": "ops/version.py"
+    },
+    {
+     "why": "continuation of the risky subprocess call",
+     "line": 10,
+     "path": "ops/version.py"
+    },
+    {
+     "why": "definition of build_label with no callers found",
+     "line": 6,
+     "path": "ops/version.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "build_label"
+     },
+     "result_chars": 34,
+     "result_summary": "Uses of 'build_label': no matches.",
+     "tokens_in": 1306,
+     "tokens_out": 44,
+     "latency_ms": 625
+    },
+    {
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "build_label"
+     },
+     "result_chars": 75,
+     "result_summary": "Lines containing 'build_label':\nops/version.py:6: def build_label() -> str:",
+     "tokens_in": 1375,
+     "tokens_out": 40,
+     "latency_ms": 562
+    },
+    {
+     "step_no": 3,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "build_label("
+     },
+     "result_chars": 76,
+     "result_summary": "Lines containing 'build_label(':\nops/version.py:6: def build_label() -> str:",
+     "tokens_in": 1459,
+     "tokens_out": 56,
+     "latency_ms": 781
+    },
+    {
+     "step_no": 4,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "build_label"
+     },
+     "result_chars": 57,
+     "result_summary": "Already called with these arguments; the result is above.",
+     "tokens_in": 1545,
+     "tokens_out": 56,
+     "latency_ms": 562
+    },
+    {
+     "step_no": 5,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'output' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"output\\\", \\\"arguments\\\": {\\n  \\\"verdict\\\": \\\"uncertain\\\",",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 891
+    },
+    {
+     "step_no": 6,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 469
+    },
+    {
+     "step_no": 7,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'c' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"c\\\", \\\"arguments\\\": {\\n  \\\"verdict\\\": \\\"uncertain\\\",\\n  \\\"reas",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 44078
+    },
+    {
+     "step_no": 8,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The function build_label uses subprocess.run with check=True, which could raise an exception, but there are no callers of build_label in the repository, so this code path is never exercised and cannot cause a runtime crash.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "subprocess.run called with check=True may raise CalledProcessError",
+        "line": 8,
+        "path": "ops/version.py"
+       },
+       {
+        "why": "continuation of the risky subprocess call",
+        "line": 9,
+        "path": "ops/version.py"
+       },
+       {
+        "why": "continuation of the risky subprocess call",
+        "line": 10,
+        "path": "ops/version.py"
+       },
+       {
+        "why": "definition of build_label with no callers found",
+        "line": 6,
+        "path": "ops/version.py"
+       }
+      ]
+     },
+     "result_chars": 232,
+     "result_summary": "dropped: The function build_label uses subprocess.run with check=True, which could raise an exception, but there are no callers of build_label in the repository, so this code path is never exercised and cannot cause a runtime crash.",
+     "tokens_in": 1389,
+     "tokens_out": 293,
+     "latency_ms": 1125
+    }
+   ]
+  },
+  {
+   "id": 134,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 9,
+   "category": "security",
+   "severity": "low",
+   "title": "Use of subprocess.run with shell=True can enable command injection",
+   "explanation": "The code executes a fixed git command using subprocess.run with shell=True. While the current command string is static, using shell=True unnecessarily expands the attack surface and could become vulnerable if the command string is ever modified to include user input.",
+   "suggested_fix": "Replace the shell invocation with a list argument and set shell=False, e.g., subprocess.run([\"git\", \"rev-parse\", \"--short\", \"HEAD\"], capture_output=True, text=True, check=True).",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 133,
+   "agent_steps": []
+  },
+  {
+   "id": 135,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Avoid shell=True with string arguments in subprocess.run",
+   "explanation": "Using shell=True with a single string argument bypasses the typical subprocess interface and can lead to security and portability issues. The idiomatic way is to pass the command as a list of arguments and omit shell=True.",
+   "suggested_fix": "Replace the call with\n```python\ncommit = subprocess.check_output([\"git\", \"rev-parse\", \"--short\", \"HEAD\"], text=True).strip()\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 133,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:49 -->\n### Automated review of `b0f0e89`\nNo confirmed issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 0 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0014 at list prices (free tier; agent $0.0014); 3 of 3 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

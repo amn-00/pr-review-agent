@@ -1,0 +1,287 @@
+{
+ "case": "trap-01-sql-allowlist",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "bbce093e14037a8a46115f14f7788a52b00346be",
+ "started_at": "2026-11-02T11:39:52.662434+00:00",
+ "wall_seconds": 62.6,
+ "run": {
+  "id": 47,
+  "head_sha": "bbce093e14037a8a46115f14f7788a52b00346be",
+  "status": "completed",
+  "started_at": "2026-11-02 11:39:52.745088+00:00",
+  "finished_at": "2026-11-02 11:40:55.194500+00:00",
+  "tokens_in": 9259,
+  "tokens_out": 385,
+  "cost_usd": "0.001619850",
+  "llm_calls": 8,
+  "cached_calls": 3,
+  "tokens_saved": 3986,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1265,
+   "tokens_out": 43,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.52
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1379,
+   "tokens_out": 45,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.64
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1538,
+   "tokens_out": 28,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.38
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1625,
+   "tokens_out": 40,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 2.0
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1795,
+   "tokens_out": 59,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.58
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'json\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"json\\\\\", \\\\\"arguments\\\\\": {\\\\n  \\\\\"evi",
+   "latency_s": 0.69
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Failed to parse tool call arguments as JSON\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"answer\\\\\", \\\\\"arguments\\\\\": **Verdict:** dropped\\\\n\\\\n**Evidence:**\\\\n- `catalog/views.py:6` \u2013 `column = sort_colum",
+   "latency_s": 0.95
+  },
+  {
+   "kind": "submit_verdict",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1657,
+   "tokens_out": 170,
+   "waited_s": 45.13,
+   "error": null,
+   "latency_s": 46.38
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "catalog/queries.py",
+   "tool": "semgrep",
+   "line": 7,
+   "code": "sql-built-from-strings",
+   "message": "SQL built with string formatting. Use query parameters to avoid SQL injection.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 128,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "catalog/queries.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "security",
+   "severity": "high",
+   "title": "SQL injection risk via unsanitized ORDER BY clause",
+   "explanation": "The function directly interpolates the `order_by` argument into the SQL statement using an f\u2011string. An attacker could supply a malicious value (e.g., \"name; DROP TABLE products; --\") causing arbitrary SQL execution.",
+   "suggested_fix": "Validate `order_by` against a whitelist of allowed column names (e.g., ['id', 'name', 'price']) before constructing the query, or use parameterized queries where possible.",
+   "verdict": "dropped",
+   "verdict_reason": "The ORDER BY value comes from `sort_column`, which only returns a known safe column name or defaults to \"name\", so unsafe user input cannot reach the f\u2011string.",
+   "evidence": [
+    {
+     "why": "passes `column` to list_products",
+     "line": 7,
+     "path": "catalog/views.py"
+    },
+    {
+     "why": "validates requested column against whitelist",
+     "line": 6,
+     "path": "catalog/columns.py"
+    },
+    {
+     "why": "uses the validated `order_by` in f\u2011string",
+     "line": 7,
+     "path": "catalog/queries.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "list_products"
+     },
+     "result_chars": 214,
+     "result_summary": "Lines containing 'list_products':\ncatalog/queries.py:4: def list_products(order_by: str) -> list[dict]:\ncatalog/views.py:2: from catalog.queries import list_products\ncatalog/views.py:7: return list_products(column)",
+     "tokens_in": 1265,
+     "tokens_out": 43,
+     "latency_ms": 579
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "catalog/views.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 299,
+     "result_summary": "catalog/views.py, lines 1-7 of 7:\n    1  from catalog.columns import sort_column\n    2  from catalog.queries import list_products\n    3  \n    4  \n    5  def products_page(params: dict) -> list[dict]:\n    6      column = sort_column(params.get(\"sort\", \"name\"))\n    7      return list_products(column)",
+     "tokens_in": 1379,
+     "tokens_out": 45,
+     "latency_ms": 640
+    },
+    {
+     "step_no": 3,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def sort_column"
+     },
+     "result_chars": 97,
+     "result_summary": "Lines containing 'def sort_column':\ncatalog/columns.py:4: def sort_column(requested: str) -> str:",
+     "tokens_in": 1538,
+     "tokens_out": 28,
+     "latency_ms": 375
+    },
+    {
+     "step_no": 4,
+     "tool": "read_file",
+     "args_json": {
+      "path": "catalog/columns.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 323,
+     "result_summary": "catalog/columns.py, lines 1-6 of 6:\n    1  SORTABLE_COLUMNS = {\"name\", \"price\", \"created_at\"}\n    2  \n    3  \n    4  def sort_column(requested: str) -> str:\n    5      \"\"\"The column to sort by: only known columns; anything else falls back to name.\"\"\"\n    6      return requested if requested in SORTA",
+     "tokens_in": 1625,
+     "tokens_out": 40,
+     "latency_ms": 2000
+    },
+    {
+     "step_no": 5,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "list_products"
+     },
+     "result_chars": 135,
+     "result_summary": "Uses of 'list_products':\ncatalog/views.py:2: from catalog.queries import list_products\ncatalog/views.py:7: return list_products(column)",
+     "tokens_in": 1795,
+     "tokens_out": 59,
+     "latency_ms": 593
+    },
+    {
+     "step_no": 6,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'json' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"json\\\", \\\"arguments\\\": {\\n  \\\"evidence\\\": [\\n    {\\n      \\",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 688
+    },
+    {
+     "step_no": 7,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Failed to parse tool call arguments as JSON\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"answer\\\", \\\"arguments\\\": **Verdict:** dropped\\n\\n**Evidence:**\\n- `catalog/views.py:6` \u2013 `column = sort_column(params.get(\\\"sort\\\", \\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 953
+    },
+    {
+     "step_no": 8,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The ORDER BY value comes from `sort_column`, which only returns a known safe column name or defaults to \"name\", so unsafe user input cannot reach the f\u2011string.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "passes `column` to list_products",
+        "line": 7,
+        "path": "catalog/views.py"
+       },
+       {
+        "why": "validates requested column against whitelist",
+        "line": 6,
+        "path": "catalog/columns.py"
+       },
+       {
+        "why": "uses the validated `order_by` in f\u2011string",
+        "line": 7,
+        "path": "catalog/queries.py"
+       }
+      ]
+     },
+     "result_chars": 168,
+     "result_summary": "dropped: The ORDER BY value comes from `sort_column`, which only returns a known safe column name or defaults to \"name\", so unsafe user input cannot reach the f\u2011string.",
+     "tokens_in": 1657,
+     "tokens_out": 170,
+     "latency_ms": 46828
+    }
+   ]
+  },
+  {
+   "id": 129,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "catalog/queries.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential runtime error from unsafe ORDER BY clause",
+   "explanation": "The function directly interpolates the `order_by` parameter into the SQL query string. If an invalid or empty column name is passed, SQLite will raise a syntax error, causing the function to crash at runtime.",
+   "suggested_fix": "Validate `order_by` against a whitelist of allowed column names or use parameterized queries for safe ordering.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 128,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:47 -->\n### Automated review of `bbce093`\nNo confirmed issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 0 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0016 at list prices (free tier; agent $0.0016); 3 of 3 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

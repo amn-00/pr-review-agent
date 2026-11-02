@@ -1,0 +1,233 @@
+{
+ "case": "clean-03-docs-and-code",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "3210e9a189c23824a964cfe9a796ad51a17c480a",
+ "started_at": "2026-11-02T11:33:52.211976+00:00",
+ "wall_seconds": 12.0,
+ "run": {
+  "id": 44,
+  "head_sha": "3210e9a189c23824a964cfe9a796ad51a17c480a",
+  "status": "completed",
+  "started_at": "2026-11-02 11:33:52.269292+00:00",
+  "finished_at": "2026-11-02 11:34:04.181560+00:00",
+  "tokens_in": 6406,
+  "tokens_out": 648,
+  "cost_usd": "0.001349700",
+  "llm_calls": 4,
+  "cached_calls": 6,
+  "tokens_saved": 8301,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1419,
+   "tokens_out": 60,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.94
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1397,
+   "tokens_out": 281,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.97
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1785,
+   "tokens_out": 146,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.83
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1805,
+   "tokens_out": 161,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.88
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 116,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 5,
+   "line_end": 5,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Docstring formatting inconsistency",
+   "explanation": "The class docstring is indented with a space before the opening quotes, which is unconventional and may confuse tools that process docstrings.",
+   "suggested_fix": "Align the docstring with the method definition, removing the leading space: `    \"\"\"A dict whose entries expire ...\"\"\"`.",
+   "verdict": "dropped",
+   "verdict_reason": "The class docstring starts directly after the indentation without an extra leading space, so the reported formatting inconsistency does not exist.",
+   "evidence": [
+    {
+     "why": "docstring correctly indented with no extra space",
+     "line": 5,
+     "path": "weather/cache.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "weather/cache.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 1120,
+     "result_summary": "weather/cache.py, lines 1-30 of 30:\n    1  import time\n    2  \n    3  \n    4  class TTLCache:\n    5      \"\"\"A dict whose entries expire `ttl_seconds` after they were set.\"\"\"\n    6  \n    7      def __init__(self, ttl_seconds: float):\n    8          self.ttl_seconds = ttl_seconds\n    9          self._",
+     "tokens_in": 1397,
+     "tokens_out": 281,
+     "latency_ms": 984
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The class docstring starts directly after the indentation without an extra leading space, so the reported formatting inconsistency does not exist.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "docstring correctly indented with no extra space",
+        "line": 5,
+        "path": "weather/cache.py"
+       }
+      ]
+     },
+     "result_chars": 155,
+     "result_summary": "dropped: The class docstring starts directly after the indentation without an extra leading space, so the reported formatting inconsistency does not exist.",
+     "tokens_in": 1785,
+     "tokens_out": 146,
+     "latency_ms": 829
+    }
+   ]
+  },
+  {
+   "id": 117,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Inconsistent indentation for class methods",
+   "explanation": "The class methods are indented with two spaces instead of the conventional four, deviating from PEP\u202f8 style and making the code harder to read and maintain.",
+   "suggested_fix": "Use four spaces for each method definition, e.g. replace `  def __init__` with `    def __init__`.",
+   "verdict": "dropped",
+   "verdict_reason": "The class methods are indented with four spaces, not two, so the reported inconsistent indentation is false.",
+   "evidence": [
+    {
+     "why": "docstring correctly indented 4 spaces",
+     "line": 5,
+     "path": "weather/cache.py"
+    },
+    {
+     "why": "method definition indented 4 spaces",
+     "line": 7,
+     "path": "weather/cache.py"
+    },
+    {
+     "why": "clear method indented 4 spaces",
+     "line": 24,
+     "path": "weather/cache.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "weather/cache.py",
+      "line_end": 60,
+      "line_start": 1
+     },
+     "result_chars": 1120,
+     "result_summary": "weather/cache.py, lines 1-30 of 30:\n    1  import time\n    2  \n    3  \n    4  class TTLCache:\n    5      \"\"\"A dict whose entries expire `ttl_seconds` after they were set.\"\"\"\n    6  \n    7      def __init__(self, ttl_seconds: float):\n    8          self.ttl_seconds = ttl_seconds\n    9          self._",
+     "tokens_in": 1419,
+     "tokens_out": 60,
+     "latency_ms": 968
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The class methods are indented with four spaces, not two, so the reported inconsistent indentation is false.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "docstring correctly indented 4 spaces",
+        "line": 5,
+        "path": "weather/cache.py"
+       },
+       {
+        "why": "method definition indented 4 spaces",
+        "line": 7,
+        "path": "weather/cache.py"
+       },
+       {
+        "why": "clear method indented 4 spaces",
+        "line": 24,
+        "path": "weather/cache.py"
+       }
+      ]
+     },
+     "result_chars": 117,
+     "result_summary": "dropped: The class methods are indented with four spaces, not two, so the reported inconsistent indentation is false.",
+     "tokens_in": 1805,
+     "tokens_out": 161,
+     "latency_ms": 890
+    }
+   ]
+  },
+  {
+   "id": 118,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "readability",
+   "severity": "low",
+   "title": "Missing return type annotation for get method",
+   "explanation": "The `get` method lacks a return type annotation, making it unclear whether it returns `None` or a value type.",
+   "suggested_fix": "Add a return type hint, e.g. `def get(self, key: str) -> Any:` or more specific if applicable.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:44 -->\n### Automated review of `3210e9a`\nNo confirmed issues found.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 0 confirmed, 2 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0013 at list prices (free tier; agent $0.0013); 6 of 6 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

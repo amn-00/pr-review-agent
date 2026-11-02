@@ -1,0 +1,382 @@
+{
+ "case": "bug-06-dict-get-none",
+ "mode": "agent",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "2faff66f1f258f0e6fb0b23febd90992b8946dc8",
+ "started_at": "2026-11-02T11:14:29.453177+00:00",
+ "wall_seconds": 121.4,
+ "run": {
+  "id": 35,
+  "head_sha": "2faff66f1f258f0e6fb0b23febd90992b8946dc8",
+  "status": "completed",
+  "started_at": "2026-11-02 11:14:29.920854+00:00",
+  "finished_at": "2026-11-02 11:16:30.799922+00:00",
+  "tokens_in": 13094,
+  "tokens_out": 668,
+  "cost_usd": "0.002364900",
+  "llm_calls": 12,
+  "cached_calls": 3,
+  "tokens_saved": 4303,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1304,
+   "tokens_out": 47,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.77
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1310,
+   "tokens_out": 54,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.12
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1373,
+   "tokens_out": 48,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.61
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1387,
+   "tokens_out": 53,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.64
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1479,
+   "tokens_out": 49,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.47
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1553,
+   "tokens_out": 46,
+   "waited_s": 53.33,
+   "error": null,
+   "latency_s": 53.86
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'answer\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"answer\\\\\", \\\\\"arguments\\\\\": {\\\\n  \\\\",
+   "latency_s": 54.88
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1661,
+   "tokens_out": 34,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.55
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'search_repo\\' which does not match request.tool_choice: \\'submit_verdict\\'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"s",
+   "latency_s": 0.44
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1524,
+   "tokens_out": 150,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.05
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'json\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"json\\\\\", \\\\\"arguments\\\\\": {\\\\n  \\\\\"evi",
+   "latency_s": 51.73
+  },
+  {
+   "kind": "submit_verdict",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1503,
+   "tokens_out": 187,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.91
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 92,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "support/escalate.py",
+   "line_start": 6,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "high",
+   "title": "Potential NoneType access when assignee not found",
+   "explanation": "If the provided assignee is not present in STAFF, STAFF.get returns None and the subsequent member['team'] access raises a TypeError. This can happen with unknown or misspelled assignee values.",
+   "suggested_fix": "Check that member is not None before accessing its fields, e.g.,\n```python\nmember = STAFF.get(assignee)\nif not member:\n    raise ValueError(f\"Assignee '{assignee}' not found\")\nreturn f\"{member['team']}-escalations@example.com\"\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "STAFF.get returns None for unknown assignee, and the code accesses member['team'] without checking, leading to TypeError.",
+   "evidence": [
+    {
+     "why": "member assigned via STAFF.get may be None",
+     "line": 6,
+     "path": "support/escalate.py"
+    },
+    {
+     "why": "STAFF dict defined without fallback",
+     "line": 1,
+     "path": "support/directory.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "STAFF ="
+     },
+     "result_chars": 61,
+     "result_summary": "Lines containing 'STAFF =':\nsupport/directory.py:1: STAFF = {",
+     "tokens_in": 1310,
+     "tokens_out": 54,
+     "latency_ms": 1141
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "support/directory.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 201,
+     "result_summary": "support/directory.py, lines 1-4 of 4:\n    1  STAFF = {\n    2      \"alice\": {\"email\": \"alice@example.com\", \"team\": \"billing\"},\n    3      \"bob\": {\"email\": \"bob@example.com\", \"team\": \"support\"},\n    4  }",
+     "tokens_in": 1387,
+     "tokens_out": 53,
+     "latency_ms": 766
+    },
+    {
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'answer' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"answer\\\", \\\"arguments\\\": {\\n  \\\"evidence\\\": [\\n    {\\n   ",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 54875
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "STAFF.get returns None for unknown assignee, and the code accesses member['team'] without checking, leading to TypeError.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "member assigned via STAFF.get may be None",
+        "line": 6,
+        "path": "support/escalate.py"
+       },
+       {
+        "why": "STAFF dict defined without fallback",
+        "line": 1,
+        "path": "support/directory.py"
+       }
+      ]
+     },
+     "result_chars": 132,
+     "result_summary": "confirmed: STAFF.get returns None for unknown assignee, and the code accesses member['team'] without checking, leading to TypeError.",
+     "tokens_in": 1524,
+     "tokens_out": 150,
+     "latency_ms": 1344
+    }
+   ]
+  },
+  {
+   "id": 93,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "support/escalate.py",
+   "line_start": 11,
+   "line_end": 12,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Missing key handling for ticket dictionary",
+   "explanation": "The function assumes the ticket dict always contains 'assignee' and 'id' keys. If either key is absent, a KeyError will be raised, causing the escalation process to fail.",
+   "suggested_fix": "Validate the presence of required keys or use dict.get with defaults, e.g.,\n```python\nassignee = ticket.get('assignee')\nif not assignee:\n    raise ValueError('Ticket missing assignee')\naddress = escalation_address(assignee)\nticket_id = ticket.get('id', 'unknown')\nreturn f\"ticket {ticket_id} escalated to {address}\"\n```",
+   "verdict": "uncertain",
+   "verdict_reason": "The code accesses ticket['assignee'] and ticket['id'] without checks, but there is no evidence in the repository that these keys might be missing or that callers validate them. Without seeing usage, we cannot confirm a bug nor rule it out.",
+   "evidence": [
+    {
+     "why": "accesses ticket['assignee'] without guard",
+     "line": 11,
+     "path": "support/escalate.py"
+    },
+    {
+     "why": "accesses ticket['id'] without guard",
+     "line": 12,
+     "path": "support/escalate.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "escalate"
+     },
+     "result_chars": 31,
+     "result_summary": "Uses of 'escalate': no matches.",
+     "tokens_in": 1304,
+     "tokens_out": 47,
+     "latency_ms": 953
+    },
+    {
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "escalation_address"
+     },
+     "result_chars": 180,
+     "result_summary": "Lines containing 'escalation_address':\nsupport/escalate.py:4: def escalation_address(assignee: str) -> str:\nsupport/escalate.py:11: address = escalation_address(ticket[\"assignee\"])",
+     "tokens_in": 1373,
+     "tokens_out": 48,
+     "latency_ms": 625
+    },
+    {
+     "step_no": 3,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "'assignee'"
+     },
+     "result_chars": 42,
+     "result_summary": "Lines containing \"'assignee'\": no matches.",
+     "tokens_in": 1479,
+     "tokens_out": 49,
+     "latency_ms": 485
+    },
+    {
+     "step_no": 4,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "escalation_address("
+     },
+     "result_chars": 181,
+     "result_summary": "Lines containing 'escalation_address(':\nsupport/escalate.py:4: def escalation_address(assignee: str) -> str:\nsupport/escalate.py:11: address = escalation_address(ticket[\"assignee\"])",
+     "tokens_in": 1553,
+     "tokens_out": 46,
+     "latency_ms": 53859
+    },
+    {
+     "step_no": 5,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "escalation_address("
+     },
+     "result_chars": 57,
+     "result_summary": "Already called with these arguments; the result is above.",
+     "tokens_in": 1661,
+     "tokens_out": 34,
+     "latency_ms": 547
+    },
+    {
+     "step_no": 6,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 438
+    },
+    {
+     "step_no": 7,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'json' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"json\\\", \\\"arguments\\\": {\\n  \\\"evidence\\\": [],\\n  \\\"reason\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 51734
+    },
+    {
+     "step_no": 8,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The code accesses ticket['assignee'] and ticket['id'] without checks, but there is no evidence in the repository that these keys might be missing or that callers validate them. Without seeing usage, we cannot confirm a bug nor rule it out.",
+      "verdict": "uncertain",
+      "evidence": [
+       {
+        "why": "accesses ticket['assignee'] without guard",
+        "line": 11,
+        "path": "support/escalate.py"
+       },
+       {
+        "why": "accesses ticket['id'] without guard",
+        "line": 12,
+        "path": "support/escalate.py"
+       }
+      ]
+     },
+     "result_chars": 250,
+     "result_summary": "uncertain: The code accesses ticket['assignee'] and ticket['id'] without checks, but there is no evidence in the repository that these keys might be missing or that callers validate them. Without seeing usage, we cannot confirm a bug nor rule it out.",
+     "tokens_in": 1503,
+     "tokens_out": 187,
+     "latency_ms": 906
+    }
+   ]
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:35 -->\n### Automated review of `2faff66`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 1 confirmed, 0 dropped, 1 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0024 at list prices (free tier; agent $0.0024); 3 of 3 lane call(s) answered from cache.\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `support/escalate.py:11` **medium** Missing key handling for ticket dictionary \u2014 The code accesses ticket['assignee'] and ticket['id'] without checks, but there is no evidence in the repository that these keys might be missing or that callers validate them. Without seeing usage, we cannot confirm a bug nor rule it out.\n\n</details>",
+  "comments": [
+   {
+    "path": "support/escalate.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Potential NoneType access when assignee not found\n\nIf the provided assignee is not present in STAFF, STAFF.get returns None and the subsequent member['team'] access raises a TypeError. This can happen with unknown or misspelled assignee values.\n\n**Suggested fix:** Check that member is not None before accessing its fields, e.g.,\n```python\nmember = STAFF.get(assignee)\nif not member:\n    raise ValueError(f\"Assignee '{assignee}' not found\")\nreturn f\"{member['team']}-escalations@\u200bexample.com\"\n```\n\n_Checked against `support/escalate.py:6`, `support/directory.py:1`_",
+    "start_line": 6,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}
