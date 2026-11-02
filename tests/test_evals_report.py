@@ -164,3 +164,81 @@ def test_cost_counts_earlier_attempts_and_splits_lanes_from_the_agent():
 
     assert calls_cost(run, agent=False) == 0.30  # 2M tokens in at $0.15/M
     assert calls_cost(run, agent=True) == 0.60  # 1M tokens out at $0.60/M
+
+
+# --- comparing two agents on the same candidates ---
+
+
+def candidates() -> list[dict]:
+    """What the lanes found, the same in both evals: the bug (line 10) and the trap (20)."""
+    return [finding(1, 10), finding(2, 20, lane="security", category="security")]
+
+
+def judged(bug_verdict: str, trap_verdict: str) -> list[dict]:
+    """The candidates after an agent: only confirmed findings are posted."""
+    found = candidates()
+    for f, verdict in zip(found, (bug_verdict, trap_verdict), strict=True):
+        f |= {
+            "verdict": verdict,
+            "verdict_reason": f"{verdict} because",
+            "posted": verdict == "confirmed",
+        }
+    return found
+
+
+def compared(bug_verdict: str, trap_verdict: str) -> str:
+    """agent-v2's report against a baseline whose agent dropped the bug and the trap."""
+    case = make_case(traps=[TRAP])
+    v2 = result(case, "agent", judged(bug_verdict, trap_verdict))
+    v2["agent_prompt_version"] = "v2"
+    results = {
+        (case.id, "pipeline"): result(case, "pipeline", candidates()),
+        (case.id, "agent"): v2,
+    }
+    baseline = {(case.id, "agent"): result(case, "agent", judged("dropped", "dropped"))}
+    return render("agent-v2", [case], results, ("baseline", baseline))
+
+
+def test_comparison_puts_both_agents_side_by_side():
+    text = compared("confirmed", "dropped")
+
+    columns = [
+        "Pipeline only",
+        "Pipeline + agent (baseline, agent v1)",
+        "Pipeline + agent (agent v2)",
+    ]
+    assert f"| Metric | {' | '.join(columns)} |" in text
+    assert "| Bugs caught | 0/1 (0%) | 0/1 (0%) | 1/1 (100%) |" in text
+    assert "| Traps posted | 0/1 | 0/1 | 0/1 |" in text
+
+
+def test_over_correction_check_passes_when_only_bugs_caught_go_up():
+    text = compared("confirmed", "dropped")
+
+    assert (
+        "bugs caught +1, traps posted +0, clean PRs with a false positive +0, "
+        "false positives +0." in text
+    )
+    assert "**passes**" in text
+
+
+def test_over_correction_check_fails_when_a_trap_comes_back():
+    text = compared("confirmed", "confirmed")
+
+    assert "traps posted +1" in text and "false positives +1" in text
+    assert "**doesn't pass**" in text
+
+
+def test_changed_verdicts_are_listed_with_both_sides():
+    text = compared("confirmed", "dropped")
+
+    finding_1 = "`a.py:10` correctness/high: finding 1"
+    assert f"| c | {finding_1} | bug | dropped | confirmed: confirmed because |" in text
+    assert "finding 2 |" not in text.split("## Changed verdicts")[1].split("##")[0]  # unchanged
+
+
+def test_a_tuned_agent_says_so_in_the_limits():
+    tuned, baseline = compared("confirmed", "dropped"), report(make_case(), [], [])
+
+    assert "**Tuned on the test set.**" in tuned
+    assert "**Tuned on the test set.**" not in baseline

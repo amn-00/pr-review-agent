@@ -224,6 +224,35 @@ async def test_an_unusable_generation_raises_tool_call_failed(
     assert groq_api.call_count == 1  # not retried here: the agent loop asks again
 
 
+async def test_the_failed_generation_comes_whole(groq, groq_api, fake_time):
+    # The baseline's unknown-tool failures: a full verdict under a wrong tool name, longer
+    # than the 300 characters the error message keeps.
+    generation = json.dumps({"name": "json", "arguments": {"reason": "x" * 500}})
+    error = {
+        "error": {
+            "code": "tool_use_failed",
+            "message": "attempted to call tool 'json' which was not in request.tools",
+            "failed_generation": generation,
+        }
+    }
+    groq_api.mock(return_value=httpx.Response(400, json=error))
+
+    with pytest.raises(ToolCallFailed) as raised:
+        await call_tools(groq, fake_time)
+
+    assert raised.value.failed_generation == generation
+
+
+async def test_a_failed_call_without_a_generation_has_none(groq, groq_api, fake_time):
+    error = {"error": {"code": "tool_use_failed", "message": "Failed to call a function"}}
+    groq_api.mock(return_value=httpx.Response(400, json=error))
+
+    with pytest.raises(ToolCallFailed) as raised:
+        await call_tools(groq, fake_time)
+
+    assert raised.value.failed_generation is None
+
+
 async def test_other_bad_requests_are_plain_llm_errors(groq, groq_api, fake_time):
     error = {"error": {"code": "json_validate_failed", "message": "bad"}}
     groq_api.mock(return_value=httpx.Response(400, json=error))

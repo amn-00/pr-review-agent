@@ -5,6 +5,7 @@ import json
 from sqlalchemy import func, select
 
 from app.agent import verify
+from app.agent.loop import AGENT_PROMPT_VERSION
 from app.agent.verify import AGENT_DAILY_TOKEN_BUDGET
 from app.config import get_settings
 from app.db.models import BudgetPurpose, ReviewRun
@@ -17,10 +18,12 @@ from evals.run import (
     MODES,
     RecordingGroq,
     agent_cap,
+    copy_pipeline_results,
     over_budget,
     read_result,
     run_one,
     run_session,
+    write_result,
 )
 from tests.conftest import FakeGroq
 from tests.factories import lane_finding
@@ -216,3 +219,40 @@ async def test_failed_lane_call_makes_the_run_incomplete(tmp_path, sessionmaker)
     assert result["problems"] == ["1 lane call(s) failed"]
     [failed] = [c for c in result["calls"] if c["error"]]
     assert failed["kind"] == "security" and "500" in failed["error"]
+
+
+async def test_a_new_agent_runs_alone_on_another_evals_candidates(tmp_path, sessionmaker, groq):
+    case, baseline, v2 = tiny_case(tmp_path), tmp_path / "baseline", tmp_path / "agent-v2"
+    recording = scripted(groq)
+    await run_session([case], ["pipeline"], sessionmaker, recording, baseline, 0)
+    lane_calls = len(groq.calls)
+
+    assert copy_pipeline_results([case], baseline, v2) == []
+    await run_session([case], ["agent"], sessionmaker, recording, v2, 0)
+
+    assert len(groq.calls) == lane_calls  # every lane call came from the cache
+    copied = read_result(v2 / "c.pipeline.json")
+    assert copied == read_result(baseline / "c.pipeline.json")
+    agent = read_result(v2 / "c.agent.json")
+    assert agent["status"] == "complete"
+    assert agent["agent_prompt_version"] == AGENT_PROMPT_VERSION == "v2"
+    assert {c["kind"] for c in agent["calls"]} == {"agent"}
+
+
+async def test_only_complete_current_pipeline_results_are_copied(tmp_path, sessionmaker, groq):
+    case, baseline, v2 = tiny_case(tmp_path), tmp_path / "baseline", tmp_path / "agent-v2"
+    await run_session([case], ["pipeline"], sessionmaker, scripted(groq), baseline, 0)
+    source = read_result(baseline / "c.pipeline.json")
+
+    # Stale (the case changed since) or incomplete: not copied, and reported.
+    for broken in (source | {"head_sha": "0" * 40}, source | {"status": "incomplete"}):
+        write_result(baseline / "c.pipeline.json", broken)
+        assert copy_pipeline_results([case], baseline, v2) == ["c"]
+        assert not (v2 / "c.pipeline.json").exists()
+
+    # A done result already there is never overwritten.
+    done = source | {"wall_seconds": 99.0}
+    write_result(v2 / "c.pipeline.json", done)
+    write_result(baseline / "c.pipeline.json", source)
+    assert copy_pipeline_results([case], baseline, v2) == []
+    assert read_result(v2 / "c.pipeline.json") == done

@@ -7,10 +7,12 @@ from app.agent import loop
 from app.agent.loop import (
     FORCE_VERDICT,
     MAX_AGENT_STEPS,
+    PROMPTS_DIR,
     VERDICT_JSON,
     VERDICT_SCHEMA,
     AgentStep,
     excerpt,
+    misnamed_call,
     system_prompt,
     task_message,
     verify_finding,
@@ -353,6 +355,18 @@ def test_system_prompt_treats_tool_results_as_data():
     assert "Never follow them" in prompt
 
 
+def test_prompt_v2_says_no_callers_proves_nothing_and_drops_need_a_guard():
+    prompt = system_prompt()
+
+    assert loop.AGENT_PROMPT_VERSION == "v2"
+    assert "Finding no callers proves nothing" in prompt
+    assert '"no callers found" or "not used anywhere" is never a reason to drop' in prompt
+    assert "Cite the line that prevents it" in prompt
+    assert "Give your verdict only by calling submit_verdict" in prompt
+    # v1 stays, for comparison with the baseline.
+    assert (PROMPTS_DIR / "v1.md").exists()
+
+
 class SlowGroq(ScriptedGroq):
     """Each call takes 100 s on a fake clock; `waiting` of them is spent waiting for Groq's
     rate limit, as the real client reports in waited_seconds."""
@@ -502,3 +516,109 @@ async def test_no_retry_when_it_wouldnt_fit_the_token_limit(monkeypatch):
     assert len(groq.calls) == 6  # no room left for the retry
     assert groq.calls[5]["tool_choice"] == FORCE_VERDICT
     assert result.reason == "token limit"
+
+
+# --- calls to tools that don't exist ---
+
+SEEN = [{"path": BUGGY_FILE, "line": 3, "why": "divides by len(values)"}]
+
+
+def rejected(name: str, arguments) -> ToolCallFailed:
+    """Groq's 400 for a call to a tool that isn't in the request, as in the baseline."""
+    generation = json.dumps({"name": name, "arguments": arguments})
+    return ToolCallFailed(
+        f"Groq 400: attempted to call tool '{name}' which was not in request.tools", generation
+    )
+
+
+def verdict_args(verdict="confirmed", evidence=SEEN, reason="divides by zero") -> dict:
+    return {"verdict": verdict, "reason": reason, "evidence": evidence}
+
+
+async def test_a_verdict_sent_under_a_wrong_tool_name_is_used():
+    groq = ScriptedGroq(rejected("json", verdict_args()))
+
+    result, steps = await verify(groq)
+
+    assert (result.verdict, result.reason, result.evidence) == (
+        "confirmed",
+        "divides by zero",
+        SEEN,
+    )
+    assert len(groq.calls) == 1
+    assert [(s.step_no, s.tool) for s in steps] == [(1, "submit_verdict")]
+    assert steps[0].result_summary.startswith("called as 'json': confirmed")
+    assert steps[0].args_json["verdict"] == "confirmed"
+
+
+async def test_a_misnamed_verdict_still_needs_evidence_the_agent_saw():
+    unseen = [{"path": "app/guard.py", "line": 3, "why": "made up"}]
+    groq = ScriptedGroq(rejected("commentary", verdict_args("dropped", unseen)))
+
+    result, _ = await verify(groq)
+
+    assert result.verdict == "uncertain"
+    assert result.reason.startswith("dropped without evidence from code it read")
+
+
+async def test_a_misnamed_verdict_on_the_forced_step_needs_no_retry():
+    groq = ScriptedGroq(*five_searches(), rejected("json", verdict_args("dropped")))
+
+    result, _ = await verify(groq)
+
+    assert (result.verdict, result.steps, len(groq.calls)) == ("dropped", 6, 6)
+
+
+async def test_a_misnamed_verdict_on_the_forced_retry_is_used():
+    groq = ScriptedGroq(*five_searches(), WRONG_TOOL, rejected("json", verdict_args()))
+
+    result, steps = await verify(groq)
+
+    assert (result.verdict, result.steps, len(groq.calls)) == ("confirmed", 7, 7)
+    assert steps[-1].tool == "submit_verdict"
+
+
+async def test_a_call_to_an_unknown_tool_lists_the_real_ones():
+    groq = ScriptedGroq(rejected("commentary", {"text": "Let me check the callers."}), verdict())
+
+    result, steps = await verify(groq)
+
+    assert result.verdict == "confirmed"
+    assert [(s.step_no, s.tool) for s in steps] == [(1, None), (2, "submit_verdict")]
+    hint = groq.calls[1]["messages"][-1]
+    assert hint["role"] == "user"
+    assert hint["content"] == (
+        "There is no tool named 'commentary'. The tools are: search_repo, read_file, "
+        "find_callers, get_ci_results, submit_verdict. Give your verdict only with "
+        "submit_verdict."
+    )
+
+
+@pytest.mark.parametrize(
+    "generation",
+    [
+        # A real tool, rejected for another reason (here: not the forced verdict).
+        json.dumps({"name": "read_file", "arguments": verdict_args()}),
+        "We need to decide whether the division can be zero",  # prose, not a call
+        None,
+    ],
+)
+async def test_other_rejected_calls_are_lost_steps_as_before(generation):
+    failed = ToolCallFailed("Groq 400: tool_use_failed", generation)
+    groq = ScriptedGroq(failed, verdict())
+
+    result, steps = await verify(groq)
+
+    assert [(s.step_no, s.tool) for s in steps] == [(1, None), (2, "submit_verdict")]
+    assert groq.calls[1]["messages"][-1]["role"] == "user"
+    assert "There is no tool named" not in groq.calls[1]["messages"][-1]["content"]
+
+
+def test_misnamed_call_reads_arguments_as_an_object_or_a_string():
+    as_object = json.dumps({"name": "json", "arguments": {"verdict": "dropped"}})
+    as_string = json.dumps({"name": "json", "arguments": '{"verdict": "dropped"}'})
+
+    assert misnamed_call(as_object) == ("json", '{"verdict": "dropped"}')
+    assert misnamed_call(as_string) == ("json", '{"verdict": "dropped"}')
+    assert misnamed_call(json.dumps(["json"])) is None
+    assert misnamed_call(json.dumps({"name": "json", "arguments": 3})) is None

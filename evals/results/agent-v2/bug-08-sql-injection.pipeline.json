@@ -1,0 +1,138 @@
+{
+ "case": "bug-08-sql-injection",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "5e82ac8da1923a375a5a6b0c157a514e25bd2195",
+ "started_at": "2026-11-01T18:19:13.091348+00:00",
+ "wall_seconds": 5.6,
+ "run": {
+  "id": 14,
+  "head_sha": "5e82ac8da1923a375a5a6b0c157a514e25bd2195",
+  "status": "completed",
+  "started_at": "2026-11-01 18:19:13.119987+00:00",
+  "finished_at": "2026-11-01 18:19:18.655966+00:00",
+  "tokens_in": 3570,
+  "tokens_out": 713,
+  "cost_usd": "0.000800775",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1167,
+   "tokens_out": 250,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.94
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1216,
+   "tokens_out": 184,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.05
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1187,
+   "tokens_out": 279,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.19
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "orders/api.py",
+   "tool": "semgrep",
+   "line": 12,
+   "code": "sql-built-from-strings",
+   "message": "SQL built with string formatting. Use query parameters to avoid SQL injection.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 47,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "orders/api.py",
+   "line_start": 12,
+   "line_end": 12,
+   "category": "security",
+   "severity": "high",
+   "title": "SQL injection risk due to string interpolation in query",
+   "explanation": "The function builds an SQL statement by directly interpolating the `order_ref` parameter into the query string. An attacker can craft a malicious `order_ref` value to execute arbitrary SQL, leading to data leakage or modification.",
+   "suggested_fix": "Use parameterized queries, e.g., `conn.execute(\"SELECT total FROM orders WHERE ref = ?\", (order_ref,))`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 48,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "orders/api.py",
+   "line_start": 12,
+   "line_end": 12,
+   "category": "idiom",
+   "severity": "high",
+   "title": "Use of f-string in SQL query",
+   "explanation": "The code constructs an SQL statement with an f-string, directly interpolating the `order_ref` parameter. This is not idiomatic Python for database access and can lead to SQL injection vulnerabilities. The standard approach is to use parameterized queries provided by the database API.",
+   "suggested_fix": "Replace the f-string with a parameterized query, e.g. `conn.execute(\"SELECT total FROM orders WHERE ref = ?\", (order_ref,)).fetchone()[0]`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 47,
+   "agent_steps": []
+  },
+  {
+   "id": 49,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "orders/api.py",
+   "line_start": 12,
+   "line_end": 12,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential NoneType error when order reference is not found",
+   "explanation": "If the given `order_ref` does not exist in the database, `fetchone()` returns `None`. Attempting to index `[0]` on `None` raises a `TypeError`, causing the request to crash.",
+   "suggested_fix": "Check for a `None` result before indexing, e.g.,\n```python\nrow = conn.execute(...).fetchone()\nif row is None:\n    return 0.0  # or raise a custom NotFound error\nreturn row[0]\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 47,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:14 -->\n### Automated review of `5e82ac8`\nFound 1 issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0008 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "orders/api.py",
+    "line": 12,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 security \u00b7 SQL injection risk due to string interpolation in query\n\nThe function builds an SQL statement by directly interpolating the `order_ref` parameter into the query string. An attacker can craft a malicious `order_ref` value to execute arbitrary SQL, leading to data leakage or modification.\n\n**Suggested fix:** Use parameterized queries, e.g., `conn.execute(\"SELECT total FROM orders WHERE ref = ?\", (order_ref,))`."
+   }
+  ]
+ }
+}

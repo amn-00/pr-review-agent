@@ -1,6 +1,6 @@
 # Eval report: baseline
 
-Generated 2026-11-02 11:46 UTC from `evals/results/baseline/`.
+Generated 2026-11-02 12:09 UTC from `evals/results/baseline/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 23 small Python cases, written for this project. The
@@ -15,14 +15,14 @@ Generated 2026-11-02 11:46 UTC from `evals/results/baseline/`.
 
 23 of 23 cases have complete results in both modes.
 
-| Metric | Pipeline only | Pipeline + agent |
+| Metric | Pipeline only | Pipeline + agent (agent v1) |
 |---|---|---|
 | Bugs caught | 14/16 (88%) | 12/16 (75%) |
-| Findings posted | 38 | 21 |
-| False positives | 19 (0.83 per PR) | 6 (0.26 per PR) |
-| Precision | 50% | 71% |
-| Clean PRs with a false positive | 3/5 | 1/5 |
 | Traps posted | 3/3 | 0/3 |
+| Clean PRs with a false positive | 3/5 | 1/5 |
+| False positives | 19 (0.83 per PR) | 6 (0.26 per PR) |
+| Findings posted | 38 | 21 |
+| Precision | 50% | 71% |
 | Cost per PR (list prices) | $0.0010 (max $0.0016) | $0.0024 (max $0.0059) |
 | Latency per PR | 6 s (max 6 s) | 56 s (max 129 s) |
 | Rate-limit waits per PR (summed over parallel calls) | 0 s | 29 s |
@@ -189,7 +189,7 @@ Corroborated findings that aren't planted bugs (a skip would post these):
 
 Verdicts: confirmed 21, dropped 14, uncertain 3.
 Steps per finding: mean 4.2, max 8; 12 reached the 6-step limit. The forced verdict had to be retried for 6, and asked for as JSON for 6.
-Steps that failed or called no tool (e.g. rejected by Groq): 32 of 158.
+Steps that failed or called no tool (e.g. rejected by Groq): 32 of 158. Verdicts sent under a wrong tool name and used: 0.
 Tokens per finding: mean 5148, max 10105.
 
 Why findings ended uncertain or not verified:

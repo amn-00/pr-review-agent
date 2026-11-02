@@ -1,6 +1,7 @@
 """Score the saved eval results against the case labels, and write report.md next to them.
 
     uv run python -m evals.report --name baseline
+    uv run python -m evals.report --name agent-v2 --compare baseline
 
 Uses only the result files and the cases: no database, no LLM. Labels can be edited and the
 report rebuilt without running anything again.
@@ -14,7 +15,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from statistics import mean
 
-from app.agent.loop import MAX_AGENT_STEPS, VERDICT_JSON
+from app.agent.loop import CALLED_AS, MAX_AGENT_STEPS, VERDICT_JSON
+from app.agent.tools import VERDICT_TOOL
 from app.llm.pricing import cost_usd
 from evals.dataset import Case, Label, load_cases
 
@@ -30,6 +32,10 @@ LIMITS = """\
   candidates, but the LLM's run-to-run variance is not measured: a rerun could differ.
 - With this few cases, a difference of 1–2 findings is not meaningful.
 - Latency is on Groq's free tier, where most of it is waiting for the per-minute token limit."""
+TUNED = """\
+- **Tuned on the test set.** The agent prompt after v1 was written after reading the
+  baseline's results on these same cases, so its scores here are optimistic. Only cases it
+  was never tuned on (held out) show whether it generalizes."""
 
 
 @dataclass
@@ -109,21 +115,35 @@ def current(results: dict, case: Case, mode: str) -> dict | None:
     return None
 
 
-def render(name: str, cases: list[Case], results: dict) -> str:
+def render(
+    name: str, cases: list[Case], results: dict, compare: tuple[str, dict] | None = None
+) -> str:
+    """`compare` is (name, results) of another eval with the same pipeline results, e.g. the
+    baseline, to put its agent next to this one."""
     paired = [
         (case, current(results, case, "pipeline"), current(results, case, "agent"))
         for case in cases
         if current(results, case, "pipeline") and current(results, case, "agent")
     ]
+    if compare:
+        other_name, other_results = compare
+        other = {case.id: current(other_results, case, "agent") for case, _, _ in paired}
+        paired = [(case, p, a) for case, p, a in paired if other[case.id]]
+        compare = (other_name, other)
+    limits = LIMITS.format(cases=len(cases))
+    if any((agent.get("agent_prompt_version") or "v1") != "v1" for _, _, agent in paired):
+        limits += "\n" + TUNED
     lines = [
         f"# Eval report: {name}",
         "",
         f"Generated {datetime.now(UTC):%Y-%m-%d %H:%M} UTC from `evals/results/{name}/`.",
         "",
-        LIMITS.format(cases=len(cases)),
+        limits,
         "",
     ]
-    lines += _summary(paired, len(cases))
+    lines += _summary(paired, len(cases), compare)
+    if compare:
+        lines += _changed_verdicts(paired, compare)
     lines += _per_case(paired)
     lines += _funnel(paired)
     lines += _matches(paired)
@@ -138,48 +158,90 @@ def render(name: str, cases: list[Case], results: dict) -> str:
     return "\n".join(lines)
 
 
-def _summary(paired: list, total_cases: int) -> list[str]:
+@dataclass
+class Totals:
+    """One column of the summary: every paired case in one mode."""
+
+    caught: int
+    expected: int
+    true_positives: int
+    false_positives: int
+    clean_with_fp: int
+    clean: int
+    traps_posted: int
+    traps: int
+
+
+def totals(runs: list[tuple[Case, dict]], mode: str) -> Totals:
+    """`runs` holds (case, {"pipeline": ..., "agent": ...}); `mode` picks which one counts."""
+    scores = [(case, score(case, r[mode]["findings"])) for case, r in runs]
+    return Totals(
+        caught=sum(len(s.caught) for _, s in scores),
+        expected=sum(len(case.expect) for case, _ in scores),
+        true_positives=sum(s.true_positives for _, s in scores),
+        false_positives=sum(len(s.false_positives) for _, s in scores),
+        clean_with_fp=sum(1 for case, s in scores if case.kind == "clean" and s.false_positives),
+        clean=sum(1 for case, _ in scores if case.kind == "clean"),
+        traps_posted=sum(len(s.traps_posted) for _, s in scores),
+        traps=sum(len(case.traps) for case, _ in scores),
+    )
+
+
+SUMMARY_METRICS = [
+    "Bugs caught",
+    # Next to the catch rate: catching more is only a win if these don't come back.
+    "Traps posted",
+    "Clean PRs with a false positive",
+    "False positives",
+    "Findings posted",
+    "Precision",
+    "Cost per PR (list prices)",
+    "Latency per PR",
+    "Rate-limit waits per PR (summed over parallel calls)",
+]
+
+
+def _column(runs: list[tuple[Case, dict]], mode: str) -> list[str]:
+    t = totals(runs, mode)
+    costs = [_cost(r, mode) for _, r in runs]
+    latencies = [_latency(r, mode) for _, r in runs if _latency(r, mode) is not None]
+    waits = [_waits(r, mode) for _, r in runs]
+    posted = t.true_positives + t.false_positives
+    return [
+        f"{t.caught}/{t.expected} ({_pct(t.caught, t.expected)})",
+        f"{t.traps_posted}/{t.traps}",
+        f"{t.clean_with_fp}/{t.clean}",
+        f"{t.false_positives} ({t.false_positives / len(runs):.2f} per PR)",
+        str(posted),
+        _pct(t.true_positives, posted),
+        f"${mean(costs):.4f} (max ${max(costs):.4f})",
+        f"{mean(latencies):.0f} s (max {max(latencies):.0f} s)" if latencies else "n/a",
+        f"{mean(waits):.0f} s",
+    ]
+
+
+def _summary(paired: list, total_cases: int, compare: tuple[str, dict] | None) -> list[str]:
     lines = ["## Pipeline only vs pipeline + agent", ""]
     if not paired:
         return lines + ["No case has complete results in both modes yet.", ""]
-    lines += [f"{len(paired)} of {total_cases} cases have complete results in both modes.", ""]
     runs = [(case, {"pipeline": pipeline, "agent": agent}) for case, pipeline, agent in paired]
-    rows = {}
-    for mode in ("pipeline", "agent"):
-        scores = [(case, score(case, r[mode]["findings"])) for case, r in runs]
-        expected = sum(len(case.expect) for case, _ in scores)
-        caught = sum(len(s.caught) for _, s in scores)
-        tp = sum(s.true_positives for _, s in scores)
-        fp = sum(len(s.false_positives) for _, s in scores)
-        clean = [s for case, s in scores if case.kind == "clean"]
-        traps = [(case, s) for case, s in scores if case.traps]
-        costs = [_cost(r, mode) for _, r in runs]
-        latencies = [_latency(r, mode) for _, r in runs if _latency(r, mode) is not None]
-        waits = [_waits(r, mode) for _, r in runs]
-        rows[mode] = [
-            f"{caught}/{expected} ({_pct(caught, expected)})",
-            str(tp + fp),
-            f"{fp} ({fp / len(paired):.2f} per PR)",
-            _pct(tp, tp + fp),
-            f"{sum(1 for s in clean if s.false_positives)}/{len(clean)}",
-            f"{sum(len(s.traps_posted) for _, s in traps)}/{sum(len(c.traps) for c, _ in traps)}",
-            f"${mean(costs):.4f} (max ${max(costs):.4f})",
-            f"{mean(latencies):.0f} s (max {max(latencies):.0f} s)" if latencies else "n/a",
-            f"{mean(waits):.0f} s",
-        ]
-    metrics = [
-        "Bugs caught",
-        "Findings posted",
-        "False positives",
-        "Precision",
-        "Clean PRs with a false positive",
-        "Traps posted",
-        "Cost per PR (list prices)",
-        "Latency per PR",
-        "Rate-limit waits per PR (summed over parallel calls)",
-    ]
-    table = [[m, rows["pipeline"][i], rows["agent"][i]] for i, m in enumerate(metrics)]
-    lines += _table(["Metric", "Pipeline only", "Pipeline + agent"], table)
+    headers = ["Metric", "Pipeline only", f"Pipeline + agent ({_versions(paired)})"]
+    columns = [_column(runs, "pipeline"), _column(runs, "agent")]
+    if compare:
+        other_name, other = compare
+        # The other eval's agent on the same candidates (this eval's pipeline results are
+        # copies of the other's).
+        other_runs = [(case, r | {"agent": other[case.id]}) for case, r in runs]
+        other_paired = [(case, r["pipeline"], r["agent"]) for case, r in other_runs]
+        headers.insert(2, f"Pipeline + agent ({other_name}, {_versions(other_paired)})")
+        columns.insert(1, _column(other_runs, "agent"))
+        lines += [f"{len(paired)} of {total_cases} cases have complete results in all three.", ""]
+    else:
+        lines += [f"{len(paired)} of {total_cases} cases have complete results in both modes.", ""]
+    table = [[m, *(column[i] for column in columns)] for i, m in enumerate(SUMMARY_METRICS)]
+    lines += _table(headers, table)
+    if compare:
+        lines += ["", *_over_correction(runs, other_runs, compare[0])]
     lines += [
         "",
         "Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run "
@@ -190,6 +252,61 @@ def _summary(paired: list, total_cases: int) -> list[str]:
         "",
     ]
     return lines
+
+
+def _over_correction(runs: list, other_runs: list, other_name: str) -> list[str]:
+    """Did catching more bugs bring false positives back? The agent wins only if it didn't."""
+    new, old = totals(runs, "agent"), totals(other_runs, "agent")
+    deltas = {
+        "bugs caught": new.caught - old.caught,
+        "traps posted": new.traps_posted - old.traps_posted,
+        "clean PRs with a false positive": new.clean_with_fp - old.clean_with_fp,
+        "false positives": new.false_positives - old.false_positives,
+    }
+    wins = deltas["bugs caught"] > 0 and all(
+        change <= 0 for name, change in deltas.items() if name != "bugs caught"
+    )
+    changes = ", ".join(f"{name} {change:+d}" for name, change in deltas.items())
+    return [
+        f"**Over-correction check, against `{other_name}`:** {changes}. This agent wins only "
+        "if bugs caught go up and none of the other three do: "
+        + ("**passes**." if wins else "**doesn't pass**.")
+        + " With one sample per finding, a change of 1–2 can be noise.",
+    ]
+
+
+def _changed_verdicts(paired: list, compare: tuple[str, dict]) -> list[str]:
+    """Findings the two agents judged differently. The candidates are the same (one lane
+    cache), so each is matched to its twin in the other run."""
+    other_name, other = compare
+    rows = []
+    for case, _, agent in paired:
+        for finding in agent["findings"]:
+            if finding["drop_reason"]:
+                continue
+            twin = _twin(finding, other[case.id]["findings"])
+            before = twin["verdict"] if twin else None
+            if before == finding["verdict"]:
+                continue
+            reason = (finding["verdict_reason"] or "")[:200]
+            rows.append(
+                [
+                    case.id,
+                    _describe(finding),
+                    truth(case, finding),
+                    before or "—",
+                    f"{finding['verdict'] or '—'}: {reason}",
+                ]
+            )
+    headers = ["Case", "Finding", "Label", f"Verdict ({other_name})", "Verdict (this run)"]
+    return ["## Changed verdicts", "", *_table(headers, rows), ""]
+
+
+def _versions(paired: list) -> str:
+    """The agent prompt version(s) of these agent results; results from before the field
+    existed ran agent v1."""
+    versions = sorted({agent.get("agent_prompt_version") or "v1" for _, _, agent in paired})
+    return "agent " + ", ".join(versions)
 
 
 def _per_case(paired: list) -> list[str]:
@@ -388,6 +505,12 @@ def _agent(paired: list) -> list[str]:
         1 for f in with_steps if any(s["tool"] == VERDICT_JSON for s in f["agent_steps"])
     )
     failed_calls = sum(1 for f in with_steps for s in f["agent_steps"] if s["tool"] is None)
+    misnamed = sum(
+        1
+        for f in with_steps
+        for s in f["agent_steps"]
+        if s["tool"] == VERDICT_TOOL and s["result_summary"].startswith(CALLED_AS)
+    )
     lines = ["## Verification agent", ""]
     if not with_steps:
         return lines + ["No agent steps yet.", ""]
@@ -398,7 +521,7 @@ def _agent(paired: list) -> list[str]:
         f"limit. The forced verdict had to be retried for {retried}, and asked for as JSON "
         f"for {json_fallback}.",
         f"Steps that failed or called no tool (e.g. rejected by Groq): {failed_calls} of "
-        f"{sum(steps)}.",
+        f"{sum(steps)}. Verdicts sent under a wrong tool name and used: {misnamed}.",
         f"Tokens per finding: mean {mean(tokens):.0f}, max {max(tokens)}.",
         "",
         "Why findings ended uncertain or not verified:",
@@ -529,9 +652,15 @@ def _table(headers: list[str], rows: list[list[str]]) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--name", required=True, help="results folder under evals/results/")
+    parser.add_argument(
+        "--compare",
+        metavar="NAME",
+        help="another eval with the same pipeline results, whose agent is shown alongside",
+    )
     args = parser.parse_args()
     results_dir = RESULTS_DIR / args.name
-    text = render(args.name, load_cases(), load_results(results_dir))
+    compare = (args.compare, load_results(RESULTS_DIR / args.compare)) if args.compare else None
+    text = render(args.name, load_cases(), load_results(results_dir), compare)
     (results_dir / "report.md").write_text(text + "\n", encoding="utf-8")
     print(f"Wrote {results_dir / 'report.md'}")
 

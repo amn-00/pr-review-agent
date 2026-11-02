@@ -1,0 +1,89 @@
+{
+ "case": "trap-03-guarded-division",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "3c471b4d2106bff40a9d61991fc04dbca3d576ae",
+ "started_at": "2026-11-01T18:43:13.559110+00:00",
+ "wall_seconds": 5.7,
+ "run": {
+  "id": 34,
+  "head_sha": "3c471b4d2106bff40a9d61991fc04dbca3d576ae",
+  "status": "completed",
+  "started_at": "2026-11-01 18:43:13.591510+00:00",
+  "finished_at": "2026-11-01 18:43:19.210651+00:00",
+  "tokens_in": 3234,
+  "tokens_out": 355,
+  "cost_usd": "0.000587475",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1075,
+   "tokens_out": 100,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.3
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1079,
+   "tokens_out": 203,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.45
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1080,
+   "tokens_out": 52,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.56
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 91,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "reviews/stats.py",
+   "line_start": 3,
+   "line_end": 3,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential division by zero when ratings list is empty",
+   "explanation": "The function computes sum(ratings) / len(ratings) without checking if the list is empty. If an empty list is passed, len(ratings) is zero, causing a ZeroDivisionError at runtime.",
+   "suggested_fix": "Add a guard for an empty list, e.g.,\n```\nif not ratings:\n    return 0.0\nreturn round(sum(ratings) / len(ratings), 1)\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:34 -->\n### Automated review of `3c471b4`\nFound 1 issue(s): 1 medium.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0006 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "reviews/stats.py",
+    "line": 3,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Potential division by zero when ratings list is empty\n\nThe function computes sum(ratings) / len(ratings) without checking if the list is empty. If an empty list is passed, len(ratings) is zero, causing a ZeroDivisionError at runtime.\n\n**Suggested fix:** Add a guard for an empty list, e.g.,\n```\nif not ratings:\n    return 0.0\nreturn round(sum(ratings) / len(ratings), 1)\n```"
+   }
+  ]
+ }
+}

@@ -1,0 +1,118 @@
+{
+ "case": "trap-01-sql-allowlist",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "bbce093e14037a8a46115f14f7788a52b00346be",
+ "started_at": "2026-11-01T18:40:50.589498+00:00",
+ "wall_seconds": 5.5,
+ "run": {
+  "id": 32,
+  "head_sha": "bbce093e14037a8a46115f14f7788a52b00346be",
+  "status": "completed",
+  "started_at": "2026-11-01 18:40:50.614867+00:00",
+  "finished_at": "2026-11-01 18:40:56.121808+00:00",
+  "tokens_in": 3441,
+  "tokens_out": 545,
+  "cost_usd": "0.000723300",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1126,
+   "tokens_out": 118,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.45
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1142,
+   "tokens_out": 219,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.81
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1173,
+   "tokens_out": 208,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.03
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "catalog/queries.py",
+   "tool": "semgrep",
+   "line": 7,
+   "code": "sql-built-from-strings",
+   "message": "SQL built with string formatting. Use query parameters to avoid SQL injection.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 87,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "catalog/queries.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "security",
+   "severity": "high",
+   "title": "SQL injection risk via unsanitized ORDER BY clause",
+   "explanation": "The function directly interpolates the `order_by` argument into the SQL statement using an f\u2011string. An attacker could supply a malicious value (e.g., \"name; DROP TABLE products; --\") causing arbitrary SQL execution.",
+   "suggested_fix": "Validate `order_by` against a whitelist of allowed column names (e.g., ['id', 'name', 'price']) before constructing the query, or use parameterized queries where possible.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 88,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "catalog/queries.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential runtime error from unsafe ORDER BY clause",
+   "explanation": "The function directly interpolates the `order_by` parameter into the SQL query string. If an invalid or empty column name is passed, SQLite will raise a syntax error, causing the function to crash at runtime.",
+   "suggested_fix": "Validate `order_by` against a whitelist of allowed column names or use parameterized queries for safe ordering.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 87,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:32 -->\n### Automated review of `bbce093`\nFound 1 issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0007 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "catalog/queries.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 security \u00b7 SQL injection risk via unsanitized ORDER BY clause\n\nThe function directly interpolates the `order_by` argument into the SQL statement using an f\u2011string. An attacker could supply a malicious value (e.g., \"name; DROP TABLE products; --\") causing arbitrary SQL execution.\n\n**Suggested fix:** Validate `order_by` against a whitelist of allowed column names (e.g., ['id', 'name', 'price']) before constructing the query, or use parameterized queries where possible."
+   }
+  ]
+ }
+}

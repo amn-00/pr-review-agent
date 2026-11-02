@@ -39,7 +39,14 @@ class ToolCallFailed(LLMError):
     - `output_parse_failed`: output that isn't a tool call at all (e.g. prose; seen in the
       Phase 5 smoke run).
 
-    It's an LLMError, so callers that don't retry treat it as any failed call."""
+    It's an LLMError, so callers that don't retry treat it as any failed call.
+
+    `failed_generation` is what the model wrote, whole, as Groq reports it (the message is cut
+    short). The agent uses it to recover a verdict sent under a wrong tool name."""
+
+    def __init__(self, message: str, failed_generation: str | None = None):
+        super().__init__(message)
+        self.failed_generation = failed_generation
 
 
 # Groq error codes that mean "this generation was unusable", not "this request is wrong".
@@ -80,6 +87,16 @@ def parse_duration(value: str) -> float:
     """Groq's reset headers look like "7.66s", "2m59.56s" or "120ms". Returns seconds."""
     units = {"h": 3600, "m": 60, "s": 1, "ms": 0.001}
     return sum(float(n) * units[unit] for n, unit in re.findall(r"([\d.]+)(ms|h|m|s)", value))
+
+
+def _failed_generation(response: httpx.Response) -> str | None:
+    """The `error.failed_generation` text of a Groq 400, or None if there isn't one."""
+    try:
+        error = response.json().get("error") or {}
+    except ValueError:
+        return None
+    generation = error.get("failed_generation") if isinstance(error, dict) else None
+    return generation if isinstance(generation, str) else None
 
 
 class GroqClient:
@@ -193,7 +210,7 @@ class GroqClient:
             elif response.status_code in (401, 403):
                 raise NonRetryableError(message)  # bad API key: every call would fail
             elif any(code in response.text for code in FAILED_GENERATION_CODES):
-                raise ToolCallFailed(message)
+                raise ToolCallFailed(message, _failed_generation(response))
             else:
                 raise LLMError(message)  # e.g. 400 json_validate_failed
         raise LLMError(f"Groq call failed after {MAX_ATTEMPTS} attempts")

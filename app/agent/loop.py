@@ -38,7 +38,9 @@ from app.llm.groq import (
 from app.pipeline.chunking import Chunk
 from app.pipeline.lanes import Candidate
 
-AGENT_PROMPT_VERSION = "v1"
+# v2: no callers found is not evidence of safety; "dropped" needs a guard. v1 is kept for
+# comparison (the Phase 5 baseline ran on it).
+AGENT_PROMPT_VERSION = "v2"
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts" / "agent"
 
 MAX_AGENT_STEPS = 6
@@ -65,6 +67,9 @@ ASK_FOR_JSON_VERDICT = (
 # How much one more step adds to the next request, at most: a full tool result plus the call.
 STEP_GROWTH_TOKENS = MAX_RESULT_CHARS // 4 + EXPECTED_TOOL_CALL_OUTPUT_TOKENS
 NOT_RUN = "Not run: one tool call per step."
+TOOL_NAMES = [t["function"]["name"] for t in TOOL_SCHEMAS]
+# Summary prefix of a verdict the model sent under another tool name (see misnamed_call).
+CALLED_AS = "called as"
 
 
 @dataclass
@@ -171,6 +176,23 @@ async def verify_finding(
     def fits(estimate: int) -> bool:
         return result.tokens_in + result.tokens_out + estimate <= FINDING_TOKEN_LIMIT
 
+    async def failed_call(exc: ToolCallFailed, step_no: int, started: float) -> Verdict | None:
+        """A call Groq rejected. If the model sent a verdict under a tool name that doesn't
+        exist ("json", "commentary": 23 of 158 baseline steps), it's used as submit_verdict,
+        evidence rules included. Otherwise the step is lost; for an unknown tool name, the
+        model is told the real ones."""
+        misnamed = misnamed_call(exc.failed_generation)
+        if misnamed:
+            name, arguments = misnamed
+            verdict, _ = _parse_verdict(arguments, seen)
+            if verdict is not None:
+                text = f"{CALLED_AS} {name!r}: {verdict.verdict}: {verdict.reason}"
+                await step_done(step_no, started, VERDICT_TOOL, arguments, text)
+                return verdict
+            messages.append({"role": "user", "content": unknown_tool_message(name)})
+        await step_done(step_no, started, text=str(exc))
+        return None
+
     async def forced_retry() -> Verdict | None:
         """One more call forced to submit_verdict. None if it brings no valid verdict."""
         step_no, started = result.steps + 1, clock()
@@ -179,8 +201,7 @@ async def verify_finding(
                 model, messages, TOOL_SCHEMAS, FORCE_VERDICT, deadline
             )
         except ToolCallFailed as exc:  # e.g. the model called another tool again
-            await step_done(step_no, started, text=str(exc))
-            return None
+            return await failed_call(exc, step_no, started)
         tokens = (completion.tokens_in, completion.tokens_out)
         calls = completion.message.get("tool_calls") or []
         name = calls[0]["function"]["name"] if calls else None
@@ -224,7 +245,9 @@ async def verify_finding(
                 model, messages, TOOL_SCHEMAS, tool_choice, deadline
             )
         except ToolCallFailed as exc:  # a malformed tool call: this step is lost, ask again
-            await step_done(step_no, started, text=str(exc))
+            verdict = await failed_call(exc, step_no, started)
+            if verdict is not None:
+                return done(verdict)
             if last_chance:
                 break  # the forced verdict didn't come: recover below
             continue
@@ -326,6 +349,35 @@ def _parse_verdict(arguments: str, seen: set[tuple[str, int]]) -> tuple[Verdict 
         reason = f"{args.verdict} without evidence from code it read: {args.reason}"
         return Verdict("uncertain", reason), ""
     return Verdict(args.verdict, args.reason, evidence), ""
+
+
+def misnamed_call(failed_generation: str | None) -> tuple[str, str] | None:
+    """(name, arguments as JSON) of a rejected call to a tool that doesn't exist, from Groq's
+    failed_generation, e.g. {"name": "json", "arguments": {...}}. None for anything else: no
+    generation, not a call, or a call to one of our tools (that failed for another reason)."""
+    if not failed_generation:
+        return None
+    try:
+        call = json.loads(failed_generation)
+    except ValueError:
+        return None
+    if not isinstance(call, dict):
+        return None
+    name, arguments = call.get("name"), call.get("arguments")
+    if not isinstance(name, str) or name in TOOL_NAMES:
+        return None
+    if isinstance(arguments, dict):
+        arguments = json.dumps(arguments)
+    if not isinstance(arguments, str):
+        return None
+    return name, arguments
+
+
+def unknown_tool_message(name: str) -> str:
+    return (
+        f"There is no tool named {name[:50]!r}. The tools are: {', '.join(TOOL_NAMES)}. "
+        f"Give your verdict only with {VERDICT_TOOL}."
+    )
 
 
 def _plain_messages(messages: list[dict]) -> list[dict]:

@@ -1,0 +1,135 @@
+{
+ "case": "bug-14-stale-cache",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "91374bec7a5f17956b98df568a0d8614e5e00ba8",
+ "started_at": "2026-11-01T18:27:43.278939+00:00",
+ "wall_seconds": 6.3,
+ "run": {
+  "id": 21,
+  "head_sha": "91374bec7a5f17956b98df568a0d8614e5e00ba8",
+  "status": "completed",
+  "started_at": "2026-11-01 18:27:43.302855+00:00",
+  "finished_at": "2026-11-01 18:27:49.598483+00:00",
+  "tokens_in": 3631,
+  "tokens_out": 797,
+  "cost_usd": "0.000825900",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1209,
+   "tokens_out": 124,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.86
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1206,
+   "tokens_out": 355,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.94
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1216,
+   "tokens_out": 318,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.25
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 67,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 16,
+   "line_end": 16,
+   "category": "bug",
+   "severity": "high",
+   "title": "Cache not invalidated after price update",
+   "explanation": "The in\u2011memory _cache stores product data loaded by get_product, but update_price does not clear or refresh the cached entry. Subsequent calls to get_product will return stale price information.",
+   "suggested_fix": "Invalidate or update the cache entry after saving the new price, e.g.,\n```python\n    save_price(product_id, round(price, 2))\n    _cache.pop(product_id, None)  # or reload the product into the cache\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 68,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 4,
+   "line_end": 4,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Type hint for cache is misleading",
+   "explanation": "The hint `_cache: dict[int, dict | None]` suggests the values are either a dict or None, but the `load_product` function may return any type. The annotation also omits the `typing` module. This can confuse readers and static analysers.",
+   "suggested_fix": "Use `dict[int, Any]` or `Dict[int, Optional[Any]]` and import from `typing`. Add a comment explaining the cache contents.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 69,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 4,
+   "line_end": 4,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Mutable default cache not thread\u2011safe",
+   "explanation": "Using a module\u2011level mutable dictionary as a cache can lead to race conditions in multi\u2011threaded contexts and makes the code harder to reason about. It also silently caches None values.",
+   "suggested_fix": "Move the cache into a class or use a thread\u2011safe structure, or at least document its intended single\u2011thread usage.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 68,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:21 -->\n### Automated review of `91374be`\nFound 2 issue(s): 1 high, 1 medium.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0008 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "products/service.py",
+    "line": 16,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Cache not invalidated after price update\n\nThe in\u2011memory _cache stores product data loaded by get_product, but update_price does not clear or refresh the cached entry. Subsequent calls to get_product will return stale price information.\n\n**Suggested fix:** Invalidate or update the cache entry after saving the new price, e.g.,\n```python\n    save_price(product_id, round(price, 2))\n    _cache.pop(product_id, None)  # or reload the product into the cache\n```"
+   },
+   {
+    "path": "products/service.py",
+    "line": 4,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 readability \u00b7 Type hint for cache is misleading\n\nThe hint `_cache: dict[int, dict | None]` suggests the values are either a dict or None, but the `load_product` function may return any type. The annotation also omits the `typing` module. This can confuse readers and static analysers.\n\n**Suggested fix:** Use `dict[int, Any]` or `Dict[int, Optional[Any]]` and import from `typing`. Add a comment explaining the cache contents."
+   }
+  ]
+ }
+}

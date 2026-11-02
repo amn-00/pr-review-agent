@@ -1,0 +1,109 @@
+{
+ "case": "bug-12-blocking-sleep",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "070dbba1ec109da05270dcf1554f54d5b8f56e12",
+ "started_at": "2026-11-01T18:25:15.513008+00:00",
+ "wall_seconds": 5.1,
+ "run": {
+  "id": 19,
+  "head_sha": "070dbba1ec109da05270dcf1554f54d5b8f56e12",
+  "status": "completed",
+  "started_at": "2026-11-01 18:25:15.538471+00:00",
+  "finished_at": "2026-11-01 18:25:20.588653+00:00",
+  "tokens_in": 3609,
+  "tokens_out": 447,
+  "cost_usd": "0.000663450",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1192,
+   "tokens_out": 189,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.44
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1207,
+   "tokens_out": 64,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.69
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1210,
+   "tokens_out": 194,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.8
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 63,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "jobs/poller.py",
+   "line_start": 14,
+   "line_end": 14,
+   "category": "bug",
+   "severity": "high",
+   "title": "Blocking call in async function",
+   "explanation": "The async function `wait_until_ready` uses `time.sleep`, which blocks the event loop and prevents other async tasks from running during the sleep period. This can cause performance degradation and deadlocks in an async application.",
+   "suggested_fix": "Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and import asyncio at the top of the file.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 64,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "jobs/poller.py",
+   "line_start": 14,
+   "line_end": 14,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Blocking sleep in async function",
+   "explanation": "Using time.sleep inside an async function blocks the event loop, preventing other coroutines from running. The idiomatic approach is to use await asyncio.sleep for non-blocking delays.",
+   "suggested_fix": "Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and remove the unnecessary import of `time`. ",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 63,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:19 -->\n### Automated review of `070dbba`\nFound 1 issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0007 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "jobs/poller.py",
+    "line": 14,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Blocking call in async function\n\nThe async function `wait_until_ready` uses `time.sleep`, which blocks the event loop and prevents other async tasks from running during the sleep period. This can cause performance degradation and deadlocks in an async application.\n\n**Suggested fix:** Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and import asyncio at the top of the file."
+   }
+  ]
+ }
+}

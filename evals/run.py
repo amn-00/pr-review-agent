@@ -1,7 +1,7 @@
 """Run the eval cases through the real review job: real Groq, a fake GitHub, its own database.
 
     uv run python -m evals.run --name baseline [--only CASE ...] [--mode MODE ...] [--dry-run]
-                               [--agent-budget TOKENS]
+                               [--agent-budget TOKENS] [--pipeline-from NAME]
 
 Each case runs in up to three modes, in this order:
 - pipeline: AGENT_ENABLED off, PR #1 at the case's head. Pays for the lanes.
@@ -19,6 +19,9 @@ another day.
 --agent-budget raises the agent's daily budget for this session only (prod keeps 70K): on
 later days the lanes have little left to do, so the agent can use their room. Lanes plus agent
 still never plan past Groq's 200K per model per day, minus the 20K headroom prod keeps.
+
+--pipeline-from copies another eval's pipeline results first. With --mode agent, only the
+agent runs, on exactly that eval's candidates (e.g. a new agent prompt against the baseline).
 """
 
 import argparse
@@ -43,7 +46,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.agent import verify
-from app.agent.loop import FINDING_TOKEN_LIMIT
+from app.agent.loop import AGENT_PROMPT_VERSION, FINDING_TOKEN_LIMIT
 from app.agent.verify import (
     AGENT_DAILY_TOKEN_BUDGET,
     FINDING_ESTIMATE_TOKENS,
@@ -160,6 +163,23 @@ def is_done(result: dict | None, sha: str) -> bool:
     return result is not None and result["status"] == "complete" and result["head_sha"] == sha
 
 
+def copy_pipeline_results(cases: list[Case], source_dir: Path, results_dir: Path) -> list[str]:
+    """Copy another eval's pipeline results, so this one runs only the agent, on exactly the
+    same candidates (its lane calls all come from the cache). Only complete results for the
+    current case files are copied, and never over a done result. Returns what wasn't copied."""
+    not_copied = []
+    for case in cases:
+        sha = case.target("pipeline")[1]
+        if is_done(read_result(result_path(results_dir, case, "pipeline")), sha):
+            continue
+        source = read_result(result_path(source_dir, case, "pipeline"))
+        if not is_done(source, sha):
+            not_copied.append(case.id)
+            continue
+        write_result(result_path(results_dir, case, "pipeline"), source)
+    return not_copied
+
+
 async def lane_estimate(sessionmaker: async_sessionmaker, case: Case, chunks) -> dict[str, int]:
     """Tokens per model the lanes will spend: estimates for every call not in the cache."""
     models = lane_models(settings.groq_model, settings.groq_small_model)
@@ -270,6 +290,7 @@ async def run_one(
     return {
         "case": case.id,
         "mode": mode,
+        "agent_prompt_version": AGENT_PROMPT_VERSION if mode == "agent" else None,
         "status": "incomplete" if problems else "complete",
         "problems": problems,
         "notes": notes,
@@ -481,6 +502,11 @@ def main() -> None:
         metavar="TOKENS",
         help=f"the agent's daily budget, this session only (default {AGENT_DAILY_TOKEN_BUDGET})",
     )
+    parser.add_argument(
+        "--pipeline-from",
+        metavar="NAME",
+        help="copy that eval's pipeline results first, e.g. to run only a new agent version",
+    )
     args = parser.parse_args()
 
     # A missing Semgrep would silently remove every Semgrep hint (a tool problem never fails a
@@ -495,6 +521,11 @@ def main() -> None:
     invalid = {case.id: validate(case) for case in cases if validate(case)}
     if invalid:
         sys.exit(f"Invalid cases: {json.dumps(invalid, indent=1)}")
+    if args.pipeline_from:
+        source = RESULTS_DIR / args.pipeline_from
+        not_copied = copy_pipeline_results(cases, source, RESULTS_DIR / args.name)
+        if not_copied:
+            print(f"No complete, current pipeline result in {source} for: {', '.join(not_copied)}")
 
     setup_logging("WARNING")
     url = os.environ.get("EVAL_DATABASE_URL", DEFAULT_DATABASE_URL)

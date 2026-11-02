@@ -1,0 +1,142 @@
+{
+ "case": "clean-04-dataclass-config",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "d4a39dc4e191d9812643e06fdec3b1dcd3f62d24",
+ "started_at": "2026-11-01T18:36:05.654373+00:00",
+ "wall_seconds": 5.9,
+ "run": {
+  "id": 28,
+  "head_sha": "d4a39dc4e191d9812643e06fdec3b1dcd3f62d24",
+  "status": "completed",
+  "started_at": "2026-11-01 18:36:05.693965+00:00",
+  "finished_at": "2026-11-01 18:36:11.520799+00:00",
+  "tokens_in": 6872,
+  "tokens_out": 1005,
+  "cost_usd": "0.001360950",
+  "llm_calls": 6,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1206,
+   "tokens_out": 62,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.64
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1197,
+   "tokens_out": 289,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.86
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1089,
+   "tokens_out": 81,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.5
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1213,
+   "tokens_out": 264,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.25
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1081,
+   "tokens_out": 51,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.39
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1086,
+   "tokens_out": 258,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.05
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 78,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "app_config/settings.py",
+   "line_start": 15,
+   "line_end": 15,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Uncaught exception when APP_PORT is non-integer",
+   "explanation": "The code casts the APP_PORT environment variable to int without handling ValueError. If the variable contains a non-numeric value, the application will crash at startup.",
+   "suggested_fix": "Wrap the int conversion in a try/except block and fallback to the default port, e.g.,\n```\ntry:\n    port = int(os.environ.get(\"APP_PORT\", Settings.port))\nexcept ValueError:\n    port = Settings.port\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 79,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "app_config/server.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "security",
+   "severity": "low",
+   "title": "Potential unsafe use of unvalidated host in URL construction",
+   "explanation": "The added line builds an HTTP URL directly from settings.host and settings.port without validation. If these values can be influenced by an attacker, they could craft malicious host values leading to SSRF or other injection attacks when the URL is later used in network requests.",
+   "suggested_fix": "Validate and sanitize settings.host (e.g., ensure it matches an allowed whitelist or is a proper hostname) before embedding it in the URL.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:28 -->\n### Automated review of `d4a39dc`\nFound 2 issue(s): 1 medium, 1 low.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0014 at list prices (free tier); 0 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "app_config/settings.py",
+    "line": 15,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Uncaught exception when APP_PORT is non-integer\n\nThe code casts the APP_PORT environment variable to int without handling ValueError. If the variable contains a non-numeric value, the application will crash at startup.\n\n**Suggested fix:** Wrap the int conversion in a try/except block and fallback to the default port, e.g.,\n```\ntry:\n    port = int(os.environ.get(\"APP_PORT\", Settings.port))\nexcept ValueError:\n    port = Settings.port\n```"
+   },
+   {
+    "path": "app_config/server.py",
+    "line": 6,
+    "side": "RIGHT",
+    "body": "**low** \u00b7 security \u00b7 Potential unsafe use of unvalidated host in URL construction\n\nThe added line builds an HTTP URL directly from settings.host and settings.port without validation. If these values can be influenced by an attacker, they could craft malicious host values leading to SSRF or other injection attacks when the URL is later used in network requests.\n\n**Suggested fix:** Validate and sanitize settings.host (e.g., ensure it matches an allowed whitelist or is a proper hostname) before embedding it in the URL."
+   }
+  ]
+ }
+}

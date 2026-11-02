@@ -927,3 +927,61 @@ posted, with "1 lane call(s) failed" in its summary.
 - **To consider after the baseline:** retry a lane call once on `ToolCallFailed` (an unusable
   generation, not a bad request), within the existing deadline and budget checks. Other
   `LLMError`s stay as they are.
+
+### Baseline results (committed in `evals/results/baseline/`)
+
+Agent v1 cut false positives from 0.83 to 0.26 per PR and posted none of the 3 traps. But the
+catch rate fell from 88% to 75%: it dropped or doubted two real bugs (bug-08's SQL injection,
+bug-10's path traversal) because it found no callers. 23 of its 158 steps called tools that
+don't exist ("json", "commentary", …), usually with a complete verdict as the arguments.
+
+## Phase 5c — Agent v2
+
+**Prompt v2: finding no callers proves nothing; `dropped` needs a guard.**
+`prompts/agent/v2.md` is v1 plus three things:
+- **Reachability:** `find_callers` and `search_repo` are text search and can't see framework
+  wiring. Entry points (routes, CLI commands, jobs, public functions) count as reachable, and a
+  function whose contract says its input comes from outside gets that input.
+- **What a drop needs:** `dropped` must cite the line that prevents the problem (a guard, an
+  allow-list, validation, a type, an import). Not finding a caller or a use is never such a line.
+- **Tool names:** tools are called by their exact names, and the verdict comes only through
+  `submit_verdict`.
+
+The untrusted-data and evidence rules are unchanged, word for word. v1 stays in
+`prompts/agent/`, and `AGENT_PROMPT_VERSION` picks the version.
+
+**A verdict sent under a wrong tool name is used.**
+Groq rejects a call to a tool that isn't in the request (400 `tool_use_failed`) before we see
+it. Its `failed_generation` holds what the model wrote, e.g. `{"name": "json", "arguments":
+{verdict…}}`.
+- **The client:** `ToolCallFailed` now carries `failed_generation` whole. The error message is
+  cut at 300 characters, which hid it before.
+- **The loop:** for a call to a name that isn't one of our 5 tools:
+  - **Arguments that validate as a verdict:** handled exactly like `submit_verdict`, evidence
+    check included, on any step, the forced ones too. The step is stored as `submit_verdict`,
+    with "called as 'json'" in its summary.
+  - **Anything else:** the step is lost as before, and the next user message lists the real
+    tools. There's no tool-call ID to answer, because Groq rejected the call.
+
+  A known tool rejected for another reason, and unreadable output, behave as before.
+
+Treating such a call as a verdict gives an injection nothing new. It's the same verdict with
+the same evidence rule, so at worst a finding is hidden or kept, as before.
+
+**Agent-only re-run on the baseline's candidates.**
+- **`evals.run --pipeline-from NAME`** copies another eval's pipeline results, only complete
+  ones for the current case files, never over a done result. With `--mode agent`, only the new
+  agent runs, and every lane call comes from the cache, so it judges exactly the baseline's
+  candidates.
+- **Each result records `agent_prompt_version`.** Older results without the field ran v1.
+- **`evals.report --compare NAME`** adds the other eval's agent as a column, lists every finding
+  whose verdict changed, and states an over-correction check. The new agent wins only if bugs
+  caught go up while traps posted, clean PRs with a false positive and false positives don't.
+  Traps and clean PRs now sit right under the catch rate in every summary.
+- **The report's limits** gain a "tuned on the test set" line whenever an agent prompt after v1
+  is scored. v2 was written after reading the baseline's results on these same 23 cases, so its
+  scores here are optimistic. After v2, 3–4 held-out cases, never used for tuning, test
+  whether it generalizes.
+
+**Not separable:** the prompt and the wrong-name handling ship together, so the re-run measures
+them as one. Whether to rerun v1 to measure run-to-run noise is decided after seeing v2.

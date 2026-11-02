@@ -1,0 +1,186 @@
+{
+ "case": "bug-07-inverted-permission",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "86139188a154a6bfb5019d1efb334e9ee7b47b31",
+ "started_at": "2026-11-01T18:17:58.084811+00:00",
+ "wall_seconds": 6.3,
+ "run": {
+  "id": 13,
+  "head_sha": "86139188a154a6bfb5019d1efb334e9ee7b47b31",
+  "status": "completed",
+  "started_at": "2026-11-01 18:17:58.120720+00:00",
+  "finished_at": "2026-11-01 18:18:04.366114+00:00",
+  "tokens_in": 6738,
+  "tokens_out": 1204,
+  "cost_usd": "0.001452000",
+  "llm_calls": 6,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1106,
+   "tokens_out": 97,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.52
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1113,
+   "tokens_out": 77,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.78
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1122,
+   "tokens_out": 199,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.84
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1126,
+   "tokens_out": 282,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.67
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1140,
+   "tokens_out": 266,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.03
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1131,
+   "tokens_out": 283,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.22
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 43,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "docs_app/permissions.py",
+   "line_start": 6,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect permission check logic",
+   "explanation": "The condition `if user.is_admin or user.id != document.owner_id:` allows editing when the user is not the owner (and not an admin) and blocks the owner, which is opposite of the intended behavior described in the docstring.",
+   "suggested_fix": "Change the condition to `if not (user.is_admin or user.id == document.owner_id):` and raise the error in that branch, or invert the logic accordingly.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 44,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "docs_app/editing.py",
+   "line_start": 5,
+   "line_end": 8,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Document changes are not persisted to the database",
+   "explanation": "The function updates the document's body attribute but never calls `document.save()`, so the modification will not be saved in the database. Callers expecting the change to be persisted will see stale data.",
+   "suggested_fix": "Add `document.save(update_fields=[\"body\"])` before returning the document.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 45,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "docs_app/permissions.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "security",
+   "severity": "high",
+   "title": "Incorrect permission check allows unauthorized edits",
+   "explanation": "The condition `if user.is_admin or user.id != document.owner_id:` returns for admins **or** any user whose ID is not the owner, effectively granting edit rights to anyone who is not the owner. This bypasses the intended access control and lets unauthorized users edit documents.",
+   "suggested_fix": "Change the logical operator to `and` so that only admins or the document owner are allowed: `if user.is_admin or user.id == document.owner_id:`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 43,
+   "agent_steps": []
+  },
+  {
+   "id": 46,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "docs_app/permissions.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "readability",
+   "severity": "high",
+   "title": "Confusing edit permission check logic",
+   "explanation": "The condition `if user.is_admin or user.id != document.owner_id:` allows non\u2011owner, non\u2011admin users to pass and returns, which is the opposite of the intended logic. This makes the code hard to understand and error\u2011prone.",
+   "suggested_fix": "Rewrite the condition to explicitly check for allowed users, e.g.\n```python\nif not user.is_admin and user.id != document.owner_id:\n    raise PermissionError(...)\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 43,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:13 -->\n### Automated review of `8613918`\nFound 2 issue(s): 1 high, 1 medium.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0015 at list prices (free tier); 0 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "docs_app/permissions.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Incorrect permission check logic\n\nThe condition `if user.is_admin or user.id != document.owner_id:` allows editing when the user is not the owner (and not an admin) and blocks the owner, which is opposite of the intended behavior described in the docstring.\n\n**Suggested fix:** Change the condition to `if not (user.is_admin or user.id == document.owner_id):` and raise the error in that branch, or invert the logic accordingly.",
+    "start_line": 6,
+    "start_side": "RIGHT"
+   },
+   {
+    "path": "docs_app/editing.py",
+    "line": 8,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Document changes are not persisted to the database\n\nThe function updates the document's body attribute but never calls `document.save()`, so the modification will not be saved in the database. Callers expecting the change to be persisted will see stale data.\n\n**Suggested fix:** Add `document.save(update_fields=[\"body\"])` before returning the document.",
+    "start_line": 5,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}
