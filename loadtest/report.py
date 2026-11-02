@@ -78,6 +78,9 @@ def metrics(result: dict) -> dict:
         "duplicates": sum(n - 1 for n in per_commit.values() if n > 1),
         "lost": sum(head not in first_review for head in open_heads),
         "stale_posts": sum(r["stale"] for r in reviews),
+        # Every fake PR has one bug, found and confirmed when all goes well. A review without
+        # its comment lost a lane call, a skipped chunk or the agent's check to a fault.
+        "reviews_without_comment": sum(r["comments"] == 0 for r in reviews),
         "unexpected_statuses": dict(
             Counter(
                 f"{w['kind']} -> {w['status']}"
@@ -86,6 +89,10 @@ def metrics(result: dict) -> dict:
             )
         ),
         "github_requests_per_review": round(github_requests / len(reviews), 1) if reviews else None,
+        # Above 1 means retries ran the agent again (no verdict cache).
+        "agent_calls_per_review": (
+            round(records["groq_calls"].get("agent 200", 0) / len(reviews), 2) if reviews else None
+        ),
         "github_errors": records["github_errors"],
         "groq_calls": records["groq_calls"],
         "memory_peak_mib": result["memory_peak_mib"],
@@ -96,9 +103,8 @@ def _fmt(value) -> str:
     return "–" if value is None else str(value)
 
 
-def build_report(results: list[dict]) -> str:
-    lines = ["# Load test results", "", LIMITS, ""]
-    lines += [
+def _load_table(results: list[dict]) -> list[str]:
+    lines = [
         "| Run | Webhooks | Workers | Enqueue p95 (ms) | Review p95 (s) | Webhooks/s "
         "| Reviews/min | Duplicates | Lost | Stale posts |",
         "|---|---|---|---|---|---|---|---|---|---|",
@@ -111,20 +117,61 @@ def build_report(results: list[dict]) -> str:
             f"| {_fmt(m['webhooks_per_s'])} | {_fmt(m['reviews_per_min'])} "
             f"| {m['duplicates']} | {m['lost']} | {m['stale_posts']} |"
         )
+    return lines
+
+
+def _failure_table(results: list[dict]) -> list[str]:
+    lines = [
+        "| Test | Workers | Settled | Reviews | Duplicates | Lost | Failed runs "
+        "| Without comment | Recovery (s) |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
     for result in results:
+        m, f = metrics(result), result["failure"]
+        lines.append(
+            f"| {result['name']} | {result['environment']['workers']} | {result['settled']} "
+            f"| {m['reviews']} | {m['duplicates']} | {m['lost']} "
+            f"| {f['run_statuses'].get('failed', 0)} | {m['reviews_without_comment']} "
+            f"| {_fmt(f.get('recovery_s'))} |"
+        )
+    return lines
+
+
+def _timeline(failure: dict) -> list[str]:
+    """What the test did, in seconds from its first step."""
+    start = failure["timeline"][0]["t"] if failure["timeline"] else 0
+    return [f"- +{entry['t'] - start:.0f} s: {entry['what']}" for entry in failure["timeline"]]
+
+
+def build_report(results: list[dict]) -> str:
+    load = [r for r in results if "failure" not in r]
+    failures = [r for r in results if "failure" in r]
+    lines = ["# Load test results", "", LIMITS, ""]
+    if load:
+        lines += ["## Load", "", *_load_table(load), ""]
+    if failures:
+        lines += ["## Failure tests", "", *_failure_table(failures), ""]
+    for result in load + failures:
         lines += [
-            "",
-            f"## {result['name']}",
+            f"### {result['name']}",
             "",
             f"- Config: `{json.dumps(result['config'])}`",
             f"- Environment: `{json.dumps(result['environment'])}`, git `{result['git_sha']}`",
-            f"- Settled (every open head reviewed before the timeout): {result['settled']}",
-            "",
-            "```json",
-            json.dumps(metrics(result), indent=2),
-            "```",
+            f"- Settled before the timeout: {result['settled']}",
         ]
-    return "\n".join(lines) + "\n"
+        if failure := result.get("failure"):
+            details = {k: v for k, v in failure.items() if k not in ("test", "expect", "timeline")}
+            lines += [
+                f"- Expected: {failure['expect']}",
+                "",
+                *_timeline(failure),
+                "",
+                "```json",
+                json.dumps(details, indent=2),
+                "```",
+            ]
+        lines += ["", "```json", json.dumps(metrics(result), indent=2), "```", ""]
+    return "\n".join(lines)
 
 
 def main() -> None:

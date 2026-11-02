@@ -56,8 +56,16 @@ def make_sha(nonce: str, repo: str, number: int, push: int) -> str:
     return hashlib.sha1(f"{nonce}:{repo}:{number}:{push}".encode()).hexdigest()
 
 
-def mixed(n: int, nonce: str, seed: int = 1, installations: int = 5, repos: int = 4) -> list[Event]:
-    """`n` webhooks spread over installations × repos, in the MIX shares.
+def mixed(
+    n: int,
+    nonce: str,
+    seed: int = 1,
+    installations: int = 5,
+    repos: int = 4,
+    mix: dict[str, int] = MIX,
+) -> list[Event]:
+    """`n` webhooks spread over installations × repos, in the `mix` shares. The failure
+    tests use {"opened": 1}: new PRs only.
 
     `nonce` goes into every SHA and delivery ID, so runs against the same stack never collide
     with an earlier run's reviews or dedupe keys.
@@ -89,7 +97,7 @@ def mixed(n: int, nonce: str, seed: int = 1, installations: int = 5, repos: int 
         )
 
     while len(events) < n:
-        kind = rng.choices(list(MIX), weights=list(MIX.values()))[0]
+        kind = rng.choices(list(mix), weights=list(mix.values()))[0]
         if kind in ("synchronize", "replay", "same_head") and not last_event:
             kind = "opened"
         delivery = f"{nonce}-{len(events)}"

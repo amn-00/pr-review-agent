@@ -118,7 +118,7 @@ def _webhook(kind: str, sha: str, t: float, status: int, expected=(202,)) -> dic
 
 
 def _review(sha: str, t: float, stale: bool = False) -> dict:
-    return {"repo": "o/r", "number": 1, "sha": sha, "t": t, "stale": stale}
+    return {"repo": "o/r", "number": 1, "sha": sha, "t": t, "stale": stale, "comments": 1}
 
 
 def test_metrics_count_duplicates_lost_and_stale_and_time_from_the_first_202():
@@ -176,4 +176,4 @@ def test_report_has_a_row_per_run():
     report = build_report([result])
 
     assert "| L1 | 1 | 1 |" in report
-    assert "## L1" in report
+    assert "### L1" in report

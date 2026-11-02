@@ -1028,3 +1028,53 @@ the wait, every webhook's expected status is fixed in advance, and any other sta
 12 reviews, 0 duplicates, 0 lost, every status as expected. Enqueue latency p95 110 ms, review
 time p95 9.8 s (1.2 s of work, the rest waiting behind `max_jobs = 2`). 7.7 GitHub requests per
 review. Peak memory 67 MB each for the API and the worker.
+
+## Phase 6b — Failure-test drivers
+
+`loadtest/failures.py` has one driver per failure test in the plan (K1, K1b, K2, K3, Q1–Q3,
+G1–G4, R1 with R2). `--list` prints each test with what we expect from reading the code. Only a
+3-PR smoke of G3 has run; the kill tests and the measured runs wait until agent-v2 is done.
+
+**Every test starts from a fresh stack.**
+`down -v`, then `up` with the workers the test needs. The driver waits until the API is ready
+and every worker has logged its start. A test never inherits queued jobs, runs or Redis keys
+from the one before, and results don't depend on the order the tests are run in.
+
+**"Settled" and "recovered" come from Postgres, not from the fake GitHub.**
+A test is settled when every open PR's head has a run that is `completed` or `failed`. Reviews
+alone can't tell these cases apart:
+- a failed run from one still waiting for a retry;
+- in K3 and G3, a review that's stored before the run completes.
+
+The drivers read `review_runs` with `psql` inside the Postgres container (no host port, no new
+dependency). Recovery is measured to the affected runs' `finished_at`. That's on the containers'
+clock, so it's converted with the same offset as the fakes' times.
+
+**Kills hit a worker that holds jobs.**
+The fakes record which worker started each job (the hostname header). Docker sets a container's
+hostname to its short ID, so the driver maps it to the container name.
+- **K1:** kills a worker with 2 jobs in flight, and it stays down.
+- **K1b:** restarts the worker at once.
+- **K2:** uses `docker stop` with a 10 s grace (SIGTERM, then SIGKILL), like a deploy.
+- **K3:** kills the worker while the fake GitHub holds its answer to a review it already stored.
+
+**Faults are timed on the fakes' clock.**
+Fault windows (the Q2 storm, the G2 outage) are converted from our clock to the fakes' before
+they're set.
+
+**G4 uses a 300 s rate-limit window instead of GitHub's hour.**
+It's the same mechanism (the fakes' `github_rate_window`), and the deferred jobs resume within
+the test instead of an hour later.
+
+**R1 restarts an exited worker, as Render would.**
+If the worker process exits when Redis drops, nothing in compose restarts it. The driver starts
+it again while waiting for recovery, and records how many times it did. R2 then replays every
+delivery: the dedupe keys are gone, so each replay is accepted, and the result counts any new
+review.
+
+**Two report metrics.**
+- **`reviews_without_comment`:** every fake PR has one bug that's found and confirmed when all
+  goes well. So a review without its comment lost a lane call, a chunk or the agent's check to
+  a fault.
+- **`agent_calls_per_review`:** above 1 means retries ran the agent again. That answers the
+  verdict-cache question.

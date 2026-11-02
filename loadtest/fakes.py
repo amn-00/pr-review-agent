@@ -26,7 +26,6 @@ from pydantic import BaseModel
 from evals.fake_github import pull_files, tarball
 
 BOT_SLUG = "loadtest"
-RATE_LIMIT_WINDOW_SECONDS = 3600
 TPM_WINDOW_SECONDS = 60
 # Groq bills the request; this is close enough to decide when a minute is used up.
 TOOL_CALL_OUTPUT_TOKENS = 300
@@ -76,7 +75,8 @@ class Config(BaseModel):
     # Tokens per minute per model, enforced with Groq's headers and 429s. None: no limit.
     groq_tpm: int | None = None
     github_fault: Fault = Fault()
-    github_rate_limit: int = 5000  # requests per hour per installation, like GitHub's
+    github_rate_limit: int = 5000  # requests per window per installation, like GitHub's
+    github_rate_window: float = 3600  # seconds; shorter makes a rate-limit test quicker
     review_fail_status: int | None = None  # store the review, then answer with this status
     review_hold_seconds: float = 0.0  # store the review, then wait this long before answering
 
@@ -166,12 +166,12 @@ def create_app() -> FastAPI:
         headers = {}
         if installation is not None:
             start, count = s.rate_windows.get(installation, (now, 0))
-            if now - start >= RATE_LIMIT_WINDOW_SECONDS:
+            if now - start >= s.config.github_rate_window:
                 start, count = now, 0
             count += 1
             s.rate_windows[installation] = (start, count)
             remaining = s.config.github_rate_limit - count
-            reset = start + RATE_LIMIT_WINDOW_SECONDS
+            reset = start + s.config.github_rate_window
             headers = {
                 "x-ratelimit-remaining": str(max(remaining, 0)),
                 "x-ratelimit-reset": str(int(reset)),

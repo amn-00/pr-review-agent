@@ -27,14 +27,12 @@ import httpx
 
 from loadtest.report import RESULTS_DIR, metrics
 from loadtest.scenarios import Event, mixed
+from loadtest.stack import sample_memory, worker_count
 
 API_URL = "http://localhost:18000"
 FAKES_URL = "http://localhost:19000"
-COMPOSE_PROJECT = "pr-review-load"
 ENV_FILE = Path(__file__).parent / ".env.loadtest"
 POLL_SECONDS = 2
-MEMORY_SAMPLE_SECONDS = 2
-MEMORY_UNITS = {"B": 1 / 2**20, "KiB": 1 / 1024, "MiB": 1, "GiB": 1024}
 
 
 def webhook_secret() -> str:
@@ -137,60 +135,6 @@ async def wait_until_reviewed(fakes: httpx.AsyncClient, max_wait: float) -> bool
     return False
 
 
-def parse_mib(usage: str) -> float:
-    """'85.3MiB' -> 85.3"""
-    for unit in sorted(MEMORY_UNITS, key=len, reverse=True):
-        if usage.endswith(unit):
-            return float(usage.removesuffix(unit)) * MEMORY_UNITS[unit]
-    raise ValueError(f"unknown memory unit: {usage}")
-
-
-async def sample_memory(stop: asyncio.Event) -> dict[str, float]:
-    """Peak memory per container of the stack, from `docker stats` every few seconds."""
-    peaks: dict[str, float] = {}
-    prefix = f"{COMPOSE_PROJECT}-"
-    while not stop.is_set():
-        proc = await asyncio.create_subprocess_exec(
-            "docker",
-            "stats",
-            "--no-stream",
-            "--format",
-            "{{.Name}}\t{{.MemUsage}}",
-            stdout=asyncio.subprocess.PIPE,
-        )
-        out, _ = await proc.communicate()
-        for line in out.decode().splitlines():
-            name, usage = line.split("\t")
-            if name.startswith(prefix):
-                service = name.removeprefix(prefix)
-                peaks[service] = max(
-                    peaks.get(service, 0.0), round(parse_mib(usage.split(" / ")[0]), 1)
-                )
-        try:
-            await asyncio.wait_for(stop.wait(), MEMORY_SAMPLE_SECONDS)
-        except TimeoutError:
-            pass
-    return peaks
-
-
-def worker_count() -> int:
-    out = subprocess.run(
-        [
-            "docker",
-            "ps",
-            "-q",
-            "--filter",
-            f"label=com.docker.compose.project={COMPOSE_PROJECT}",
-            "--filter",
-            "label=com.docker.compose.service=worker",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    ).stdout
-    return len(out.split())
-
-
 def git_sha() -> str:
     out = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True)
     return out.stdout.strip()
@@ -226,23 +170,41 @@ async def run(args: argparse.Namespace) -> dict:
         peaks = await memory
     to_our_clock(records, offset)
 
+    config = {
+        "scenario": "mixed",
+        "webhooks": args.webhooks,
+        "seed": args.seed,
+        "concurrency": args.concurrency,
+        "rate": args.rate,
+        "fakes": fakes_config,
+    }
+    return build_result(
+        args.name, config, worker_count(), offset, settled, webhooks, records, peaks
+    )
+
+
+def build_result(
+    name: str,
+    config: dict,
+    workers: int,
+    offset: float,
+    settled: bool,
+    webhooks: list[dict],
+    records: dict,
+    peaks: dict[str, float],
+) -> dict:
+    """One result file's content; `records` already on our clock. The failure tests add a
+    "failure" section to it."""
     return {
-        "name": args.name,
+        "name": name,
         "created": datetime.now(UTC).isoformat(timespec="seconds"),
         "git_sha": git_sha(),
         "settled": settled,
-        "config": {
-            "scenario": "mixed",
-            "webhooks": args.webhooks,
-            "seed": args.seed,
-            "concurrency": args.concurrency,
-            "rate": args.rate,
-            "fakes": fakes_config,
-        },
+        "config": config,
         "environment": {
             "platform": platform.platform(),
             "cpus": os.cpu_count(),
-            "workers": worker_count(),
+            "workers": workers,
         },
         "clock_offset_s": round(offset, 4),
         "webhooks": webhooks,
