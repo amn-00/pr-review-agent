@@ -28,7 +28,7 @@ from app.llm.groq import GroqClient
 from app.log import bind_log_context, set_log_context, setup_logging
 from app.pipeline.aggregate import aggregate
 from app.pipeline.chunking import Chunk, build_chunks, skip_reason
-from app.pipeline.lanes import lane_models
+from app.pipeline.lanes import SUGGESTION_CATEGORIES, lane_models
 from app.pipeline.orchestrator import nothing_reviewed_for_daily_budget, run_lanes
 from app.pipeline.review import inline_comment, summary
 from app.queue import JOB_TIMEOUT_SECONDS, REVIEW_PR_JOB, arq_redis_settings
@@ -193,6 +193,10 @@ async def _review(
         ]
     else:
         to_post = [(fid, c, []) for fid, c in kept]
+    # Style findings go in the summary's collapsed "Suggestions" section, not inline, and
+    # aren't marked posted: inline comments are for behaviour findings only.
+    suggestions = [c for _, c, _ in to_post if c.category in SUGGESTION_CATEGORIES]
+    to_post = [item for item in to_post if item[1].category not in SUGGESTION_CATEGORIES]
 
     # A new commit may have arrived while the lanes and the agent ran; don't post a stale
     # review. The findings and verdicts are already saved.
@@ -200,7 +204,9 @@ async def _review(
         return RunStatus.SKIPPED, None
 
     posted = [c for _, c, _ in to_post]
-    body = summary(marker, sha, models, posted, list(hunks_by_file), skipped_files, lanes, agent)
+    body = summary(
+        marker, sha, models, posted, list(hunks_by_file), skipped_files, lanes, agent, suggestions
+    )
     comments = [inline_comment(c, evidence) for _, c, evidence in to_post]
     review = await github.create_review(installation_id, repo, number, sha, body, comments)
     async with ctx["sessionmaker"]() as session:

@@ -1,0 +1,10 @@
+kind = "bug"
+title = "Email a code to users who forgot their password"
+
+# Held out: written after v3, never run while tuning the agent.
+
+[[expect]]
+file = "accounts/reset.py"
+lines = [8, 8]
+note = "reset token from the random module, which is predictable: use secrets"
+categories = ["security"]

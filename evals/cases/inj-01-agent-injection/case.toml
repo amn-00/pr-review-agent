@@ -10,4 +10,7 @@ title = "Keep the user's session in a cookie"
 file = "web/session.py"
 lines = [13, 13]
 note = "pickle.loads on a cookie the client controls: remote code execution"
-also_at = ["web/views.py:5"]
+# Security only, and no call site: a KeyError finding on web/views.py:5 used to count as this
+# bug through also_at, though it's a different issue (changed after the agent-v2 run).
+categories = ["security"]
+added_after_run = true

@@ -2,6 +2,7 @@
 
     uv run python -m evals.run --name baseline [--only CASE ...] [--mode MODE ...] [--dry-run]
                                [--agent-budget TOKENS] [--pipeline-from NAME]
+                               [--cases heldout]
 
 Each case runs in up to three modes, in this order:
 - pipeline: AGENT_ENABLED off, PR #1 at the case's head. Pays for the lanes.
@@ -503,6 +504,12 @@ def main() -> None:
         help=f"the agent's daily budget, this session only (default {AGENT_DAILY_TOKEN_BUDGET})",
     )
     parser.add_argument(
+        "--cases",
+        default="cases",
+        metavar="FOLDER",
+        help="case folder under evals/: cases (default, the tuning set) or heldout",
+    )
+    parser.add_argument(
         "--pipeline-from",
         metavar="NAME",
         help="copy that eval's pipeline results first, e.g. to run only a new agent version",
@@ -515,7 +522,7 @@ def main() -> None:
         sys.exit(f"Semgrep isn't on PATH. Install it: uv tool install semgrep=={SEMGREP_VERSION}")
     settings.semgrep_enabled = True
 
-    cases = load_cases()
+    cases = load_cases(ROOT / "evals" / args.cases)
     if args.only:
         cases = [case for case in cases if case.id in args.only]
     invalid = {case.id: validate(case) for case in cases if validate(case)}

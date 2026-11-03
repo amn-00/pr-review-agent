@@ -99,6 +99,27 @@ async def test_planted_bug_gets_an_inline_comment_on_the_right_line(ctx, github_
     assert finding.verdict == "confirmed"
 
 
+async def test_style_findings_are_suggestions_not_inline_comments(ctx, github_api):
+    post = mock_github_pr(github_api)
+    ctx["groq"].findings_by_lane["maintainability"] = [
+        lane_finding(category="readability", severity="low", title="Unclear name 'total'")
+    ]
+
+    await review_pr(ctx, pr_payload(), "delivery-1")
+
+    review = posted_review(post)
+    assert review["comments"] == []
+    assert "Suggestions (style, not posted inline): 1" in review["body"]
+    assert "Unclear name 'total'" in review["body"]
+    [finding] = await get_findings(ctx["sessionmaker"])
+    # The agent still checks it, but it isn't marked posted: it isn't an inline comment.
+    assert (finding.category, finding.verdict, finding.posted) == (
+        "readability",
+        "confirmed",
+        False,
+    )
+
+
 async def test_clean_pr_still_gets_a_review_saying_so(ctx, github_api):
     post = mock_github_pr(github_api)
 

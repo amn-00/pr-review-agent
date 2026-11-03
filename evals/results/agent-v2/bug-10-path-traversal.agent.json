@@ -1,0 +1,175 @@
+{
+ "case": "bug-10-path-traversal",
+ "mode": "agent",
+ "agent_prompt_version": "v2",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "b848fd434c03508f1631bf7423ed8946162757b2",
+ "started_at": "2026-11-03T14:48:59.072488+00:00",
+ "wall_seconds": 15.2,
+ "run": {
+  "id": 62,
+  "head_sha": "b848fd434c03508f1631bf7423ed8946162757b2",
+  "status": "completed",
+  "started_at": "2026-11-03 14:48:59.133962+00:00",
+  "finished_at": "2026-11-03 14:49:14.293876+00:00",
+  "tokens_in": 5146,
+  "tokens_out": 295,
+  "cost_usd": "0.000948900",
+  "llm_calls": 3,
+  "cached_calls": 3,
+  "tokens_saved": 4141,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1599,
+   "tokens_out": 46,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 3.83
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1717,
+   "tokens_out": 42,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.72
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1830,
+   "tokens_out": 207,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.95
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 167,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "files/download.py",
+   "line_start": 8,
+   "line_end": 9,
+   "category": "bug",
+   "severity": "high",
+   "title": "Potential path traversal allowing access to files outside REPORTS_DIR",
+   "explanation": "The function joins the user-supplied filename directly with REPORTS_DIR without sanitizing it. A crafted filename like \"../secret.txt\" can traverse directories and cause the function to read files outside the intended reports directory, leading to unauthorized data exposure.",
+   "suggested_fix": "Validate and sanitize the filename to prevent directory traversal, e.g., ensure it does not contain '..' or use pathlib's resolve() and check that the resulting path is within REPORTS_DIR.",
+   "verdict": "confirmed",
+   "verdict_reason": "The function concatenates the external filename with the reports directory using os.path.join and only checks that the resulting path is a file, allowing path traversal such as \"../secret.txt\" to access files outside the intended directory.",
+   "evidence": [
+    {
+     "why": "REPORTS_DIR set to a base directory",
+     "line": 3,
+     "path": "files/config.py"
+    },
+    {
+     "why": "joins user-supplied filename directly with REPORTS_DIR without validation",
+     "line": 8,
+     "path": "files/download.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "REPORTS_DIR"
+     },
+     "result_chars": 211,
+     "result_summary": "Lines containing 'REPORTS_DIR':\nfiles/config.py:3: REPORTS_DIR = Path(\"/var/app/reports\")\nfiles/download.py:3: from files.config import REPORTS_DIR\nfiles/download.py:8: path = os.path.join(REPORTS_DIR, filename)",
+     "tokens_in": 1599,
+     "tokens_out": 46,
+     "latency_ms": 3875
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "files/config.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 118,
+     "result_summary": "files/config.py, lines 1-3 of 3:\n    1  from pathlib import Path\n    2  \n    3  REPORTS_DIR = Path(\"/var/app/reports\")",
+     "tokens_in": 1717,
+     "tokens_out": 42,
+     "latency_ms": 719
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function concatenates the external filename with the reports directory using os.path.join and only checks that the resulting path is a file, allowing path traversal such as \"../secret.txt\" to access files outside the intended directory.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "REPORTS_DIR set to a base directory",
+        "line": 3,
+        "path": "files/config.py"
+       },
+       {
+        "why": "joins user-supplied filename directly with REPORTS_DIR without validation",
+        "line": 8,
+        "path": "files/download.py"
+       }
+      ]
+     },
+     "result_chars": 251,
+     "result_summary": "confirmed: The function concatenates the external filename with the reports directory using os.path.join and only checks that the resulting path is a file, allowing path traversal such as \"../secret.txt\" to access files outside the intended directory.",
+     "tokens_in": 1830,
+     "tokens_out": 207,
+     "latency_ms": 969
+    }
+   ]
+  },
+  {
+   "id": 168,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "files/download.py",
+   "line_start": 8,
+   "line_end": 8,
+   "category": "security",
+   "severity": "high",
+   "title": "Path traversal vulnerability in file read",
+   "explanation": "The `read_report` function concatenates a user-supplied filename directly with `REPORTS_DIR` using `os.path.join` without validating or sanitizing the input. An attacker can supply a filename like `../secret.txt` to traverse directories and read arbitrary files outside the intended reports directory.",
+   "suggested_fix": "Validate the filename to ensure it does not contain path traversal sequences, or resolve the absolute path and verify it starts with `REPORTS_DIR`. Example:\n```python\npath = os.path.abspath(os.path.join(REPORTS_DIR, filename))\nif not path.startswith(os.path.abspath(REPORTS_DIR) + os.sep):\n    raise ValueError(\"Invalid filename\")\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 167,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:62 -->\n### Automated review of `b848fd4`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v2): 1 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0009 at list prices (free tier; agent $0.0009); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "files/download.py",
+    "line": 9,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Potential path traversal allowing access to files outside REPORTS_DIR\n\nThe function joins the user-supplied filename directly with REPORTS_DIR without sanitizing it. A crafted filename like \"../secret.txt\" can traverse directories and cause the function to read files outside the intended reports directory, leading to unauthorized data exposure.\n\n**Suggested fix:** Validate and sanitize the filename to prevent directory traversal, e.g., ensure it does not contain '..' or use pathlib's resolve() and check that the resulting path is within REPORTS_DIR.\n\n_Checked against `files/config.py:3`, `files/download.py:8`_",
+    "start_line": 8,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

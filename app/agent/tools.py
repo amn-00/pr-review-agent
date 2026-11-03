@@ -32,8 +32,9 @@ SYMBOL_PATTERN = r"^[A-Za-z_][A-Za-z0-9_.]*$"
 @dataclass
 class ToolResult:
     text: str
-    # (path, line) pairs shown to the model. Evidence must point at one of these.
-    seen: set[tuple[str, int]] = field(default_factory=set)
+    # (path, line) -> that line's text, as shown to the model. Evidence must point at one of
+    # these lines and quote its text.
+    seen: dict[tuple[str, int], str] = field(default_factory=dict)
 
 
 class SearchArgs(BaseModel):
@@ -55,6 +56,7 @@ class CallersArgs(BaseModel):
 class Evidence(BaseModel):
     path: str
     line: int
+    quote: str  # the code on that line, copied exactly: it must appear on the line
     why: str
 
 
@@ -125,9 +127,14 @@ TOOL_SCHEMAS = [
                     "properties": {
                         "path": {"type": "string"},
                         "line": {"type": "integer"},
+                        "quote": {
+                            "type": "string",
+                            "description": "The code on that line, copied exactly, without "
+                            "the line number or + marker. Part of the line is enough.",
+                        },
                         "why": {"type": "string"},
                     },
-                    "required": ["path", "line", "why"],
+                    "required": ["path", "line", "quote", "why"],
                     "additionalProperties": False,
                 },
             },
@@ -257,15 +264,17 @@ def _grep(snapshot: Snapshot, matches: Callable[[str], bool], header: str) -> To
 
 
 def _rows_result(header: str, rows: list[tuple[str, int, str]], row_format: str) -> ToolResult:
-    """Lines until the result cap. Only lines actually shown count as seen."""
+    """Lines until the result cap. Only lines actually shown count as seen, with the text
+    shown (cut to MAX_LINE_CHARS), which is what an evidence quote is checked against."""
     result = ToolResult(header)
     for path, n, text in rows:
-        row = row_format.format(path=path, n=n, text=text[:MAX_LINE_CHARS])
+        shown = text[:MAX_LINE_CHARS]
+        row = row_format.format(path=path, n=n, text=shown)
         if len(result.text) + len(row) + 1 > MAX_RESULT_CHARS:
             result.text += "\n... (truncated)"
             break
         result.text += "\n" + row
-        result.seen.add((path, n))
+        result.seen[(path, n)] = shown
     return result
 
 

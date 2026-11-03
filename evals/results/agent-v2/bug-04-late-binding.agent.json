@@ -1,0 +1,286 @@
+{
+ "case": "bug-04-late-binding",
+ "mode": "agent",
+ "agent_prompt_version": "v2",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "1db8948bc06cc113176bfd692f0b7e1bc53458d4",
+ "started_at": "2026-11-03T14:37:35.144307+00:00",
+ "wall_seconds": 55.0,
+ "run": {
+  "id": 56,
+  "head_sha": "1db8948bc06cc113176bfd692f0b7e1bc53458d4",
+  "status": "completed",
+  "started_at": "2026-11-03 14:37:35.202719+00:00",
+  "finished_at": "2026-11-03 14:38:30.136481+00:00",
+  "tokens_in": 6837,
+  "tokens_out": 487,
+  "cost_usd": "0.001317750",
+  "llm_calls": 4,
+  "cached_calls": 3,
+  "tokens_saved": 4643,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1636,
+   "tokens_out": 36,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.86
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1634,
+   "tokens_out": 211,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.25
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1724,
+   "tokens_out": 43,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.48
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1843,
+   "tokens_out": 197,
+   "waited_s": 41.26,
+   "error": null,
+   "latency_s": 43.61
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "notify/reminders.py",
+   "tool": "ruff",
+   "line": 11,
+   "code": "B023",
+   "message": "Function definition does not bind loop variable `user`",
+   "lane": "correctness"
+  },
+  {
+   "file": "notify/reminders.py",
+   "tool": "ruff",
+   "line": 11,
+   "code": "B023",
+   "message": "Function definition does not bind loop variable `subject`",
+   "lane": "correctness"
+  }
+ ],
+ "findings": [
+  {
+   "id": 146,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "notify/reminders.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "bug",
+   "severity": "high",
+   "title": "Late-binding closure captures loop variables",
+   "explanation": "The lambda defined in the loop captures the variables `user` and `subject` by reference. All callbacks will use the values from the last iteration, sending emails to the wrong recipient and subject.",
+   "suggested_fix": "Bind the current values in the lambda default arguments, e.g., `reminders.append(lambda u=user, s=subject: send_email(u[\"email\"], s))`.",
+   "verdict": "confirmed",
+   "verdict_reason": "The lambda defined inside the for-loop closes over `user` and `subject` variables, which are mutated each iteration, causing all callbacks to use the final iteration's values.",
+   "evidence": [
+    {
+     "why": "lambda captures loop variables by reference",
+     "line": 11,
+     "path": "notify/reminders.py"
+    },
+    {
+     "why": "subject defined per iteration",
+     "line": 10,
+     "path": "notify/reminders.py"
+    },
+    {
+     "why": "loop over users",
+     "line": 9,
+     "path": "notify/reminders.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The lambda defined inside the for-loop closes over `user` and `subject` variables, which are mutated each iteration, causing all callbacks to use the final iteration's values.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "lambda captures loop variables by reference",
+        "line": 11,
+        "path": "notify/reminders.py"
+       },
+       {
+        "why": "subject defined per iteration",
+        "line": 10,
+        "path": "notify/reminders.py"
+       },
+       {
+        "why": "loop over users",
+        "line": 9,
+        "path": "notify/reminders.py"
+       }
+      ]
+     },
+     "result_chars": 186,
+     "result_summary": "confirmed: The lambda defined inside the for-loop closes over `user` and `subject` variables, which are mutated each iteration, causing all callbacks to use the final iteration's values.",
+     "tokens_in": 1634,
+     "tokens_out": 211,
+     "latency_ms": 1250
+    }
+   ]
+  },
+  {
+   "id": 147,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "notify/reminders.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "security",
+   "severity": "medium",
+   "title": "Potential email header injection via user-provided name",
+   "explanation": "The subject line is built directly from `user['name']` without any sanitisation. If the name contains newline or other header\u2011control characters, an attacker could inject additional email headers when `send_email` constructs the message.",
+   "suggested_fix": "Sanitize or escape the user-provided name before inserting it into the email subject, e.g., remove newline characters or use a safe formatting library.",
+   "verdict": "dropped",
+   "verdict_reason": "The send_email function does not build or send actual email messages; it merely prints the subject, so user-provided names cannot inject email headers.",
+   "evidence": [
+    {
+     "why": "send_email only prints the subject, not constructing email headers",
+     "line": 1,
+     "path": "notify/sender.py"
+    },
+    {
+     "why": "no sanitisation or header handling performed",
+     "line": 2,
+     "path": "notify/sender.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def send_email"
+     },
+     "result_chars": 106,
+     "result_summary": "Lines containing 'def send_email':\nnotify/sender.py:1: def send_email(address: str, subject: str) -> None:",
+     "tokens_in": 1636,
+     "tokens_out": 36,
+     "latency_ms": 906
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "notify/sender.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 137,
+     "result_summary": "notify/sender.py, lines 1-2 of 2:\n    1  def send_email(address: str, subject: str) -> None:\n    2      print(f\"to {address}: {subject}\")",
+     "tokens_in": 1724,
+     "tokens_out": 43,
+     "latency_ms": 484
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The send_email function does not build or send actual email messages; it merely prints the subject, so user-provided names cannot inject email headers.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "send_email only prints the subject, not constructing email headers",
+        "line": 1,
+        "path": "notify/sender.py"
+       },
+       {
+        "why": "no sanitisation or header handling performed",
+        "line": 2,
+        "path": "notify/sender.py"
+       }
+      ]
+     },
+     "result_chars": 160,
+     "result_summary": "dropped: The send_email function does not build or send actual email messages; it merely prints the subject, so user-provided names cannot inject email headers.",
+     "tokens_in": 1843,
+     "tokens_out": 197,
+     "latency_ms": 43609
+    }
+   ]
+  },
+  {
+   "id": 148,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "notify/reminders.py",
+   "line_start": 9,
+   "line_end": 11,
+   "category": "idiom",
+   "severity": "high",
+   "title": "Lambda captures loop variable",
+   "explanation": "Using a lambda inside a loop captures the loop variable by reference, so all callbacks will send to the last user instead of the intended one. This is a common Python pitfall and will cause incorrect behavior.",
+   "suggested_fix": "Use a default argument or a helper function to bind the current user, e.g. \"reminders.append(lambda u=user: send_email(u['email'], subject))\".",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 146,
+   "agent_steps": []
+  },
+  {
+   "id": 149,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "notify/reminders.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "security",
+   "severity": "medium",
+   "title": "Unvalidated email address may lead to injection in email sending routine",
+   "explanation": "`send_email` is called with `user[\"email\"]` taken directly from input data. If `send_email` builds a command line or email headers from this value, a malicious email address could result in command injection or header injection.",
+   "suggested_fix": "Validate the email address format and escape any characters that could be interpreted by the email-sending implementation before passing it to `send_email`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 146,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:56 -->\n### Automated review of `1db8948`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v2): 1 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0013 at list prices (free tier; agent $0.0013); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "notify/reminders.py",
+    "line": 11,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Late-binding closure captures loop variables\n\nThe lambda defined in the loop captures the variables `user` and `subject` by reference. All callbacks will use the values from the last iteration, sending emails to the wrong recipient and subject.\n\n**Suggested fix:** Bind the current values in the lambda default arguments, e.g., `reminders.append(lambda u=user, s=subject: send_email(u[\"email\"], s))`.\n\n_Checked against `notify/reminders.py:11`, `notify/reminders.py:10`, `notify/reminders.py:9`_"
+   }
+  ]
+ }
+}

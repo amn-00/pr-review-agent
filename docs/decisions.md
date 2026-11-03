@@ -1078,3 +1078,79 @@ review.
   a fault.
 - **`agent_calls_per_review`:** above 1 means retries ran the agent again. That answers the
   verdict-cache question.
+
+## Phase 5d — Agent v3, the last tuning step
+
+After v3's agent-only run the agent is frozen: no more tuning on these cases.
+
+**Why v3: v2 confirmed style findings it shouldn't have.**
+On 21 cases, v2 caught both bugs v1 had lost to "no callers" (bug-08, bug-10). But it also
+confirmed style findings v1 had dropped. One was an opinion ("unnecessary generator expression").
+Another was simply false: "methods indented with two spaces", where the file uses four. v2's
+"confirmed unless something prevents it" rule spilled over from bugs onto style claims.
+
+**Prompt v3: the reachability rule only for bug, performance and security findings.**
+- **Style findings (readability, idiom):** confirmed only if the lines literally show the claim;
+  matters of taste are dropped, citing the lines.
+- **Unchanged from v2:** everything else.
+
+The task message already names each finding's category. Performance counts as a behaviour
+finding: it comes from the correctness lane. v1 and v2 are kept; `AGENT_PROMPT_VERSION` picks
+v3.
+
+**Evidence must quote its line, and every item must check out.**
+- **The schema:** each evidence item has a required `quote`, the code on that line copied
+  exactly. The JSON fallback's schema is derived from it.
+- **What the agent was shown:** `ToolResult.seen` maps each line it was shown to the text shown,
+  from tool results and from the excerpt.
+- **The check:** a quote must appear on its line, ignoring whitespace.
+- **Stricter than before:** a confirmed or dropped verdict becomes uncertain if any evidence item
+  points at a line the agent wasn't shown, or misquotes it. Before, such items were silently
+  left out.
+
+This catches evidence that cites a real line but misstates it, like "two spaces", which the old
+check let through.
+
+**Inline comments only for behaviour findings; style findings are collapsed suggestions.**
+- **Prod, with or without the agent:** only bug, performance and security findings become inline
+  comments. Readability and idiom findings that would have been shown go into a collapsed
+  "Suggestions" section of the summary and aren't marked `posted`.
+- **The agent:** still checks style findings, and only confirmed ones are shown.
+- **`SUGGESTION_CATEGORIES`:** the maintainability lane's categories, in `lanes.py`.
+
+**Every run is scored by the current posting rule.**
+`load_results` re-derives what each finding would be today: shown if it passed aggregation (and,
+with the agent, was confirmed); a suggestion if it's a style finding; otherwise an inline
+comment. That includes the baseline and agent-v2 results, which were made before the rule
+existed, so all agents are compared the same way.
+- **What the reports show:** inline comments are scored, and suggestions are counted and listed
+  separately with their labels.
+- **The effect on the 21 cases done in both runs:** v2 passes the over-correction check. Against
+  v1, bugs caught +2 and false positives −1. Its extra confirmations were mostly style findings,
+  which now land in Suggestions. trap-02 and trap-03 aren't in yet.
+
+**Label change after the run: inj-01.**
+Its `also_at` call site let a different finding (a KeyError on `web/views.py:5`) count as the
+planted pickle RCE. The label now allows only `security`, with no call site, and is marked
+`added_after_run`, so the report lists it.
+
+**Held-out cases: `evals/heldout/`.**
+- **The cases:** 4 cases (2 bugs, 1 clean, 1 trap), written after v3 and never used to tune
+  it. held-02 (a reset token from `random`) and held-04 (`random` for backoff jitter) test the
+  same API in opposite contexts.
+- **Kept apart:** a separate folder with its own case and repo IDs (tested), so no tuning-set
+  run or `--pipeline-from` copy ever loads them.
+- **Running and reporting:** `--cases heldout` on `evals.run` and `evals.report`. Their report
+  says they're held out instead of "tuned on the test set".
+- **Caveat:** the person tuning the agent also wrote them, so they aren't fully independent. A
+  case or two written by someone else would be a stronger check.
+
+**Phase 6 load-test fakes updated for the quote rule.**
+- **Agent reply:** `loadtest/fakes.py`'s fake agent now quotes the finding's line.
+- **Lane finding:** the fake correctness lane puts its finding on the division line instead of
+  the first added line, which is blank and can't be quoted.
+- **Test:** `test_lanes_get_valid_output_and_only_correctness_reports` follows.
+
+**Not fixed:** `test_held_review_is_stored_before_the_answer` fails on this machine, the same on
+a clean copy of the Phase 6b commit. It's a timing test (a 0.1 s sleep against a 0.3 s hold), so
+the failure was already there before these changes.

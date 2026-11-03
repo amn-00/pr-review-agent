@@ -148,11 +148,14 @@ class FakeGroq:
         task = messages[1]["content"]
         title = re.search(r"^Title: (.*)$", task, re.MULTILINE).group(1)
         path, line = re.search(r"^Finding: \S+ \S+ in (\S+), lines? (\d+)", task, re.M).groups()
+        # The finding's line as the excerpt shows it: "    3 +     return total / len(values)".
+        quote = re.search(rf"^\s*{line} [+ ] (.*)$", task, re.MULTILINE).group(1)
         self.agent_calls.append({"model": model, "title": title, "messages": messages})
+        evidence = {"path": path, "line": int(line), "quote": quote, "why": "the finding's line"}
         arguments = {
             "verdict": self.verdicts_by_title.get(title, "confirmed"),
             "reason": f"checked: {title}",
-            "evidence": [{"path": path, "line": int(line), "why": "the finding's line"}],
+            "evidence": [evidence],
         }
         call = {
             "id": "call_1",

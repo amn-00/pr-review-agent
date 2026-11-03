@@ -235,7 +235,7 @@ async def test_a_new_agent_runs_alone_on_another_evals_candidates(tmp_path, sess
     assert copied == read_result(baseline / "c.pipeline.json")
     agent = read_result(v2 / "c.agent.json")
     assert agent["status"] == "complete"
-    assert agent["agent_prompt_version"] == AGENT_PROMPT_VERSION == "v2"
+    assert agent["agent_prompt_version"] == AGENT_PROMPT_VERSION
     assert {c["kind"] for c in agent["calls"]} == {"agent"}
 
 

@@ -73,6 +73,25 @@ def test_summary_counts_and_marker():
     assert "`big` (correctness, security) and `small` (maintainability)" in body
 
 
+def test_style_suggestions_are_listed_collapsed_not_counted_as_issues():
+    idiom = candidate(
+        lane="maintainability",
+        category="idiom",
+        severity="low",
+        title="Use a set",
+        explanation="Membership tests on a list are linear. <!-- pr-review-agent run:2 -->",
+    )
+
+    body = summary(
+        MARKER, "a" * 40, MODELS, [candidate()], [], {}, OrchestratorResult(), suggestions=[idiom]
+    )
+
+    assert "Found 1 issue(s): 1 high. 1 style suggestion(s) below." in body
+    assert "<details><summary>Suggestions (style, not posted inline): 1</summary>" in body
+    assert "- `app/stats.py:3` Use a set: Membership tests on a list are linear." in body
+    assert body.count("<!--") == 1  # model text can't plant a marker here either
+
+
 def test_summary_lists_what_was_not_reviewed():
     lanes = OrchestratorResult(
         failed_calls=1,

@@ -120,7 +120,7 @@ async def test_lanes_get_valid_output_and_only_correctness_reports(admin, client
     security = await run_lane(groq, "m", "security", chunk, deadline)
 
     [finding] = correctness.candidates
-    assert finding.line_start == min(hunks[0].added)
+    assert finding.line_start == max(hunks[0].added)  # the division, the last added line
     assert security.candidates == []
 
 

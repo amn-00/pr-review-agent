@@ -1,7 +1,9 @@
 """Scoring and the known-issue analyses in the eval report, on hand-built results."""
 
+import json
+
 from evals.dataset import Case, Label
-from evals.report import calls_cost, corroborated, render, score, truth
+from evals.report import calls_cost, corroborated, load_results, render, score, truth
 
 BUG = Label("a.py", (10, 10), "the bug", ("bug",))
 SECURITY = Label("a.py", (10, 10), "the injection", ("security",))
@@ -242,3 +244,74 @@ def test_a_tuned_agent_says_so_in_the_limits():
 
     assert "**Tuned on the test set.**" in tuned
     assert "**Tuned on the test set.**" not in baseline
+
+
+def test_held_out_cases_say_so_instead():
+    case = make_case()
+    agent = result(case, "agent", []) | {"agent_prompt_version": "v3"}
+    results = {(case.id, "pipeline"): result(case, "pipeline", []), (case.id, "agent"): agent}
+
+    text = render("heldout", [case], results, held_out=True)
+
+    assert "**Held-out cases.**" in text
+    assert "**Tuned on the test set.**" not in text
+
+
+# --- inline comments vs suggestions ---
+
+
+def test_every_run_is_scored_by_the_posting_rule(tmp_path):
+    case = make_case()
+    style = {"lane": "maintainability", "category": "readability"}
+    # Saved before the rule existed: the style finding was posted inline then.
+    pipeline = result(
+        case,
+        "pipeline",
+        [finding(1, 10, posted=True), finding(2, 12, posted=True, **style), finding(3, 14)],
+    )
+    agent = result(
+        case,
+        "agent",
+        [
+            finding(1, 10, verdict="confirmed", posted=True),
+            finding(2, 12, verdict="confirmed", posted=True, **style),
+            finding(3, 14, verdict="dropped"),
+            finding(4, 16, drop_reason="duplicate", duplicate_of=1),
+        ],
+    )
+    for r in (pipeline, agent):
+        (tmp_path / f"c.{r['mode']}.json").write_text(json.dumps(r), encoding="utf-8")
+
+    results = load_results(tmp_path)
+
+    shown = {
+        mode: [(f["id"], f["posted"], f["suggestion"]) for f in results[("c", mode)]["findings"]]
+        for mode in ("pipeline", "agent")
+    }
+    # Without the agent everything kept is shown; with it, only what it confirmed.
+    assert shown["pipeline"] == [(1, True, False), (2, False, True), (3, True, False)]
+    assert shown["agent"] == [
+        (1, True, False),
+        (2, False, True),
+        (3, False, False),
+        (4, False, False),
+    ]
+
+
+def test_suggestions_are_listed_but_not_scored():
+    case = make_case()
+    style = {"lane": "maintainability", "category": "idiom", "suggestion": True}
+    pipeline = [finding(1, 10, posted=True), finding(2, 30, **style)]
+    agent = [
+        finding(1, 10, verdict="confirmed", posted=True),
+        finding(2, 30, verdict="dropped", **style) | {"suggestion": False},
+    ]
+
+    text = report(case, pipeline, agent)
+
+    assert "| False positives | 0 (0.00 per PR) | 0 (0.00 per PR) |" in text
+    assert "| Suggestions (collapsed, not scored) | 1 | 0 |" in text
+    suggestions = text.split("## Suggestions (style, collapsed)")[1].split("##")[0]
+    assert "| c | `a.py:30` maintainability/high: finding 2 | false positive | no | dropped" in (
+        suggestions
+    )

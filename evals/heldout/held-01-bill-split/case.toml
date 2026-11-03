@@ -1,0 +1,9 @@
+kind = "bug"
+title = "Split a bill evenly between people"
+
+# Held out: written after v3, never run while tuning the agent.
+
+[[expect]]
+file = "billing/split.py"
+lines = [9, 10]
+note = "integer division drops the remainder: the shares don't add up to the total"

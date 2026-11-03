@@ -20,6 +20,9 @@ CATEGORIES_BY_LANE = {
     "maintainability": ["readability", "idiom"],
 }
 LANES = list(CATEGORIES_BY_LANE)
+# Style findings: shown in the review summary's collapsed "Suggestions" section, never as inline
+# comments. Inline comments are for behaviour findings (bug, performance, security).
+SUGGESTION_CATEGORIES = set(CATEGORIES_BY_LANE["maintainability"])
 SEVERITIES = ["critical", "high", "medium", "low"]
 # Lanes run on the small model (GROQ_SMALL_MODEL); the rest on the main one (GROQ_MODEL).
 # Maintainability is the lowest-stakes lane, so it gives up the stronger model.

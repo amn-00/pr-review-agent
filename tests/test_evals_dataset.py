@@ -4,7 +4,7 @@ import pytest
 
 from app.agent.snapshot import download_snapshot
 from app.github.diff import parse_patch
-from evals.dataset import Case, Label, load_case, load_cases, validate
+from evals.dataset import CASES_DIR, Case, Label, load_case, load_cases, validate
 from evals.fake_github import FakeGitHub, make_patch, pull_files
 
 
@@ -35,6 +35,18 @@ def test_every_case_in_the_dataset_is_valid():
     assert {case.id: validate(case) for case in cases} == {case.id: [] for case in cases}
     assert len({case.repo_id for case in cases}) == len(cases)  # no shared lane cache
     assert {case.kind for case in cases} == {"bug", "clean", "trap", "injection"}
+
+
+def test_held_out_cases_are_valid_and_separate_from_the_tuning_set():
+    held_out = load_cases(CASES_DIR.parent / "heldout")
+    tuning = load_cases()
+
+    assert sorted(case.kind for case in held_out) == ["bug", "bug", "clean", "trap"]
+    assert {case.id: validate(case) for case in held_out} == {case.id: [] for case in held_out}
+    # Own IDs and repo IDs, so they never share results or lane cache with the tuning set.
+    assert not {case.id for case in held_out} & {case.id for case in tuning}
+    all_repo_ids = [case.repo_id for case in held_out + tuning]
+    assert len(set(all_repo_ids)) == len(all_repo_ids)
 
 
 def test_patch_of_a_modified_file_parses_to_the_added_lines():

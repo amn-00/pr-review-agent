@@ -423,7 +423,9 @@ def lane_reply(body: dict) -> dict:
     find nothing. Chunk lines look like "   12 + code"."""
     findings = []
     if body["response_format"]["json_schema"]["name"] == "correctness_findings":
-        match = re.search(r"^\s*(\d+) \+ ", body["messages"][-1]["content"], re.MULTILINE)
+        # The added division line: the agent's evidence must quote code, and the first added
+        # line is blank.
+        match = re.search(r"^\s*(\d+) \+ .*/ len\(", body["messages"][-1]["content"], re.MULTILINE)
         if match:
             line = int(match.group(1))
             findings.append(
@@ -441,14 +443,15 @@ def lane_reply(body: dict) -> dict:
 
 
 def agent_reply(body: dict) -> dict:
-    """Confirm on the first step, citing the finding's own line: it's in the excerpt the
-    agent was shown, so the evidence check accepts it."""
+    """Confirm on the first step, citing and quoting the finding's own line: it's in the
+    excerpt the agent was shown, so the evidence check accepts it."""
     task = body["messages"][1]["content"]
     path, line = re.search(r"^Finding: \S+ \S+ in (\S+), lines? (\d+)", task, re.MULTILINE).groups()
+    quote = re.search(rf"^\s*{line} [+ ] (.*)$", task, re.MULTILINE).group(1)
     arguments = {
         "verdict": "confirmed",
         "reason": "the list can be empty",
-        "evidence": [{"path": path, "line": int(line), "why": "the division"}],
+        "evidence": [{"path": path, "line": int(line), "quote": quote, "why": "the division"}],
     }
     call = {
         "id": "call_1",

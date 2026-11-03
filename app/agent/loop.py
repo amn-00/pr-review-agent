@@ -38,9 +38,10 @@ from app.llm.groq import (
 from app.pipeline.chunking import Chunk
 from app.pipeline.lanes import Candidate
 
-# v2: no callers found is not evidence of safety; "dropped" needs a guard. v1 is kept for
-# comparison (the Phase 5 baseline ran on it).
-AGENT_PROMPT_VERSION = "v2"
+# v2: no callers found is not evidence of safety; "dropped" needs a guard. v3: that rule only
+# for bug, performance and security findings; style findings are confirmed only if the lines
+# literally show the claim. v1 (the Phase 5 baseline) and v2 are kept for comparison.
+AGENT_PROMPT_VERSION = "v3"
 PROMPTS_DIR = Path(__file__).resolve().parents[2] / "prompts" / "agent"
 
 MAX_AGENT_STEPS = 6
@@ -62,7 +63,8 @@ VERDICT_SCHEMA = next(
 VERDICT_JSON = "verdict_json"
 ASK_FOR_JSON_VERDICT = (
     "Give your verdict now as JSON with verdict, reason and evidence, exactly as you would "
-    "pass them to submit_verdict. Evidence must point at lines shown above."
+    "pass them to submit_verdict. Evidence must point at lines shown above and quote their "
+    "code exactly."
 )
 # How much one more step adds to the next request, at most: a full tool result plus the call.
 STEP_GROWTH_TOKENS = MAX_RESULT_CHARS // 4 + EXPECTED_TOOL_CALL_OUTPUT_TOKENS
@@ -155,7 +157,9 @@ async def verify_finding(
         {"role": "user", "content": task_message(candidate, chunk, secrets.token_hex(8))},
     ]
     first, last, _ = excerpt(candidate, chunk)
-    seen = {(chunk.path, n) for n in range(first, last + 1)}
+    # (path, line) -> code, for every line shown so far: evidence must point at one and quote it.
+    code = chunk.body.splitlines()  # "<marker> <code>" per line, from chunk.start
+    seen = {(chunk.path, n): code[n - chunk.start][2:] for n in range(first, last + 1)}
     already_called: set[str] = set()
     result = Verdict("uncertain", f"no verdict within {MAX_AGENT_STEPS} steps")
 
@@ -327,12 +331,14 @@ async def verify_finding(
     return result
 
 
-def _parse_verdict(arguments: str, seen: set[tuple[str, int]]) -> tuple[Verdict | None, str]:
+def _parse_verdict(arguments: str, seen: dict[tuple[str, int], str]) -> tuple[Verdict | None, str]:
     """A verdict, or the error to send back so the model can fix its call.
 
-    Evidence must point at lines the agent was shown. A confirmed or dropped verdict with no
-    such evidence becomes uncertain: that catches invented evidence, and means an injection
-    that wants a real finding dropped has to point at real code.
+    Every evidence item must point at a line the agent was shown and quote code that is on
+    that line. A confirmed or dropped verdict with no evidence, or with any item that fails
+    either check, becomes uncertain. That catches invented evidence, and evidence that cites a
+    real line but misstates it (e.g. "two spaces" where the line has four). An injection that
+    wants a real finding dropped has to quote real code.
     """
     try:
         args = VerdictArgs.model_validate_json(arguments)
@@ -340,15 +346,27 @@ def _parse_verdict(arguments: str, seen: set[tuple[str, int]]) -> tuple[Verdict 
         first_error = exc.errors()[0]
         where = ".".join(map(str, first_error["loc"])) or "arguments"
         return None, f"Invalid {VERDICT_TOOL} arguments: {where}: {first_error['msg']}"
-    evidence = [
-        {"path": normalize_path(e.path), "line": e.line, "why": e.why}
-        for e in args.evidence
-        if (normalize_path(e.path), e.line) in seen
-    ]
-    if args.verdict != "uncertain" and not evidence:
-        reason = f"{args.verdict} without evidence from code it read: {args.reason}"
+    evidence, problems = [], []
+    for e in args.evidence:
+        path = normalize_path(e.path)
+        shown = seen.get((path, e.line))
+        if shown is None:
+            problems.append(f"{path}:{e.line} wasn't shown")
+        elif not _quoted(e.quote, shown):
+            problems.append(f"the quote for {path}:{e.line} isn't on that line")
+        else:
+            evidence.append({"path": path, "line": e.line, "quote": e.quote, "why": e.why})
+    if args.verdict != "uncertain" and (problems or not evidence):
+        problem = f" ({problems[0]})" if problems else ""
+        reason = f"{args.verdict} without evidence from code it read{problem}: {args.reason}"
         return Verdict("uncertain", reason), ""
     return Verdict(args.verdict, args.reason, evidence), ""
+
+
+def _quoted(quote: str, line: str) -> bool:
+    """The quote appears on the line, ignoring differences in whitespace."""
+    quote, line = " ".join(quote.split()), " ".join(line.split())
+    return bool(quote) and quote in line
 
 
 def misnamed_call(failed_generation: str | None) -> tuple[str, str] | None:

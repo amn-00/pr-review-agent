@@ -86,8 +86,9 @@ async def test_each_finding_gets_a_verdict_and_every_step_is_stored(
         ("Real", "confirmed"),
         ("Guarded", "dropped"),
     ]
+    quote = "    return total / len(values)"  # the line as the excerpt shows it
     assert result.checks[0].evidence == [
-        {"path": BUGGY_FILE, "line": 3, "why": "the finding's line"}
+        {"path": BUGGY_FILE, "line": 3, "quote": quote, "why": "the finding's line"}
     ]
     assert tarball.call_count == 1  # one snapshot shared by every finding
     assert {c["model"] for c in groq.agent_calls} == {MODEL}

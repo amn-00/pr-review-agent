@@ -2,6 +2,7 @@
 
     uv run python -m evals.report --name baseline
     uv run python -m evals.report --name agent-v2 --compare baseline
+    uv run python -m evals.report --name heldout --cases heldout
 
 Uses only the result files and the cases: no database, no LLM. Labels can be edited and the
 report rebuilt without running anything again.
@@ -18,6 +19,7 @@ from statistics import mean
 from app.agent.loop import CALLED_AS, MAX_AGENT_STEPS, VERDICT_JSON
 from app.agent.tools import VERDICT_TOOL
 from app.llm.pricing import cost_usd
+from app.pipeline.lanes import SUGGESTION_CATEGORIES
 from evals.dataset import Case, Label, load_cases
 
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
@@ -33,9 +35,13 @@ LIMITS = """\
 - With this few cases, a difference of 1–2 findings is not meaningful.
 - Latency is on Groq's free tier, where most of it is waiting for the per-minute token limit."""
 TUNED = """\
-- **Tuned on the test set.** The agent prompt after v1 was written after reading the
-  baseline's results on these same cases, so its scores here are optimistic. Only cases it
-  was never tuned on (held out) show whether it generalizes."""
+- **Tuned on the test set.** Every agent prompt after v1 was written after reading earlier
+  results on these same cases, so its scores here are optimistic. Only cases it was never
+  tuned on (`evals/heldout/`) show whether it generalizes."""
+HELD_OUT = """\
+- **Held-out cases.** These were written after the last agent prompt and never used to tune
+  it. They're a check that the tuning generalizes, not a measurement: there are only a few, so
+  a single finding moves every rate a lot."""
 
 
 @dataclass
@@ -103,8 +109,21 @@ def load_results(results_dir: Path) -> dict[tuple[str, str], dict]:
     results = {}
     for path in sorted(results_dir.glob("*.json")):
         result = json.loads(path.read_text(encoding="utf-8"))
+        apply_posting_rule(result)
         results[(result["case"], result["mode"])] = result
     return results
+
+
+def apply_posting_rule(result: dict) -> None:
+    """Score every run by the current rule, including runs made before it existed, so they can
+    be compared: a finding is shown if it passed aggregation and, with the agent, was confirmed.
+    Shown style findings are suggestions (`suggestion`); the rest are inline comments
+    (`posted`, the only ones scored)."""
+    with_agent = result["mode"] == "agent"
+    for finding in result["findings"]:
+        shown = not finding["drop_reason"] and (not with_agent or finding["verdict"] == "confirmed")
+        finding["suggestion"] = shown and finding["category"] in SUGGESTION_CATEGORIES
+        finding["posted"] = shown and not finding["suggestion"]
 
 
 def current(results: dict, case: Case, mode: str) -> dict | None:
@@ -116,10 +135,15 @@ def current(results: dict, case: Case, mode: str) -> dict | None:
 
 
 def render(
-    name: str, cases: list[Case], results: dict, compare: tuple[str, dict] | None = None
+    name: str,
+    cases: list[Case],
+    results: dict,
+    compare: tuple[str, dict] | None = None,
+    held_out: bool = False,
 ) -> str:
     """`compare` is (name, results) of another eval with the same pipeline results, e.g. the
-    baseline, to put its agent next to this one."""
+    baseline, to put its agent next to this one. `held_out`: the cases come from
+    evals/heldout/, which no prompt was tuned on."""
     paired = [
         (case, current(results, case, "pipeline"), current(results, case, "agent"))
         for case in cases
@@ -131,7 +155,9 @@ def render(
         paired = [(case, p, a) for case, p, a in paired if other[case.id]]
         compare = (other_name, other)
     limits = LIMITS.format(cases=len(cases))
-    if any((agent.get("agent_prompt_version") or "v1") != "v1" for _, _, agent in paired):
+    if held_out:
+        limits += "\n" + HELD_OUT
+    elif any((agent.get("agent_prompt_version") or "v1") != "v1" for _, _, agent in paired):
         limits += "\n" + TUNED
     lines = [
         f"# Eval report: {name}",
@@ -148,6 +174,7 @@ def render(
     lines += _funnel(paired)
     lines += _matches(paired)
     lines += _false_positives(paired)
+    lines += _suggestions(paired)
     lines += _injection(paired)
     lines += _dedupe(paired)
     lines += _corroboration(paired)
@@ -193,8 +220,9 @@ SUMMARY_METRICS = [
     "Traps posted",
     "Clean PRs with a false positive",
     "False positives",
-    "Findings posted",
-    "Precision",
+    "Inline comments",
+    "Precision (inline comments)",
+    "Suggestions (collapsed, not scored)",
     "Cost per PR (list prices)",
     "Latency per PR",
     "Rate-limit waits per PR (summed over parallel calls)",
@@ -207,6 +235,7 @@ def _column(runs: list[tuple[Case, dict]], mode: str) -> list[str]:
     latencies = [_latency(r, mode) for _, r in runs if _latency(r, mode) is not None]
     waits = [_waits(r, mode) for _, r in runs]
     posted = t.true_positives + t.false_positives
+    suggestions = sum(1 for _, r in runs for f in r[mode]["findings"] if f.get("suggestion"))
     return [
         f"{t.caught}/{t.expected} ({_pct(t.caught, t.expected)})",
         f"{t.traps_posted}/{t.traps}",
@@ -214,6 +243,7 @@ def _column(runs: list[tuple[Case, dict]], mode: str) -> list[str]:
         f"{t.false_positives} ({t.false_positives / len(runs):.2f} per PR)",
         str(posted),
         _pct(t.true_positives, posted),
+        str(suggestions),
         f"${mean(costs):.4f} (max ${max(costs):.4f})",
         f"{mean(latencies):.0f} s (max {max(latencies):.0f} s)" if latencies else "n/a",
         f"{mean(waits):.0f} s",
@@ -246,9 +276,12 @@ def _summary(paired: list, total_cases: int, compare: tuple[str, dict] | None) -
         "",
         "Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run "
         "got every lane call from the cache). Latency leaves out runs that took more than one "
-        "attempt. False positives are posted findings that match no planted bug and no "
-        "`acceptable` label; precision = posted findings matching a planted bug / all posted "
-        "findings that aren't `acceptable`.",
+        "attempt. Only inline comments are scored: findings that passed aggregation (and, with "
+        "the agent, were confirmed) in the categories bug, performance and security. Style "
+        "findings (readability, idiom) are collapsed suggestions, listed below, and every run "
+        "is scored this way, including runs made before the rule existed. False positives are "
+        "inline comments that match no planted bug and no `acceptable` label; precision = inline "
+        "comments matching a planted bug / all inline comments that aren't `acceptable`.",
         "",
     ]
     return lines
@@ -387,6 +420,22 @@ def _false_positives(paired: list) -> list[str]:
     )
     headers = ["Case", "Finding", "Label", "Agent verdict"]
     return ["## False positives", "", intro, "", *_table(headers, rows), ""]
+
+
+def _suggestions(paired: list) -> list[str]:
+    """Style findings shown in the collapsed section: every one the pipeline would show, and
+    whether the agent kept it. They aren't scored, but a wrong suggestion is still noise."""
+    rows = []
+    for case, pipeline, agent in paired:
+        for finding in pipeline["findings"]:
+            if not finding.get("suggestion"):
+                continue
+            twin = _twin(finding, agent["findings"])
+            verdict = f"{twin['verdict']}: {twin['verdict_reason']}" if twin else "?"
+            shown = "yes" if twin and twin.get("suggestion") else "no"
+            rows.append([case.id, _describe(finding), truth(case, finding), shown, verdict])
+    headers = ["Case", "Suggestion", "Label", "Shown with the agent", "Agent verdict"]
+    return ["## Suggestions (style, collapsed)", "", *_table(headers, rows), ""]
 
 
 def _injection(paired: list) -> list[str]:
@@ -657,10 +706,18 @@ def main() -> None:
         metavar="NAME",
         help="another eval with the same pipeline results, whose agent is shown alongside",
     )
+    parser.add_argument(
+        "--cases",
+        default="cases",
+        metavar="FOLDER",
+        help="case folder under evals/: cases (default, the tuning set) or heldout",
+    )
     args = parser.parse_args()
     results_dir = RESULTS_DIR / args.name
     compare = (args.compare, load_results(RESULTS_DIR / args.compare)) if args.compare else None
-    text = render(args.name, load_cases(), load_results(results_dir), compare)
+    cases = load_cases(Path(__file__).resolve().parent / args.cases)
+    results = load_results(results_dir)
+    text = render(args.name, cases, results, compare, held_out=args.cases == "heldout")
     (results_dir / "report.md").write_text(text + "\n", encoding="utf-8")
     print(f"Wrote {results_dir / 'report.md'}")
 

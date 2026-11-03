@@ -172,7 +172,7 @@ def test_read_file_returns_numbered_lines_and_marks_them_seen(tmp_path):
 
     assert "app/report.py, lines 4-7 of 7:" in result.text
     assert "    7      return average(scores)" in result.text
-    assert result.seen == {("app/report.py", n) for n in range(4, 8)}
+    assert set(result.seen) == {("app/report.py", n) for n in range(4, 8)}
 
 
 def test_read_file_caps_the_number_of_lines(tmp_path):
@@ -207,7 +207,7 @@ def test_search_is_plain_text_not_a_regex(tmp_path):
     result = search_repo(snap, "sum(values) /")  # regex metacharacters, taken literally
 
     assert result.text.splitlines()[1] == "app/stats.py:2: return sum(values) / len(values)"
-    assert result.seen == {("app/stats.py", 2)}
+    assert result.seen == {("app/stats.py", 2): "return sum(values) / len(values)"}
 
 
 def test_search_lists_at_most_15_matches_and_says_how_many_more(tmp_path):
@@ -224,7 +224,7 @@ def test_find_callers_matches_whole_words_and_skips_the_definition(tmp_path):
 
     result = find_callers(snap, "stats.average")  # a dotted name uses its last part
 
-    assert result.seen == {("app/report.py", 1), ("app/report.py", 7)}
+    assert set(result.seen) == {("app/report.py", 1), ("app/report.py", 7)}
     assert "average_all" not in result.text
 
 
@@ -267,7 +267,7 @@ async def test_read_file_takes_line_start_and_line_end(tmp_path, github):
         "read_file", json.dumps({"path": "app/report.py", "start": 4, "end": 7})
     )
 
-    assert result.seen == {("app/report.py", n) for n in range(4, 8)}
+    assert set(result.seen) == {("app/report.py", n) for n in range(4, 8)}
     assert "Invalid arguments for read_file" in old_names.text
 
 

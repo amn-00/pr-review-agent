@@ -1,0 +1,11 @@
+kind = "trap"
+title = "Retry JSON requests that time out"
+
+# Held out: written after v3, never run while tuning the agent.
+# random.uniform is only jitter for the backoff delay, not a secret: the random module is
+# fine here (unlike held-02's reset token).
+
+[[trap]]
+file = "net/retry.py"
+lines = [20, 20]
+note = "random used for backoff jitter, which needs no cryptographic randomness"

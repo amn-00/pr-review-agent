@@ -1,0 +1,4 @@
+kind = "clean"
+title = "Upload records in batches"
+
+# Held out: written after v3, never run while tuning the agent.

@@ -51,8 +51,11 @@ def summary(
     skipped_files: dict[str, str],
     lanes: OrchestratorResult,
     agent: AgentResult | None = None,
+    suggestions: list[Candidate] = (),
 ) -> str:
-    """`agent` is None when the agent is off (pipeline only): then every finding is posted."""
+    """`agent` is None when the agent is off (pipeline only): then every finding that passed
+    aggregation is shown. `posted` are the inline comments (bug, performance, security);
+    `suggestions` are style findings, listed in a collapsed section instead."""
     counts = Counter(c.severity for c in posted)
     issues = "confirmed issue(s)" if agent else "issue(s)"
     if posted:
@@ -60,6 +63,8 @@ def summary(
         headline = f"Found {len(posted)} {issues}: {found}."
     else:
         headline = "No confirmed issues found." if agent else "No issues found."
+    if suggestions:
+        headline += f" {len(suggestions)} style suggestion(s) below."
     lanes_by_model: dict[str, list[str]] = {}
     for lane, model in models.items():
         lanes_by_model.setdefault(model, []).append(lane)
@@ -81,7 +86,7 @@ def summary(
             f"(`{agent.model}`, prompt agent {AGENT_PROMPT_VERSION}): "
             f"{verdicts['confirmed']} confirmed, {verdicts['dropped']} dropped, "
             f"{verdicts['uncertain']} uncertain, {verdicts[None]} not verified. "
-            "Only confirmed findings are posted."
+            "Only confirmed findings are shown."
         )
         cost += agent.usage.cost_usd
     lines.append(
@@ -90,6 +95,14 @@ def summary(
         + f"); {usage.cached_calls} of {usage.llm_calls + usage.cached_calls} lane call(s) "
         "answered from cache."
     )
+    if suggestions:
+        # Model text, so through safe() like inline comments.
+        items = [
+            f"- `{safe(c.file)}:{c.line_start}` {safe(c.title)}: {safe(c.explanation)}"
+            for c in suggestions
+        ]
+        title = f"Suggestions (style, not posted inline): {len(suggestions)}"
+        lines += ["", f"<details><summary>{title}</summary>", "", *items, "", "</details>"]
     if agent:
         uncertain = [c for c in agent.checks if c.verdict == "uncertain"]
         not_verified = [c for c in agent.checks if c.verdict is None]

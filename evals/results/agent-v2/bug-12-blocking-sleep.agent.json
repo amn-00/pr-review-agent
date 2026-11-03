@@ -1,0 +1,142 @@
+{
+ "case": "bug-12-blocking-sleep",
+ "mode": "agent",
+ "agent_prompt_version": "v2",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "070dbba1ec109da05270dcf1554f54d5b8f56e12",
+ "started_at": "2026-11-03T14:52:42.680190+00:00",
+ "wall_seconds": 12.9,
+ "run": {
+  "id": 64,
+  "head_sha": "070dbba1ec109da05270dcf1554f54d5b8f56e12",
+  "status": "completed",
+  "started_at": "2026-11-03 14:52:42.740301+00:00",
+  "finished_at": "2026-11-03 14:52:55.575611+00:00",
+  "tokens_in": 3493,
+  "tokens_out": 210,
+  "cost_usd": "0.000649950",
+  "llm_calls": 2,
+  "cached_calls": 3,
+  "tokens_saved": 4056,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1623,
+   "tokens_out": 93,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.8
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1870,
+   "tokens_out": 117,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.7
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 174,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "jobs/poller.py",
+   "line_start": 14,
+   "line_end": 14,
+   "category": "bug",
+   "severity": "high",
+   "title": "Blocking call in async function",
+   "explanation": "The async function `wait_until_ready` uses `time.sleep`, which blocks the event loop and prevents other async tasks from running during the sleep period. This can cause performance degradation and deadlocks in an async application.",
+   "suggested_fix": "Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and import asyncio at the top of the file.",
+   "verdict": "confirmed",
+   "verdict_reason": "The async function directly calls time.sleep, which blocks the event loop and can degrade performance, confirming the finding.",
+   "evidence": [
+    {
+     "why": "Uses time.sleep inside async function, blocks event loop",
+     "line": 14,
+     "path": "jobs/poller.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "jobs/poller.py",
+      "line_end": 20,
+      "line_start": 1
+     },
+     "result_chars": 601,
+     "result_summary": "jobs/poller.py, lines 1-15 of 15:\n    1  import time\n    2  \n    3  import httpx\n    4  \n    5  from jobs.client import fetch_status\n    6  \n    7  \n    8  async def wait_until_ready(client: httpx.AsyncClient, url: str, attempts: int = 10) -> bool:\n    9      \"\"\"Poll a health URL until it answers 20",
+     "tokens_in": 1623,
+     "tokens_out": 93,
+     "latency_ms": 1829
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The async function directly calls time.sleep, which blocks the event loop and can degrade performance, confirming the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Uses time.sleep inside async function, blocks event loop",
+        "line": 14,
+        "path": "jobs/poller.py"
+       }
+      ]
+     },
+     "result_chars": 137,
+     "result_summary": "confirmed: The async function directly calls time.sleep, which blocks the event loop and can degrade performance, confirming the finding.",
+     "tokens_in": 1870,
+     "tokens_out": 117,
+     "latency_ms": 1704
+    }
+   ]
+  },
+  {
+   "id": 175,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "jobs/poller.py",
+   "line_start": 14,
+   "line_end": 14,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Blocking sleep in async function",
+   "explanation": "Using time.sleep inside an async function blocks the event loop, preventing other coroutines from running. The idiomatic approach is to use await asyncio.sleep for non-blocking delays.",
+   "suggested_fix": "Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and remove the unnecessary import of `time`. ",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 174,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:64 -->\n### Automated review of `070dbba`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v2): 1 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0006 at list prices (free tier; agent $0.0006); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "jobs/poller.py",
+    "line": 14,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Blocking call in async function\n\nThe async function `wait_until_ready` uses `time.sleep`, which blocks the event loop and prevents other async tasks from running during the sleep period. This can cause performance degradation and deadlocks in an async application.\n\n**Suggested fix:** Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and import asyncio at the top of the file.\n\n_Checked against `jobs/poller.py:14`_"
+   }
+  ]
+ }
+}

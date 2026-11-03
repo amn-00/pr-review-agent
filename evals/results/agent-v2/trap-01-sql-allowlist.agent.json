@@ -1,0 +1,217 @@
+{
+ "case": "trap-01-sql-allowlist",
+ "mode": "agent",
+ "agent_prompt_version": "v2",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "bbce093e14037a8a46115f14f7788a52b00346be",
+ "started_at": "2026-11-03T15:04:56.982510+00:00",
+ "wall_seconds": 59.5,
+ "run": {
+  "id": 71,
+  "head_sha": "bbce093e14037a8a46115f14f7788a52b00346be",
+  "status": "completed",
+  "started_at": "2026-11-03 15:04:57.042273+00:00",
+  "finished_at": "2026-11-03 15:05:56.471424+00:00",
+  "tokens_in": 7030,
+  "tokens_out": 299,
+  "cost_usd": "0.001233900",
+  "llm_calls": 5,
+  "cached_calls": 3,
+  "tokens_saved": 3986,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1559,
+   "tokens_out": 40,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.95
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1665,
+   "tokens_out": 41,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.12
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See \\'failed_generation\\' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We see order_by comes from sort",
+   "latency_s": 0.84
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1822,
+   "tokens_out": 39,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.61
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1984,
+   "tokens_out": 179,
+   "waited_s": 44.47,
+   "error": null,
+   "latency_s": 45.45
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "catalog/queries.py",
+   "tool": "semgrep",
+   "line": 7,
+   "code": "sql-built-from-strings",
+   "message": "SQL built with string formatting. Use query parameters to avoid SQL injection.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 194,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "catalog/queries.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "security",
+   "severity": "high",
+   "title": "SQL injection risk via unsanitized ORDER BY clause",
+   "explanation": "The function directly interpolates the `order_by` argument into the SQL statement using an f\u2011string. An attacker could supply a malicious value (e.g., \"name; DROP TABLE products; --\") causing arbitrary SQL execution.",
+   "suggested_fix": "Validate `order_by` against a whitelist of allowed column names (e.g., ['id', 'name', 'price']) before constructing the query, or use parameterized queries where possible.",
+   "verdict": "dropped",
+   "verdict_reason": "The ORDER BY value is validated against a whitelist of column names before being passed to the query, preventing injection.",
+   "evidence": [
+    {
+     "why": "Function only returns allowed column names from SORTABLE_COLUMNS",
+     "line": 5,
+     "path": "catalog/columns.py"
+    },
+    {
+     "why": "order_by argument originates from sort_column, which sanitizes input",
+     "line": 6,
+     "path": "catalog/views.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "list_products"
+     },
+     "result_chars": 214,
+     "result_summary": "Lines containing 'list_products':\ncatalog/queries.py:4: def list_products(order_by: str) -> list[dict]:\ncatalog/views.py:2: from catalog.queries import list_products\ncatalog/views.py:7: return list_products(column)",
+     "tokens_in": 1559,
+     "tokens_out": 40,
+     "latency_ms": 2031
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "catalog/views.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 299,
+     "result_summary": "catalog/views.py, lines 1-7 of 7:\n    1  from catalog.columns import sort_column\n    2  from catalog.queries import list_products\n    3  \n    4  \n    5  def products_page(params: dict) -> list[dict]:\n    6      column = sort_column(params.get(\"sort\", \"name\"))\n    7      return list_products(column)",
+     "tokens_in": 1665,
+     "tokens_out": 41,
+     "latency_ms": 1125
+    },
+    {
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We see order_by comes from sort_column(params...)",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 843
+    },
+    {
+     "step_no": 4,
+     "tool": "read_file",
+     "args_json": {
+      "path": "catalog/columns.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 323,
+     "result_summary": "catalog/columns.py, lines 1-6 of 6:\n    1  SORTABLE_COLUMNS = {\"name\", \"price\", \"created_at\"}\n    2  \n    3  \n    4  def sort_column(requested: str) -> str:\n    5      \"\"\"The column to sort by: only known columns; anything else falls back to name.\"\"\"\n    6      return requested if requested in SORTA",
+     "tokens_in": 1822,
+     "tokens_out": 39,
+     "latency_ms": 625
+    },
+    {
+     "step_no": 5,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The ORDER BY value is validated against a whitelist of column names before being passed to the query, preventing injection.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Function only returns allowed column names from SORTABLE_COLUMNS",
+        "line": 5,
+        "path": "catalog/columns.py"
+       },
+       {
+        "why": "order_by argument originates from sort_column, which sanitizes input",
+        "line": 6,
+        "path": "catalog/views.py"
+       }
+      ]
+     },
+     "result_chars": 132,
+     "result_summary": "dropped: The ORDER BY value is validated against a whitelist of column names before being passed to the query, preventing injection.",
+     "tokens_in": 1984,
+     "tokens_out": 179,
+     "latency_ms": 45453
+    }
+   ]
+  },
+  {
+   "id": 195,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "catalog/queries.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential runtime error from unsafe ORDER BY clause",
+   "explanation": "The function directly interpolates the `order_by` parameter into the SQL query string. If an invalid or empty column name is passed, SQLite will raise a syntax error, causing the function to crash at runtime.",
+   "suggested_fix": "Validate `order_by` against a whitelist of allowed column names or use parameterized queries for safe ordering.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 194,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:71 -->\n### Automated review of `bbce093`\nNo confirmed issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v2): 0 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0012 at list prices (free tier; agent $0.0012); 3 of 3 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

@@ -1,0 +1,273 @@
+{
+ "case": "bug-06-dict-get-none",
+ "mode": "agent",
+ "agent_prompt_version": "v2",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "2faff66f1f258f0e6fb0b23febd90992b8946dc8",
+ "started_at": "2026-11-03T14:41:57.083455+00:00",
+ "wall_seconds": 55.9,
+ "run": {
+  "id": 58,
+  "head_sha": "2faff66f1f258f0e6fb0b23febd90992b8946dc8",
+  "status": "completed",
+  "started_at": "2026-11-03 14:41:57.138929+00:00",
+  "finished_at": "2026-11-03 14:42:52.967096+00:00",
+  "tokens_in": 10200,
+  "tokens_out": 481,
+  "cost_usd": "0.001818600",
+  "llm_calls": 6,
+  "cached_calls": 3,
+  "tokens_saved": 4303,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1598,
+   "tokens_out": 35,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.64
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1596,
+   "tokens_out": 46,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.88
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1682,
+   "tokens_out": 39,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.55
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1679,
+   "tokens_out": 43,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.94
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1820,
+   "tokens_out": 155,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.88
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1825,
+   "tokens_out": 163,
+   "waited_s": 42.69,
+   "error": null,
+   "latency_s": 43.48
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 155,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "support/escalate.py",
+   "line_start": 6,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "high",
+   "title": "Potential NoneType access when assignee not found",
+   "explanation": "If the provided assignee is not present in STAFF, STAFF.get returns None and the subsequent member['team'] access raises a TypeError. This can happen with unknown or misspelled assignee values.",
+   "suggested_fix": "Check that member is not None before accessing its fields, e.g.,\n```python\nmember = STAFF.get(assignee)\nif not member:\n    raise ValueError(f\"Assignee '{assignee}' not found\")\nreturn f\"{member['team']}-escalations@example.com\"\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The function uses STAFF.get without checking for None; an unknown assignee will cause member['team'] to raise TypeError.",
+   "evidence": [
+    {
+     "why": "member assigned via STAFF.get may be None",
+     "line": 6,
+     "path": "support/escalate.py"
+    },
+    {
+     "why": "STAFF defined without fallback, unknown keys return None",
+     "line": 1,
+     "path": "support/directory.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "STAFF ="
+     },
+     "result_chars": 61,
+     "result_summary": "Lines containing 'STAFF =':\nsupport/directory.py:1: STAFF = {",
+     "tokens_in": 1598,
+     "tokens_out": 35,
+     "latency_ms": 672
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "support/directory.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 201,
+     "result_summary": "support/directory.py, lines 1-4 of 4:\n    1  STAFF = {\n    2      \"alice\": {\"email\": \"alice@example.com\", \"team\": \"billing\"},\n    3      \"bob\": {\"email\": \"bob@example.com\", \"team\": \"support\"},\n    4  }",
+     "tokens_in": 1679,
+     "tokens_out": 43,
+     "latency_ms": 954
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function uses STAFF.get without checking for None; an unknown assignee will cause member['team'] to raise TypeError.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "member assigned via STAFF.get may be None",
+        "line": 6,
+        "path": "support/escalate.py"
+       },
+       {
+        "why": "STAFF defined without fallback, unknown keys return None",
+        "line": 1,
+        "path": "support/directory.py"
+       }
+      ]
+     },
+     "result_chars": 131,
+     "result_summary": "confirmed: The function uses STAFF.get without checking for None; an unknown assignee will cause member['team'] to raise TypeError.",
+     "tokens_in": 1820,
+     "tokens_out": 155,
+     "latency_ms": 875
+    }
+   ]
+  },
+  {
+   "id": 156,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "support/escalate.py",
+   "line_start": 11,
+   "line_end": 12,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Missing key handling for ticket dictionary",
+   "explanation": "The function assumes the ticket dict always contains 'assignee' and 'id' keys. If either key is absent, a KeyError will be raised, causing the escalation process to fail.",
+   "suggested_fix": "Validate the presence of required keys or use dict.get with defaults, e.g.,\n```python\nassignee = ticket.get('assignee')\nif not assignee:\n    raise ValueError('Ticket missing assignee')\naddress = escalation_address(assignee)\nticket_id = ticket.get('id', 'unknown')\nreturn f\"ticket {ticket_id} escalated to {address}\"\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The function directly indexes the ticket dict for 'assignee' and 'id' with no validation, so missing keys will raise KeyError.",
+   "evidence": [
+    {
+     "why": "accesses ticket['assignee'] without checking",
+     "line": 11,
+     "path": "support/escalate.py"
+    },
+    {
+     "why": "accesses ticket['id'] without checking",
+     "line": 12,
+     "path": "support/escalate.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "escalate("
+     },
+     "result_chars": 88,
+     "result_summary": "Lines containing 'escalate(':\nsupport/escalate.py:10: def escalate(ticket: dict) -> str:",
+     "tokens_in": 1596,
+     "tokens_out": 46,
+     "latency_ms": 875
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "support/directory.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 201,
+     "result_summary": "support/directory.py, lines 1-4 of 4:\n    1  STAFF = {\n    2      \"alice\": {\"email\": \"alice@example.com\", \"team\": \"billing\"},\n    3      \"bob\": {\"email\": \"bob@example.com\", \"team\": \"support\"},\n    4  }",
+     "tokens_in": 1682,
+     "tokens_out": 39,
+     "latency_ms": 562
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function directly indexes the ticket dict for 'assignee' and 'id' with no validation, so missing keys will raise KeyError.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "accesses ticket['assignee'] without checking",
+        "line": 11,
+        "path": "support/escalate.py"
+       },
+       {
+        "why": "accesses ticket['id'] without checking",
+        "line": 12,
+        "path": "support/escalate.py"
+       }
+      ]
+     },
+     "result_chars": 137,
+     "result_summary": "confirmed: The function directly indexes the ticket dict for 'assignee' and 'id' with no validation, so missing keys will raise KeyError.",
+     "tokens_in": 1825,
+     "tokens_out": 163,
+     "latency_ms": 43484
+    }
+   ]
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:58 -->\n### Automated review of `2faff66`\nFound 2 confirmed issue(s): 1 high, 1 medium.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v2): 2 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0018 at list prices (free tier; agent $0.0018); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "support/escalate.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Potential NoneType access when assignee not found\n\nIf the provided assignee is not present in STAFF, STAFF.get returns None and the subsequent member['team'] access raises a TypeError. This can happen with unknown or misspelled assignee values.\n\n**Suggested fix:** Check that member is not None before accessing its fields, e.g.,\n```python\nmember = STAFF.get(assignee)\nif not member:\n    raise ValueError(f\"Assignee '{assignee}' not found\")\nreturn f\"{member['team']}-escalations@\u200bexample.com\"\n```\n\n_Checked against `support/escalate.py:6`, `support/directory.py:1`_",
+    "start_line": 6,
+    "start_side": "RIGHT"
+   },
+   {
+    "path": "support/escalate.py",
+    "line": 12,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Missing key handling for ticket dictionary\n\nThe function assumes the ticket dict always contains 'assignee' and 'id' keys. If either key is absent, a KeyError will be raised, causing the escalation process to fail.\n\n**Suggested fix:** Validate the presence of required keys or use dict.get with defaults, e.g.,\n```python\nassignee = ticket.get('assignee')\nif not assignee:\n    raise ValueError('Ticket missing assignee')\naddress = escalation_address(assignee)\nticket_id = ticket.get('id', 'unknown')\nreturn f\"ticket {ticket_id} escalated to {address}\"\n```\n\n_Checked against `support/escalate.py:11`, `support/escalate.py:12`_",
+    "start_line": 11,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

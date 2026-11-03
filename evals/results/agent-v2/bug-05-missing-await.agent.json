@@ -1,0 +1,359 @@
+{
+ "case": "bug-05-missing-await",
+ "mode": "agent",
+ "agent_prompt_version": "v2",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "c16a1d8fdbc3d82bd3ed6da12bc36009f289e210",
+ "started_at": "2026-11-03T14:39:39.396998+00:00",
+ "wall_seconds": 67.6,
+ "run": {
+  "id": 57,
+  "head_sha": "c16a1d8fdbc3d82bd3ed6da12bc36009f289e210",
+  "status": "completed",
+  "started_at": "2026-11-03 14:39:39.473321+00:00",
+  "finished_at": "2026-11-03 14:40:47.029968+00:00",
+  "tokens_in": 11940,
+  "tokens_out": 783,
+  "cost_usd": "0.002260800",
+  "llm_calls": 7,
+  "cached_calls": 3,
+  "tokens_saved": 4406,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1575,
+   "tokens_out": 38,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.8
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1584,
+   "tokens_out": 44,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.0
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1647,
+   "tokens_out": 42,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.78
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1666,
+   "tokens_out": 42,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.03
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1937,
+   "tokens_out": 176,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.69
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1962,
+   "tokens_out": 179,
+   "waited_s": 52.61,
+   "error": null,
+   "latency_s": 53.5
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1569,
+   "tokens_out": 262,
+   "waited_s": 54.51,
+   "error": null,
+   "latency_s": 55.83
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 150,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 8,
+   "line_end": 8,
+   "category": "bug",
+   "severity": "high",
+   "title": "Missing check for non\u2011existent user",
+   "explanation": "If `db.get_user` returns `None` (e.g., the user_id does not exist), the next line attempts to assign to `user[\"name\"]`, causing a TypeError. The function should verify that a user was retrieved before modifying it.",
+   "suggested_fix": "Add a check after retrieving the user, e.g.,\n```python\nuser = await db.get_user(user_id)\nif user is None:\n    raise KeyError(f\"User with id {user_id} not found\")\n```",
+   "verdict": "dropped",
+   "verdict_reason": "get_user converts the fetched row to a dict, which throws an error when no record is found, preventing a None value from being returned. Hence the later code cannot encounter a None user, making the reported missing check unnecessary.",
+   "evidence": [
+    {
+     "why": "dict(row) will raise TypeError if row is None, so user is never None",
+     "line": 10,
+     "path": "accounts/db.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class Database"
+     },
+     "result_chars": 68,
+     "result_summary": "Lines containing 'class Database':\naccounts/db.py:1: class Database:",
+     "tokens_in": 1584,
+     "tokens_out": 44,
+     "latency_ms": 1000
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "accounts/db.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 801,
+     "result_summary": "accounts/db.py, lines 1-19 of 19:\n    1  class Database:\n    2      \"\"\"Async access to the accounts table.\"\"\"\n    3  \n    4      def __init__(self, pool):\n    5          self.pool = pool\n    6  \n    7      async def get_user(self, user_id: int) -> dict:\n    8          async with self.pool.acquire() ",
+     "tokens_in": 1666,
+     "tokens_out": 42,
+     "latency_ms": 1031
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "get_user converts the fetched row to a dict, which throws an error when no record is found, preventing a None value from being returned. Hence the later code cannot encounter a None user, making the reported missing check unnecessary.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "dict(row) will raise TypeError if row is None, so user is never None",
+        "line": 10,
+        "path": "accounts/db.py"
+       }
+      ]
+     },
+     "result_chars": 243,
+     "result_summary": "dropped: get_user converts the fetched row to a dict, which throws an error when no record is found, preventing a None value from being returned. Hence the later code cannot encounter a None user, making the reported missing check unnecessary.",
+     "tokens_in": 1962,
+     "tokens_out": 179,
+     "latency_ms": 53500
+    }
+   ]
+  },
+  {
+   "id": 151,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "high",
+   "title": "Asynchronous save operation not awaited",
+   "explanation": "`db.save_user` is likely an async method (matching the async nature of the service). Calling it without `await` means the save may not complete before the function returns, leading to data loss or race conditions.",
+   "suggested_fix": "Await the save operation:\n```python\nawait db.save_user(user)\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The Database.save_user method is async, but rename_user does not await it, so the save may not complete before returning, confirming the bug.",
+   "evidence": [
+    {
+     "why": "save_user is defined as async method",
+     "line": 12,
+     "path": "accounts/db.py"
+    },
+    {
+     "why": "called without await",
+     "line": 10,
+     "path": "accounts/service.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class Database"
+     },
+     "result_chars": 68,
+     "result_summary": "Lines containing 'class Database':\naccounts/db.py:1: class Database:",
+     "tokens_in": 1575,
+     "tokens_out": 38,
+     "latency_ms": 859
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "accounts/db.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 801,
+     "result_summary": "accounts/db.py, lines 1-19 of 19:\n    1  class Database:\n    2      \"\"\"Async access to the accounts table.\"\"\"\n    3  \n    4      def __init__(self, pool):\n    5          self.pool = pool\n    6  \n    7      async def get_user(self, user_id: int) -> dict:\n    8          async with self.pool.acquire() ",
+     "tokens_in": 1647,
+     "tokens_out": 42,
+     "latency_ms": 797
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The Database.save_user method is async, but rename_user does not await it, so the save may not complete before returning, confirming the bug.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "save_user is defined as async method",
+        "line": 12,
+        "path": "accounts/db.py"
+       },
+       {
+        "why": "called without await",
+        "line": 10,
+        "path": "accounts/service.py"
+       }
+      ]
+     },
+     "result_chars": 152,
+     "result_summary": "confirmed: The Database.save_user method is async, but rename_user does not await it, so the save may not complete before returning, confirming the bug.",
+     "tokens_in": 1937,
+     "tokens_out": 176,
+     "latency_ms": 688
+    }
+   ]
+  },
+  {
+   "id": 152,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "readability",
+   "severity": "low",
+   "title": "Return type is a raw dict",
+   "explanation": "Returning a plain dictionary makes it harder to understand the expected structure of the result and can lead to accidental misuse. Using a typed response model or a dataclass would improve clarity for future readers.",
+   "suggested_fix": "Define a `UserResponse` dataclass and return an instance instead of a raw dict.",
+   "verdict": "dropped",
+   "verdict_reason": "The finding concerns code readability and style, not a functional defect. The function already declares a dict return type, so the suggestion is a stylistic preference, not a bug.",
+   "evidence": [
+    {
+     "why": "Function explicitly annotates return type as dict, indicating intentional use",
+     "line": 4,
+     "path": "accounts/service.py"
+    },
+    {
+     "why": "Returns the user dict directly; no type enforcement issue, only style preference",
+     "line": 11,
+     "path": "accounts/service.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The finding concerns code readability and style, not a functional defect. The function already declares a dict return type, so the suggestion is a stylistic preference, not a bug.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Function explicitly annotates return type as dict, indicating intentional use",
+        "line": 4,
+        "path": "accounts/service.py"
+       },
+       {
+        "why": "Returns the user dict directly; no type enforcement issue, only style preference",
+        "line": 11,
+        "path": "accounts/service.py"
+       }
+      ]
+     },
+     "result_chars": 188,
+     "result_summary": "dropped: The finding concerns code readability and style, not a functional defect. The function already declares a dict return type, so the suggestion is a stylistic preference, not a bug.",
+     "tokens_in": 1569,
+     "tokens_out": 262,
+     "latency_ms": 55828
+    }
+   ]
+  },
+  {
+   "id": 153,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 4,
+   "line_end": 11,
+   "category": "security",
+   "severity": "high",
+   "title": "Missing authorization check before renaming user",
+   "explanation": "The function allows renaming a user based solely on user_id without verifying that the caller has permission to modify that account. An attacker could call this endpoint to change other users' names, leading to privilege escalation or data integrity issues.",
+   "suggested_fix": "Add an authorization check (e.g., verify the current session's user matches user_id or has admin rights) before performing the rename.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 150,
+   "agent_steps": []
+  },
+  {
+   "id": 154,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Missing await on asynchronous DB operation",
+   "explanation": "`db.save_user(user)` is an async method but is called without `await`, which will schedule the coroutine but never execute it, potentially leaving the user unsaved and causing subtle bugs.",
+   "suggested_fix": "Add `await` before the call: `await db.save_user(user)`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 151,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:57 -->\n### Automated review of `c16a1d8`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v2): 1 confirmed, 2 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0023 at list prices (free tier; agent $0.0023); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "accounts/service.py",
+    "line": 10,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Asynchronous save operation not awaited\n\n`db.save_user` is likely an async method (matching the async nature of the service). Calling it without `await` means the save may not complete before the function returns, leading to data loss or race conditions.\n\n**Suggested fix:** Await the save operation:\n```python\nawait db.save_user(user)\n```\n\n_Checked against `accounts/db.py:12`, `accounts/service.py:10`_"
+   }
+  ]
+ }
+}

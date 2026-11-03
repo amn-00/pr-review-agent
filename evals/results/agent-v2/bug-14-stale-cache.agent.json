@@ -1,0 +1,320 @@
+{
+ "case": "bug-14-stale-cache",
+ "mode": "agent",
+ "agent_prompt_version": "v2",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "91374bec7a5f17956b98df568a0d8614e5e00ba8",
+ "started_at": "2026-11-03T14:55:27.611743+00:00",
+ "wall_seconds": 58.8,
+ "run": {
+  "id": 66,
+  "head_sha": "91374bec7a5f17956b98df568a0d8614e5e00ba8",
+  "status": "completed",
+  "started_at": "2026-11-03 14:55:27.669690+00:00",
+  "finished_at": "2026-11-03 14:56:26.430894+00:00",
+  "tokens_in": 8594,
+  "tokens_out": 416,
+  "cost_usd": "0.001538700",
+  "llm_calls": 7,
+  "cached_calls": 3,
+  "tokens_saved": 4428,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1627,
+   "tokens_out": 38,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.8
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1641,
+   "tokens_out": 54,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.91
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See \\'failed_generation\\' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need determine if cache inva",
+   "latency_s": 0.47
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1730,
+   "tokens_out": 43,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.44
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1756,
+   "tokens_out": 39,
+   "waited_s": 46.06,
+   "error": null,
+   "latency_s": 47.17
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'json\\' which was not in request.tools\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"json\\\\\", \\\\\"arguments\\\\\": {\\\\n  \\\\\"ver",
+   "latency_s": 47.47
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1840,
+   "tokens_out": 242,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.91
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 178,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 16,
+   "line_end": 16,
+   "category": "bug",
+   "severity": "high",
+   "title": "Cache not invalidated after price update",
+   "explanation": "The in\u2011memory _cache stores product data loaded by get_product, but update_price does not clear or refresh the cached entry. Subsequent calls to get_product will return stale price information.",
+   "suggested_fix": "Invalidate or update the cache entry after saving the new price, e.g.,\n```python\n    save_price(product_id, round(price, 2))\n    _cache.pop(product_id, None)  # or reload the product into the cache\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The cache is populated in get_product and never cleared or refreshed in update_price, so after a price change the cached entry remains stale.",
+   "evidence": [
+    {
+     "why": "Defines in\u2011memory _cache storing product data",
+     "line": 4,
+     "path": "products/service.py"
+    },
+    {
+     "why": "Gets data from cache, populates if missing",
+     "line": 8,
+     "path": "products/service.py"
+    },
+    {
+     "why": "update_price function definition",
+     "line": 13,
+     "path": "products/service.py"
+    },
+    {
+     "why": "Updates price in persistence but does not modify or clear _cache",
+     "line": 16,
+     "path": "products/service.py"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_cache"
+     },
+     "result_chars": 256,
+     "result_summary": "Lines containing '_cache':\nproducts/service.py:4: _cache: dict[int, dict | None] = {}\nproducts/service.py:8: if product_id not in _cache:\nproducts/service.py:9: _cache[product_id] = load_product(product_id)\nproducts/service.py:10: return _cache[product_id]",
+     "tokens_in": 1627,
+     "tokens_out": 38,
+     "latency_ms": 844
+    },
+    {
+     "step_no": 2,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need determine if cache invalidation missing. ",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 468
+    },
+    {
+     "step_no": 3,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "update_price"
+     },
+     "result_chars": 113,
+     "result_summary": "Lines containing 'update_price':\nproducts/service.py:13: def update_price(product_id: int, price: float) -> None:",
+     "tokens_in": 1756,
+     "tokens_out": 39,
+     "latency_ms": 47188
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The cache is populated in get_product and never cleared or refreshed in update_price, so after a price change the cached entry remains stale.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Defines in\u2011memory _cache storing product data",
+        "line": 4,
+        "path": "products/service.py"
+       },
+       {
+        "why": "Gets data from cache, populates if missing",
+        "line": 8,
+        "path": "products/service.py"
+       },
+       {
+        "why": "update_price function definition",
+        "line": 13,
+        "path": "products/service.py"
+       },
+       {
+        "why": "Updates price in persistence but does not modify or clear _cache",
+        "line": 16,
+        "path": "products/service.py"
+       }
+      ]
+     },
+     "result_chars": 152,
+     "result_summary": "confirmed: The cache is populated in get_product and never cleared or refreshed in update_price, so after a price change the cached entry remains stale.",
+     "tokens_in": 1840,
+     "tokens_out": 242,
+     "latency_ms": 907
+    }
+   ]
+  },
+  {
+   "id": 179,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 4,
+   "line_end": 4,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Type hint for cache is misleading",
+   "explanation": "The hint `_cache: dict[int, dict | None]` suggests the values are either a dict or None, but the `load_product` function may return any type. The annotation also omits the `typing` module. This can confuse readers and static analysers.",
+   "suggested_fix": "Use `dict[int, Any]` or `Dict[int, Optional[Any]]` and import from `typing`. Add a comment explaining the cache contents.",
+   "verdict": "dropped",
+   "verdict_reason": "The cache annotation `_cache: dict[int, dict | None]` matches the actual return type of `load_product`, which is `dict | None` as defined in `products/repo.py`. Therefore the type hint is accurate and not misleading.",
+   "evidence": [
+    {
+     "why": "load_product is declared to return dict | None",
+     "line": 6,
+     "path": "products/repo.py"
+    },
+    {
+     "why": "cache type hint matches dict[int, dict | None]",
+     "line": 4,
+     "path": "products/service.py"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def load_product"
+     },
+     "result_chars": 106,
+     "result_summary": "Lines containing 'def load_product':\nproducts/repo.py:6: def load_product(product_id: int) -> dict | None:",
+     "tokens_in": 1641,
+     "tokens_out": 54,
+     "latency_ms": 906
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "products/repo.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 682,
+     "result_summary": "products/repo.py, lines 1-17 of 17:\n    1  import sqlite3\n    2  \n    3  DB_PATH = \"products.db\"\n    4  \n    5  \n    6  def load_product(product_id: int) -> dict | None:\n    7      with sqlite3.connect(DB_PATH) as conn:\n    8          conn.row_factory = sqlite3.Row\n    9          row = conn.execute(",
+     "tokens_in": 1730,
+     "tokens_out": 43,
+     "latency_ms": 438
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The cache annotation `_cache: dict[int, dict | None]` matches the actual return type of `load_product`, which is `dict | None` as defined in `products/repo.py`. Therefore the type hint is accurate and not misleading.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "load_product is declared to return dict | None",
+        "line": 6,
+        "path": "products/repo.py"
+       },
+       {
+        "why": "cache type hint matches dict[int, dict | None]",
+        "line": 4,
+        "path": "products/service.py"
+       }
+      ]
+     },
+     "result_chars": 243,
+     "result_summary": "called as 'json': dropped: The cache annotation `_cache: dict[int, dict | None]` matches the actual return type of `load_product`, which is `dict | None` as defined in `products/repo.py`. Therefore the type hint is accurate and not misleading.",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 47469
+    }
+   ]
+  },
+  {
+   "id": 180,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 4,
+   "line_end": 4,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Mutable default cache not thread\u2011safe",
+   "explanation": "Using a module\u2011level mutable dictionary as a cache can lead to race conditions in multi\u2011threaded contexts and makes the code harder to reason about. It also silently caches None values.",
+   "suggested_fix": "Move the cache into a class or use a thread\u2011safe structure, or at least document its intended single\u2011thread usage.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 179,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:66 -->\n### Automated review of `91374be`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v2): 1 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are posted.\nCost \u2248 $0.0015 at list prices (free tier; agent $0.0015); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "products/service.py",
+    "line": 16,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Cache not invalidated after price update\n\nThe in\u2011memory _cache stores product data loaded by get_product, but update_price does not clear or refresh the cached entry. Subsequent calls to get_product will return stale price information.\n\n**Suggested fix:** Invalidate or update the cache entry after saving the new price, e.g.,\n```python\n    save_price(product_id, round(price, 2))\n    _cache.pop(product_id, None)  # or reload the product into the cache\n```\n\n_Checked against `products/service.py:4`, `products/service.py:8`, `products/service.py:13`_"
+   }
+  ]
+ }
+}
