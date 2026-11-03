@@ -149,14 +149,21 @@ async def test_review_stored_then_failed_is_found_by_the_retry(admin, clients):
 
 async def test_held_review_is_stored_before_the_answer(admin, clients):
     github, _ = clients
-    await set_config(admin, review_hold_seconds=0.3)
+    await set_config(admin, review_hold_seconds=0.5)
 
     post = asyncio.create_task(github.create_review(1, REPO, 7, PULL["sha"], "body", []))
-    await asyncio.sleep(0.1)
-    stored_before_answer = len((await records(admin))["reviews"])
+    # Wait for the review to be stored instead of guessing how long that takes: the token
+    # request before it alone took about 0.1 s.
+    stored = False
+    for _ in range(500):  # poll for up to 5 s
+        stored = bool((await records(admin))["reviews"])
+        if stored:
+            break
+        await asyncio.sleep(0.01)
+    held = not post.done()
     await post
 
-    assert stored_before_answer == 1 and post.done()
+    assert stored and held  # stored, and the answer still held back
 
 
 async def test_rate_limit_headers_make_the_client_defer(admin, clients):

@@ -4,7 +4,7 @@ import json
 
 from sqlalchemy import func, select
 
-from app.agent import verify
+from app.agent import loop, verify
 from app.agent.loop import AGENT_PROMPT_VERSION
 from app.agent.verify import AGENT_DAILY_TOKEN_BUDGET
 from app.config import get_settings
@@ -256,3 +256,17 @@ async def test_only_complete_current_pipeline_results_are_copied(tmp_path, sessi
     write_result(baseline / "c.pipeline.json", source)
     assert copy_pipeline_results([case], baseline, v2) == []
     assert read_result(v2 / "c.pipeline.json") == done
+
+
+async def test_an_eval_run_can_pick_an_older_agent_prompt(tmp_path, sessionmaker, groq):
+    case = tiny_case(tmp_path)
+
+    result = await run_one(sessionmaker, scripted(groq), case, "agent", [], agent_prompt="v1")
+
+    [system] = {call["messages"][0]["content"] for call in groq.agent_calls}
+    assert system == (loop.PROMPTS_DIR / "v1.md").read_text(encoding="utf-8")
+    assert (result["agent_prompt_version"], result["agent_prompt_override"]) == ("v1", True)
+    assert loop.AGENT_PROMPT_VERSION == AGENT_PROMPT_VERSION  # prod's version is back
+
+    default = await run_one(sessionmaker, scripted(groq), case, "pipeline", [])
+    assert (default["agent_prompt_version"], default["agent_prompt_override"]) == (None, False)

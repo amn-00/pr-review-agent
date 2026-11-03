@@ -2,7 +2,7 @@
 
     uv run python -m evals.run --name baseline [--only CASE ...] [--mode MODE ...] [--dry-run]
                                [--agent-budget TOKENS] [--pipeline-from NAME]
-                               [--cases heldout]
+                               [--cases heldout] [--agent-prompt VERSION]
 
 Each case runs in up to three modes, in this order:
 - pipeline: AGENT_ENABLED off, PR #1 at the case's head. Pays for the lanes.
@@ -23,6 +23,9 @@ still never plan past Groq's 200K per model per day, minus the 20K headroom prod
 
 --pipeline-from copies another eval's pipeline results first. With --mode agent, only the
 agent runs, on exactly that eval's candidates (e.g. a new agent prompt against the baseline).
+
+--agent-prompt picks the agent prompt version for this session (prod uses AGENT_PROMPT_VERSION).
+Only the prompt changes: the rest of the agent is today's code (e.g. the evidence quote check).
 """
 
 import argparse
@@ -46,8 +49,8 @@ from sqlalchemy import delete, select
 from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
-from app.agent import verify
-from app.agent.loop import AGENT_PROMPT_VERSION, FINDING_TOKEN_LIMIT
+from app.agent import loop, verify
+from app.agent.loop import FINDING_TOKEN_LIMIT, PROMPTS_DIR
 from app.agent.verify import (
     AGENT_DAILY_TOKEN_BUDGET,
     FINDING_ESTIMATE_TOKENS,
@@ -261,17 +264,22 @@ async def run_one(
     mode: str,
     tool_findings: list[dict],
     agent_budget: int = AGENT_DAILY_TOKEN_BUDGET,
+    agent_prompt: str | None = None,
 ) -> dict:
     """Run the review job once and collect everything the report needs. For this run only,
-    the job's agent setting and agent daily budget are the eval's; both are restored after."""
+    the job's agent setting, agent daily budget and agent prompt version (if given) are the
+    eval's; all are restored after."""
     tree, sha = case.target(mode)
     number = PR_NUMBERS[mode]
     github = FakeGitHub(case.base, tree, sha, case.check_runs)
     groq.calls = []
     deferred = None
     agent_was_enabled, budget_was = settings.agent_enabled, verify.AGENT_DAILY_TOKEN_BUDGET
+    prompt_was = loop.AGENT_PROMPT_VERSION
     settings.agent_enabled = mode == "agent"
     verify.AGENT_DAILY_TOKEN_BUDGET = await agent_cap(sessionmaker, agent_budget)
+    loop.AGENT_PROMPT_VERSION = agent_prompt or prompt_was
+    prompt_used = loop.AGENT_PROMPT_VERSION
     started_at = datetime.now(UTC)
     started = time.monotonic()
     try:
@@ -282,6 +290,7 @@ async def run_one(
         deferred = f"deferred by the job: {exc!r}"
     finally:
         settings.agent_enabled = agent_was_enabled
+        loop.AGENT_PROMPT_VERSION = prompt_was
         verify.AGENT_DAILY_TOKEN_BUDGET = budget_was
     wall_seconds = time.monotonic() - started
 
@@ -291,7 +300,9 @@ async def run_one(
     return {
         "case": case.id,
         "mode": mode,
-        "agent_prompt_version": AGENT_PROMPT_VERSION if mode == "agent" else None,
+        "agent_prompt_version": prompt_used if mode == "agent" else None,
+        # Set by --agent-prompt: an older prompt ran with today's agent code.
+        "agent_prompt_override": mode == "agent" and agent_prompt is not None,
         "status": "incomplete" if problems else "complete",
         "problems": problems,
         "notes": notes,
@@ -384,6 +395,7 @@ async def run_session(
     cooldown_seconds: float = COOLDOWN_SECONDS,
     dry_run: bool = False,
     agent_budget: int = AGENT_DAILY_TOKEN_BUDGET,
+    agent_prompt: str | None = None,
 ) -> None:
     for case in cases:
         for mode in modes:
@@ -439,7 +451,9 @@ async def run_session(
                 for hints in chunk.hints.values()
                 for hint in hints
             ]
-            result = await run_one(sessionmaker, groq, case, mode, tool_findings, agent_budget)
+            result = await run_one(
+                sessionmaker, groq, case, mode, tool_findings, agent_budget, agent_prompt
+            )
             result["earlier_calls"] = earlier
             write_result(path, result)
             posted = sum(1 for f in result["findings"] if f["posted"])
@@ -484,6 +498,7 @@ async def _main(args: argparse.Namespace, cases: list[Case], url: str) -> None:
             RESULTS_DIR / args.name,
             dry_run=args.dry_run,
             agent_budget=args.agent_budget,
+            agent_prompt=args.agent_prompt,
         )
     finally:
         await groq.aclose()
@@ -508,6 +523,11 @@ def main() -> None:
         default="cases",
         metavar="FOLDER",
         help="case folder under evals/: cases (default, the tuning set) or heldout",
+    )
+    parser.add_argument(
+        "--agent-prompt",
+        choices=sorted(path.stem for path in PROMPTS_DIR.glob("v*.md")),
+        help=f"the agent prompt version for this session (default {loop.AGENT_PROMPT_VERSION})",
     )
     parser.add_argument(
         "--pipeline-from",

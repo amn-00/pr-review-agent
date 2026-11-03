@@ -1153,4 +1153,29 @@ planted pickle RCE. The label now allows only `security`, with no call site, and
 
 **Not fixed:** `test_held_review_is_stored_before_the_answer` fails on this machine, the same on
 a clean copy of the Phase 6b commit. It's a timing test (a 0.1 s sleep against a 0.3 s hold), so
-the failure was already there before these changes.
+the failure was already there before these changes. *(Since fixed in the test: it now waits for
+the review to be stored instead of sleeping a fixed time.)*
+
+**`evals.run --agent-prompt VERSION`: the prompt version per eval run.**
+- **How:** `system_prompt()` now reads `AGENT_PROMPT_VERSION` when it's called (files cached
+  per version). The runner sets the version for each agent run and restores it, like
+  `agent_enabled` and the agent budget.
+- **What's recorded:** each result stores the version that actually ran, and
+  `agent_prompt_override` when it came from the flag. The review summary names the version that
+  ran.
+- **Only the prompt changes.** An older prompt runs with today's agent code: the evidence quote
+  check and the misnamed-verdict handling apply to it too. v1's prompt never asks for quotes; only
+  the schema's field description does. So a v1 run today compares prompts, not the baseline's v1
+  agent, and the report says so whenever such a run is shown.
+- **Use:** a v1 agent on the held-out cases, next to v3, to see whether the tuning helped on
+  cases it was never tuned on.
+
+**The report states its scoring rule above the summary, and counts bugs lost to `uncertain`.**
+- **The scoring rule:** a bold line says that precision, false positives and traps count inline
+  comments only, for every run, including runs made before the rule.
+- **The new row under "Bugs caught":** planted bugs the agent missed because it ended a matching
+  finding `uncertain`, and, in brackets, how many of those the evidence check made uncertain (a
+  quote not on its line, or a line it wasn't shown). The loop and the report share that wording
+  through `NO_EVIDENCE`. It shows whether the quote rule costs real bugs.
+- **So far:** v1 lost 1 bug to `uncertain` and v2 none, neither through the evidence check;
+  neither ran with the quote rule.

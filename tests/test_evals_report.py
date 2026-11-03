@@ -2,6 +2,8 @@
 
 import json
 
+import pytest
+
 from evals.dataset import Case, Label
 from evals.report import calls_cost, corroborated, load_results, render, score, truth
 
@@ -311,7 +313,48 @@ def test_suggestions_are_listed_but_not_scored():
 
     assert "| False positives | 0 (0.00 per PR) | 0 (0.00 per PR) |" in text
     assert "| Suggestions (collapsed, not scored) | 1 | 0 |" in text
+    assert "**Scoring rule (applied to all runs):**" in text
+    assert "**inline comments only**" in text
     suggestions = text.split("## Suggestions (style, collapsed)")[1].split("##")[0]
     assert "| c | `a.py:30` maintainability/high: finding 2 | false positive | no | dropped" in (
         suggestions
     )
+
+
+# --- bugs lost to an uncertain verdict ---
+
+LOST_ROW = "| Bugs lost to an uncertain verdict (of which, by the evidence check) | — |"
+
+
+@pytest.mark.parametrize(
+    ("reason", "lost"),
+    [
+        (
+            "confirmed without evidence from code it read (the quote for a.py:10 isn't on that "
+            "line): divides by zero",
+            "1 (1)",
+        ),
+        ("could not tell whether values can be empty", "1 (0)"),
+    ],
+)
+def test_bugs_lost_to_uncertain_verdicts_are_counted_by_cause(reason, lost):
+    case = make_case()
+    pipeline = [finding(1, 10, posted=True)]
+    agent = [finding(1, 10, verdict="uncertain", verdict_reason=reason)]
+
+    text = report(case, pipeline, agent)
+
+    assert "| Bugs caught | 1/1 (100%) | 0/1 (0%) |" in text
+    assert f"{LOST_ROW} {lost} |" in text  # the pipeline column has no agent: a dash
+
+
+def test_a_run_with_an_older_prompt_on_todays_code_says_so():
+    case = make_case()
+    agent = result(case, "agent", []) | {
+        "agent_prompt_version": "v1",
+        "agent_prompt_override": True,
+    }
+    results = {(case.id, "pipeline"): result(case, "pipeline", []), (case.id, "agent"): agent}
+
+    assert "**An older prompt on today's code.**" in render("t", [case], results)
+    assert "**An older prompt on today's code.**" not in report(case, [], [])

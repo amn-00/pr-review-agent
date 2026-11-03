@@ -1,6 +1,6 @@
 # Eval report: agent-v2
 
-Generated 2026-11-03 15:36 UTC from `evals/results/agent-v2/`.
+Generated 2026-11-03 15:58 UTC from `evals/results/agent-v2/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 23 small Python cases, written for this project. The
@@ -16,11 +16,14 @@ Generated 2026-11-03 15:36 UTC from `evals/results/agent-v2/`.
 
 ## Pipeline only vs pipeline + agent
 
+**Scoring rule (applied to all runs):** precision, false positives and traps count **inline comments only**: findings in the categories bug, performance and security that passed aggregation and, with the agent, were confirmed. Style findings (readability, idiom) are collapsed suggestions: counted and listed separately, never scored. Every run is scored this way, including runs made before the rule existed, so numbers in older reports differ.
+
 21 of 23 cases have complete results in all three.
 
 | Metric | Pipeline only | Pipeline + agent (baseline, agent v1) | Pipeline + agent (agent v2) |
 |---|---|---|---|
 | Bugs caught | 14/16 (88%) | 12/16 (75%) | 14/16 (88%) |
+| Bugs lost to an uncertain verdict (of which, by the evidence check) | — | 1 (0) | 0 (0) |
 | Traps posted | 1/1 | 0/1 | 0/1 |
 | Clean PRs with a false positive | 1/5 | 1/5 | 1/5 |
 | False positives | 9 (0.43 per PR) | 5 (0.24 per PR) | 4 (0.19 per PR) |
@@ -33,7 +36,7 @@ Generated 2026-11-03 15:36 UTC from `evals/results/agent-v2/`.
 
 **Over-correction check, against `baseline`:** bugs caught +2, traps posted +0, clean PRs with a false positive +0, false positives -1. This agent wins only if bugs caught go up and none of the other three do: **passes**. With one sample per finding, a change of 1–2 can be noise.
 
-Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run got every lane call from the cache). Latency leaves out runs that took more than one attempt. Only inline comments are scored: findings that passed aggregation (and, with the agent, were confirmed) in the categories bug, performance and security. Style findings (readability, idiom) are collapsed suggestions, listed below, and every run is scored this way, including runs made before the rule existed. False positives are inline comments that match no planted bug and no `acceptable` label; precision = inline comments matching a planted bug / all inline comments that aren't `acceptable`.
+Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run got every lane call from the cache). Latency leaves out runs that took more than one attempt. False positives are inline comments that match no planted bug and no `acceptable` label; precision = inline comments matching a planted bug / all inline comments that aren't `acceptable`. A bug lost to an uncertain verdict was reported by a finding that passed aggregation but that the agent ended `uncertain`; the number in brackets is how many of those the evidence check made uncertain (a quote not on its line, or a line the agent wasn't shown).
 
 ## Changed verdicts
 

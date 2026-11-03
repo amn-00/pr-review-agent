@@ -1,6 +1,6 @@
 # Eval report: baseline
 
-Generated 2026-11-03 15:36 UTC from `evals/results/baseline/`.
+Generated 2026-11-03 15:58 UTC from `evals/results/baseline/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 23 small Python cases, written for this project. The
@@ -13,11 +13,14 @@ Generated 2026-11-03 15:36 UTC from `evals/results/baseline/`.
 
 ## Pipeline only vs pipeline + agent
 
+**Scoring rule (applied to all runs):** precision, false positives and traps count **inline comments only**: findings in the categories bug, performance and security that passed aggregation and, with the agent, were confirmed. Style findings (readability, idiom) are collapsed suggestions: counted and listed separately, never scored. Every run is scored this way, including runs made before the rule existed, so numbers in older reports differ.
+
 23 of 23 cases have complete results in both modes.
 
 | Metric | Pipeline only | Pipeline + agent (agent v1) |
 |---|---|---|
 | Bugs caught | 14/16 (88%) | 12/16 (75%) |
+| Bugs lost to an uncertain verdict (of which, by the evidence check) | — | 1 (0) |
 | Traps posted | 3/3 | 0/3 |
 | Clean PRs with a false positive | 1/5 | 1/5 |
 | False positives | 11 (0.48 per PR) | 5 (0.22 per PR) |
@@ -28,7 +31,7 @@ Generated 2026-11-03 15:36 UTC from `evals/results/baseline/`.
 | Latency per PR | 6 s (max 6 s) | 56 s (max 129 s) |
 | Rate-limit waits per PR (summed over parallel calls) | 0 s | 29 s |
 
-Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run got every lane call from the cache). Latency leaves out runs that took more than one attempt. Only inline comments are scored: findings that passed aggregation (and, with the agent, were confirmed) in the categories bug, performance and security. Style findings (readability, idiom) are collapsed suggestions, listed below, and every run is scored this way, including runs made before the rule existed. False positives are inline comments that match no planted bug and no `acceptable` label; precision = inline comments matching a planted bug / all inline comments that aren't `acceptable`.
+Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run got every lane call from the cache). Latency leaves out runs that took more than one attempt. False positives are inline comments that match no planted bug and no `acceptable` label; precision = inline comments matching a planted bug / all inline comments that aren't `acceptable`. A bug lost to an uncertain verdict was reported by a finding that passed aggregation but that the agent ended `uncertain`; the number in brackets is how many of those the evidence check made uncertain (a quote not on its line, or a line the agent wasn't shown).
 
 ## Per case
 

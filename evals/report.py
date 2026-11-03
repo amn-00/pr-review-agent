@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from statistics import mean
 
-from app.agent.loop import CALLED_AS, MAX_AGENT_STEPS, VERDICT_JSON
+from app.agent.loop import CALLED_AS, MAX_AGENT_STEPS, NO_EVIDENCE, VERDICT_JSON
 from app.agent.tools import VERDICT_TOOL
 from app.llm.pricing import cost_usd
 from app.pipeline.lanes import SUGGESTION_CATEGORIES
@@ -42,6 +42,10 @@ HELD_OUT = """\
 - **Held-out cases.** These were written after the last agent prompt and never used to tune
   it. They're a check that the tuning generalizes, not a measurement: there are only a few, so
   a single finding moves every rate a lot."""
+PROMPT_OVERRIDE = """\
+- **An older prompt on today's code.** At least one agent here ran an older prompt version
+  (`--agent-prompt`) with today's agent code: the evidence quote check and the handling of
+  misnamed verdicts apply to it too. Its column compares prompts, not the agent as it was."""
 
 
 @dataclass
@@ -159,6 +163,10 @@ def render(
         limits += "\n" + HELD_OUT
     elif any((agent.get("agent_prompt_version") or "v1") != "v1" for _, _, agent in paired):
         limits += "\n" + TUNED
+    others = [agent for agent in compare[1].values() if agent] if compare else []
+    agents = [agent for _, _, agent in paired] + others
+    if any(agent.get("agent_prompt_override") for agent in agents):
+        limits += "\n" + PROMPT_OVERRIDE
     lines = [
         f"# Eval report: {name}",
         "",
@@ -197,12 +205,32 @@ class Totals:
     clean: int
     traps_posted: int
     traps: int
+    # Planted bugs missed because the agent ended "uncertain" on a finding that reported them,
+    # and how many of those the evidence check made uncertain (a missing or wrong quote, or a
+    # line the agent wasn't shown).
+    lost_to_uncertain: int
+    lost_to_evidence_check: int
 
 
 def totals(runs: list[tuple[Case, dict]], mode: str) -> Totals:
     """`runs` holds (case, {"pipeline": ..., "agent": ...}); `mode` picks which one counts."""
     scores = [(case, score(case, r[mode]["findings"])) for case, r in runs]
+    uncertain = [
+        [
+            f
+            for f in r[mode]["findings"]
+            if not f["drop_reason"] and f["verdict"] == "uncertain" and label.matches(f)
+        ]
+        for (case, r), (_, s) in zip(runs, scores, strict=True)
+        for label in s.missed
+    ]
     return Totals(
+        lost_to_uncertain=sum(1 for found in uncertain if found),
+        lost_to_evidence_check=sum(
+            1
+            for found in uncertain
+            if any(NO_EVIDENCE in (f["verdict_reason"] or "") for f in found)
+        ),
         caught=sum(len(s.caught) for _, s in scores),
         expected=sum(len(case.expect) for case, _ in scores),
         true_positives=sum(s.true_positives for _, s in scores),
@@ -216,6 +244,8 @@ def totals(runs: list[tuple[Case, dict]], mode: str) -> Totals:
 
 SUMMARY_METRICS = [
     "Bugs caught",
+    # Does the evidence check (quotes) cost real bugs?
+    "Bugs lost to an uncertain verdict (of which, by the evidence check)",
     # Next to the catch rate: catching more is only a win if these don't come back.
     "Traps posted",
     "Clean PRs with a false positive",
@@ -236,8 +266,10 @@ def _column(runs: list[tuple[Case, dict]], mode: str) -> list[str]:
     waits = [_waits(r, mode) for _, r in runs]
     posted = t.true_positives + t.false_positives
     suggestions = sum(1 for _, r in runs for f in r[mode]["findings"] if f.get("suggestion"))
+    lost = f"{t.lost_to_uncertain} ({t.lost_to_evidence_check})" if mode == "agent" else "—"
     return [
         f"{t.caught}/{t.expected} ({_pct(t.caught, t.expected)})",
+        lost,
         f"{t.traps_posted}/{t.traps}",
         f"{t.clean_with_fp}/{t.clean}",
         f"{t.false_positives} ({t.false_positives / len(runs):.2f} per PR)",
@@ -250,8 +282,17 @@ def _column(runs: list[tuple[Case, dict]], mode: str) -> list[str]:
     ]
 
 
+SCORING_RULE = (
+    "**Scoring rule (applied to all runs):** precision, false positives and traps count "
+    "**inline comments only**: findings in the categories bug, performance and security that "
+    "passed aggregation and, with the agent, were confirmed. Style findings (readability, idiom) "
+    "are collapsed suggestions: counted and listed separately, never scored. Every run is scored "
+    "this way, including runs made before the rule existed, so numbers in older reports differ."
+)
+
+
 def _summary(paired: list, total_cases: int, compare: tuple[str, dict] | None) -> list[str]:
-    lines = ["## Pipeline only vs pipeline + agent", ""]
+    lines = ["## Pipeline only vs pipeline + agent", "", SCORING_RULE, ""]
     if not paired:
         return lines + ["No case has complete results in both modes yet.", ""]
     runs = [(case, {"pipeline": pipeline, "agent": agent}) for case, pipeline, agent in paired]
@@ -276,12 +317,12 @@ def _summary(paired: list, total_cases: int, compare: tuple[str, dict] | None) -
         "",
         "Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run "
         "got every lane call from the cache). Latency leaves out runs that took more than one "
-        "attempt. Only inline comments are scored: findings that passed aggregation (and, with "
-        "the agent, were confirmed) in the categories bug, performance and security. Style "
-        "findings (readability, idiom) are collapsed suggestions, listed below, and every run "
-        "is scored this way, including runs made before the rule existed. False positives are "
-        "inline comments that match no planted bug and no `acceptable` label; precision = inline "
-        "comments matching a planted bug / all inline comments that aren't `acceptable`.",
+        "attempt. False positives are inline comments that match no planted bug and no "
+        "`acceptable` label; precision = inline comments matching a planted bug / all inline "
+        "comments that aren't `acceptable`. A bug lost to an uncertain verdict was reported by a "
+        "finding that passed aggregation but that the agent ended `uncertain`; the number in "
+        "brackets is how many of those the evidence check made uncertain (a quote not on its "
+        "line, or a line the agent wasn't shown).",
         "",
     ]
     return lines

@@ -3,7 +3,7 @@
 import re
 from collections import Counter
 
-from app.agent.loop import AGENT_PROMPT_VERSION
+from app.agent import loop
 from app.agent.verify import AgentResult, Check
 from app.pipeline.lanes import PROMPT_VERSION, SEVERITIES, Candidate
 from app.pipeline.orchestrator import OrchestratorResult
@@ -83,7 +83,7 @@ def summary(
         verdicts = Counter(check.verdict for check in agent.checks)
         lines.append(
             f"Each finding was checked against the repository by the verification agent "
-            f"(`{agent.model}`, prompt agent {AGENT_PROMPT_VERSION}): "
+            f"(`{agent.model}`, prompt agent {loop.AGENT_PROMPT_VERSION}): "
             f"{verdicts['confirmed']} confirmed, {verdicts['dropped']} dropped, "
             f"{verdicts['uncertain']} uncertain, {verdicts[None]} not verified. "
             "Only confirmed findings are shown."

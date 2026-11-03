@@ -72,6 +72,8 @@ NOT_RUN = "Not run: one tool call per step."
 TOOL_NAMES = [t["function"]["name"] for t in TOOL_SCHEMAS]
 # Summary prefix of a verdict the model sent under another tool name (see misnamed_call).
 CALLED_AS = "called as"
+# In the reason of a verdict made uncertain by the evidence check (see _parse_verdict).
+NO_EVIDENCE = "without evidence from code it read"
 
 
 @dataclass
@@ -98,9 +100,15 @@ class Verdict:
     tokens_out: int = 0
 
 
-@cache
 def system_prompt() -> str:
-    return (PROMPTS_DIR / f"{AGENT_PROMPT_VERSION}.md").read_text(encoding="utf-8")
+    """The prompt of AGENT_PROMPT_VERSION, read when called: an eval can set another version
+    for one run (evals.run --agent-prompt)."""
+    return _read_prompt(AGENT_PROMPT_VERSION)
+
+
+@cache
+def _read_prompt(version: str) -> str:
+    return (PROMPTS_DIR / f"{version}.md").read_text(encoding="utf-8")
 
 
 def excerpt(candidate: Candidate, chunk: Chunk) -> tuple[int, int, str]:
@@ -358,7 +366,7 @@ def _parse_verdict(arguments: str, seen: dict[tuple[str, int], str]) -> tuple[Ve
             evidence.append({"path": path, "line": e.line, "quote": e.quote, "why": e.why})
     if args.verdict != "uncertain" and (problems or not evidence):
         problem = f" ({problems[0]})" if problems else ""
-        reason = f"{args.verdict} without evidence from code it read{problem}: {args.reason}"
+        reason = f"{args.verdict} {NO_EVIDENCE}{problem}: {args.reason}"
         return Verdict("uncertain", reason), ""
     return Verdict(args.verdict, args.reason, evidence), ""
 
