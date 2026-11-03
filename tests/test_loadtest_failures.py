@@ -119,13 +119,15 @@ def test_opened_only_mix_sends_new_prs_only():
 async def test_rate_limit_window_resets_after_its_length():
     transport = httpx.ASGITransport(app=create_app())
     async with httpx.AsyncClient(transport=transport, base_url="http://fakes") as fakes:
-        config = {"github_rate_limit": 50, "github_rate_window": 0.2}
+        # A 1 s window leaves slow CI runners plenty of time for the first two requests to
+        # land in the same window.
+        config = {"github_rate_limit": 50, "github_rate_window": 1.0}
         (await fakes.put("/_admin/config", json=config)).raise_for_status()
         auth = {"Authorization": "Bearer inst-1"}
 
         first = await fakes.get("/repos/o/r/commits/abc/check-runs", headers=auth)
         second = await fakes.get("/repos/o/r/commits/abc/check-runs", headers=auth)
-        await asyncio.sleep(0.25)
+        await asyncio.sleep(1.1)  # past the window, which started at the first request
         after_reset = await fakes.get("/repos/o/r/commits/abc/check-runs", headers=auth)
 
     remaining = [int(r.headers["x-ratelimit-remaining"]) for r in (first, second, after_reset)]
