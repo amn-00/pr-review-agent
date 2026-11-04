@@ -18,7 +18,7 @@ import sys
 import time
 from collections import Counter
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import partial
 from pathlib import Path
 
@@ -45,6 +45,11 @@ POLL_SECONDS = 2
 GRACE_SECONDS = 15  # after the last run settles: a late duplicate review would land here
 BUSY_WAIT_SECONDS = 180
 TERMINAL = ("completed", "failed")
+# app.worker.MAX_JOBS, not imported: importing app.worker loads the App's settings, which on
+# the host would mean the real .env. A test keeps the two equal.
+MAX_JOBS = 2
+# app.reconciler.MAX_AUTO_RETRIES, kept equal by the same test.
+MAX_AUTO_RETRIES = 3
 
 
 def open_heads(records: dict) -> list[str]:
@@ -52,8 +57,16 @@ def open_heads(records: dict) -> list[str]:
 
 
 def is_settled(records: dict, runs: dict[str, dict]) -> bool:
-    """Every open PR's head has a run that's done: completed, or failed for good."""
-    return all(runs.get(head, {}).get("status") in TERMINAL for head in open_heads(records))
+    """Every open PR's head has a run that's done: completed, or failed for good. A transient
+    failure with automatic retries left isn't done: the reconciler will try it again."""
+    return all(_done(runs.get(head)) for head in open_heads(records))
+
+
+def _done(run: dict | None) -> bool:
+    if run is None or run["status"] not in TERMINAL:
+        return False
+    retry_left = run.get("failure_kind") == "transient" and run["auto_retries"] < MAX_AUTO_RETRIES
+    return run["status"] == "completed" or not retry_left
 
 
 def in_flight(records: dict) -> dict[str, list[str]]:
@@ -75,6 +88,21 @@ def recovery_s(shas: list[str], runs: dict[str, dict], since: float) -> float | 
     ):
         return None
     return round(max(finished) - since, 1)
+
+
+def reviews_waited_behind(records: dict, sha: str, sent: float) -> int | None:
+    """Reviews of other PRs posted after `sha`'s webhook was sent and before its own review: how
+    many reviews it waited behind. None if it was never reviewed."""
+    done = review_seconds(records, sha, sent)
+    if done is None:
+        return None
+    return sum(sent < r["t"] < sent + done for r in records["reviews"] if r["sha"] != sha)
+
+
+def review_seconds(records: dict, sha: str, sent: float) -> float | None:
+    """Seconds from `sent` to `sha`'s first review; None if it has none."""
+    own = [r["t"] for r in records["reviews"] if r["sha"] == sha]
+    return round(min(own) - sent, 2) if own else None
 
 
 def run_summary(runs: dict[str, dict]) -> dict:
@@ -299,7 +327,9 @@ async def g2(s: Session) -> dict:
     await s.configure(groq_latency=2.0, agent_latency=2.0, github_fault=fault)
     s.note(f"GitHub answers 503 to everything from +10 s, for {s.args.outage:.0f} s")
     await s.send(s.opened(s.prs(20)))
-    return {"settled": await s.wait(s.settled, 1200, "every run completed or failed")}
+    # Long enough for the reconciler's retries of transient failures (5, 10, 20 min apart).
+    settled = await s.wait(s.settled, 2700, "every run completed or out of retries")
+    return {"settled": settled}
 
 
 async def g3(s: Session) -> dict:
@@ -372,6 +402,45 @@ async def r1(s: Session) -> dict:
     }
 
 
+# --- Noisy neighbour (the per-installation limit decision) ----------------------------------
+
+
+async def n1(s: Session) -> dict:
+    """Installation B's one PR, first on an empty queue, then 10 s into a 100-PR burst from
+    installation A."""
+    await s.configure(groq_latency=FAST, agent_latency=FAST)
+
+    def b_pull(number: int) -> Event:
+        [event] = mixed(1, f"{s.nonce}-b{number}", installations=1, mix={"opened": 1})
+        return replace(
+            event, installation_id=2, repo_id=201, repo="load-org-2/repo-1", number=number
+        )
+
+    alone = b_pull(1)
+    [record] = await s.send([alone])
+    await s.wait(s.settled, 120, "B's PR reviewed on an empty queue")
+    records = await s.records()
+    alone_s = review_seconds(records, alone.sha, record["t"])
+
+    burst = s.opened(s.prs(100), installations=1)  # all installation A
+    sending = asyncio.create_task(s.send(burst))
+    await asyncio.sleep(10)
+    behind = b_pull(2)
+    [record] = await s.send([behind])
+    await sending
+    settled = await s.wait(s.settled, 900, "every run completed or failed")
+    records = await s.records()
+    waited = reviews_waited_behind(records, behind.sha, record["t"])
+    return {
+        "settled": settled,
+        "b_alone_s": alone_s,
+        "b_behind_burst_s": review_seconds(records, behind.sha, record["t"]),
+        "b_waited_behind_reviews": waited,
+        # The rule in docs/plans/phase-6.md: a limit is worth building past max_jobs reviews.
+        "limit_rule_triggered": waited is not None and waited > MAX_JOBS,
+    }
+
+
 @dataclass
 class FailureTest:
     run: Callable[[Session], Awaitable[dict]]
@@ -436,6 +505,11 @@ TESTS = {
         r1, 1,
         "503s while Redis is down; queued jobs and delivery IDs lost; the reconciler re-enqueues "
         "every lost PR within ~5 min. R2: replays accepted (202) but 0 new reviews.",
+    ),
+    "N1": FailureTest(
+        n1, 1,
+        "arq's queue is FIFO, so B's one PR waits behind all of A's burst still queued when it "
+        "arrives: far more than max_jobs (2) reviews.",
     ),
 }  # fmt: skip
 

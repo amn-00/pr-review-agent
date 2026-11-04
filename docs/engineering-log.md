@@ -295,6 +295,17 @@ we changed, and what the numbers were before and after. Details and reasoning ar
   event, so a 20-at-once burst from one source is a stress shape, not the normal case.
 - **Result:** paced at 10/s (L4), p95 is 56 ms. In bursts p95 stays 259–396 ms, explained above.
 
+### One installation's burst made everyone else wait
+- **Problem:** arq's queue is first in, first out. A PR from a second installation waits behind
+  every PR the first one has queued.
+- **How we found it:** Phase 6 N1, measuring the rule agreed for the spec's per-installation
+  limit. Installation B's one PR took 1.8 s on an empty queue, and 67 s when it arrived 10 s into
+  installation A's 100-PR burst. It waited behind 88 reviews; the rule's threshold is `max_jobs`
+  (2).
+- **Fix:** pending, to decide: a Redis semaphore per installation, or a per-installation share of
+  the daily budget. With real Groq the shared daily token budget runs out first.
+- **Result:** pending.
+
 ### A graceful restart delayed in-flight reviews by 17 minutes
 - **Problem:** on SIGTERM (a deploy or restart), arq cancels running jobs and queues them to run
   again at once. `review_pr` catches only `Exception`, so the cancel leaves the run `running`. The
@@ -304,9 +315,13 @@ we changed, and what the numbers were before and after. Details and reasoning ar
   by K2 (`docker stop` with 2 jobs in flight). Both runs were still `running` after the stop. The
   re-runs logged "in progress elsewhere, nothing to do" 2 s later. The reconciler re-enqueued
   them at +17 min, and they completed 1,035 s after the stop.
-- **Fix:** pending (agreed). On cancellation, `review_pr` puts the run back to `queued` before
-  re-raising, so arq's immediate re-run claims it.
-- **Result:** pending; K2 runs again after the fix.
+- **Fix:** on cancellation, `review_pr` puts the run back to `queued` before re-raising, so arq's
+  immediate re-run claims it. A cancellation at the job timeout is left alone: arq doesn't run a
+  timed-out job again, so that run still goes stale for the reconciler. Tested with a real arq
+  worker and `handle_sig(SIGTERM)`. With the release removed, the tests fail.
+- **Result:** K2 again: both in-flight runs were `queued` right after `docker stop`, and they were
+  reviewed 26.6 s after the stop instead of 1,035 s. That's about one slow fake review. 10 reviews,
+  0 duplicates.
 
 ### A one-minute GitHub outage lost 45% of reviews
 - **Problem:** any GitHub 5xx restarts the whole job, and the 5 tries with backoff (5, 10, 20,
@@ -315,10 +330,19 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **How we found it:** Phase 6 G2, where GitHub answers 503 to everything. A 60 s outage failed
   9 of 20 runs (45%). A 180 s outage failed 16 of 20 (80%), and every job had given up by +84 s,
   while GitHub was still down. Random 502s alone were fine: 0 of 30 failed at 10%.
-- **Fix:** pending (agreed). Failed runs record whether the failure was transient (5xx, timeout,
-  429) or permanent (other 4xx). The reconciler retries transient failures with backoff and a
-  maximum attempt count; permanent ones stay failed.
-- **Result:** pending; G2 runs again after the fix.
+- **Fix:**
+  - **Recording:** failed runs record `failure_kind`: `transient` when they gave up on a
+    retryable error (5xx, timeout, 429), `permanent` for other 4xx and bugs.
+  - **Retrying:** the reconciler retries transient failures up to 3 times, 5, 10 and 20 minutes
+    after each failure. A retry is counted only once arq accepts its job, so a retry whose job is
+    still queued isn't used up.
+  - **Unchanged:** permanent failures stay failed until a new delivery.
+- **Result:** G2 again, 20 PRs each:
+  - **60 s outage:** 20 of 20 reviewed, 0 failed (before: 9 failed). All done 7 minutes after
+    the start.
+  - **180 s outage:** 20 of 20 reviewed, 0 failed (before: 16 failed). All done after 10
+    minutes; every failed run recovered on its first automatic retry.
+  - **Both:** 0 duplicates.
 
 ### A Groq 429 storm made lanes give up early
 - **Problem:** `GroqClient` stops after 3 attempts. With `retry-after: 30`, that's about 60 s,

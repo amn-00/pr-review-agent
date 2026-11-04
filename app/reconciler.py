@@ -9,8 +9,8 @@ path; enqueueing uses the same job ID, so arq ignores PRs that are already queue
 import logging
 from datetime import UTC, datetime, timedelta
 
-from app.db.models import ReviewRun, RunStatus
-from app.db.queries import find_run
+from app.db.models import FailureKind, ReviewRun, RunStatus
+from app.db.queries import find_run, take_auto_retry
 from app.github.client import GitHubClient
 from app.github.http import NonRetryableError, RetryableError
 from app.github.webhooks import PullRequestPayload
@@ -26,6 +26,11 @@ RECONCILE_TIMEOUT_SECONDS = 120
 LOOKBACK = timedelta(hours=24)
 # Stands in for the webhook delivery ID in the job's logs, so reconciler work is easy to find.
 RECONCILER_DELIVERY_ID = "reconciler"
+# A run that failed on a transient error (it used up its tries during a GitHub outage, say) is
+# retried this many times, 5, 10 and then 20 minutes after each failure. In Phase 6 G2 every job
+# had given up within ~1.5 minutes of an outage starting; three retries cover ~40 minutes.
+MAX_AUTO_RETRIES = 3
+AUTO_RETRY_FIRST_DELAY = timedelta(minutes=5)
 
 
 def should_enqueue(run: ReviewRun | None, now: datetime) -> bool:
@@ -38,9 +43,18 @@ def should_enqueue(run: ReviewRun | None, now: datetime) -> bool:
         return True  # was closed or a draft when its job ran; open again at the same head
     if run.status == RunStatus.RUNNING:
         return run.started_at < now - timedelta(seconds=JOB_TIMEOUT_SECONDS)  # worker died
-    # completed: done. failed: only a new delivery retries it, so a broken PR doesn't
-    # burn the token budget every few minutes.
-    return False
+    if run.status == RunStatus.FAILED:
+        return auto_retry_due(run, now)
+    return False  # completed: done
+
+
+def auto_retry_due(run: ReviewRun, now: datetime) -> bool:
+    """A transient failure with retries left, failed long enough ago. Permanent failures are
+    only retried by a new delivery, so a broken PR doesn't burn the token budget."""
+    if run.failure_kind != FailureKind.TRANSIENT or run.auto_retries >= MAX_AUTO_RETRIES:
+        return False
+    delay = AUTO_RETRY_FIRST_DELAY * 2**run.auto_retries
+    return run.finished_at is not None and run.finished_at <= now - delay
 
 
 async def reconcile(ctx: dict) -> int:
@@ -90,6 +104,11 @@ async def _reconcile_installation(ctx: dict, installation_id: int, now: datetime
             )
             if job is not None:
                 enqueued += 1
+                if run and run.status == RunStatus.FAILED:
+                    # Counted only once arq accepted the job: a retry whose job is still queued
+                    # from the last cycle isn't used up, and arq's job ID lets only one cycle in.
+                    async with ctx["sessionmaker"]() as session:
+                        await take_auto_retry(session, run.id, run.auto_retries)
                 logger.info(
                     "enqueued a review the webhook path missed",
                     extra={
@@ -98,6 +117,9 @@ async def _reconcile_installation(ctx: dict, installation_id: int, now: datetime
                             "pr": pull["number"],
                             "sha": pull["head"]["sha"],
                             "run_status": run.status if run else None,
+                            "auto_retry": run.auto_retries + 1
+                            if run and run.status == RunStatus.FAILED
+                            else None,
                         }
                     },
                 )

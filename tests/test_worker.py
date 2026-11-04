@@ -1,3 +1,4 @@
+import asyncio
 import json
 from datetime import UTC, datetime, timedelta
 
@@ -6,7 +7,7 @@ import pytest
 from arq import Retry
 from sqlalchemy import select, update
 
-from app.db.models import BudgetPurpose, Finding, ReviewRun, RunStatus
+from app.db.models import BudgetPurpose, FailureKind, Finding, ReviewRun, RunStatus
 from app.db.queries import add_daily_tokens, get_or_create_run
 from app.github.webhooks import PullRequestPayload
 from app.pipeline.lanes import LANES, system_prompt
@@ -20,6 +21,7 @@ from app.worker import (
     JOB_TIMEOUT_SECONDS,
     LANES_DEADLINE_SECONDS,
     MAX_JOBS,
+    TIMEOUT_MARGIN_SECONDS,
     WorkerSettings,
     retry_delay,
     review_pr,
@@ -311,6 +313,7 @@ async def test_gives_up_after_max_tries(ctx, github_api):
     assert result == RunStatus.FAILED
     assert run.status == RunStatus.FAILED
     assert "gave up after" in run.error
+    assert run.failure_kind == FailureKind.TRANSIENT  # the reconciler retries it later
 
 
 async def test_permanent_error_fails_without_retry(ctx, github_api):
@@ -323,6 +326,7 @@ async def test_permanent_error_fails_without_retry(ctx, github_api):
     run = await get_run(ctx["sessionmaker"])
     assert result == RunStatus.FAILED
     assert "403" in run.error
+    assert run.failure_kind == FailureKind.PERMANENT
 
 
 async def test_unexpected_error_is_recorded_and_raised(ctx, github_api):
@@ -335,6 +339,7 @@ async def test_unexpected_error_is_recorded_and_raised(ctx, github_api):
     run = await get_run(ctx["sessionmaker"])
     assert run.status == RunStatus.FAILED
     assert "unexpected error" in run.error
+    assert run.failure_kind == FailureKind.PERMANENT  # a bug: retrying won't fix it
 
 
 async def test_stale_running_run_is_taken_over(ctx, github_api):
@@ -372,6 +377,49 @@ async def test_fresh_running_run_is_left_alone(ctx, github_api):
 
     assert result == RunStatus.RUNNING
     assert github_api.calls.call_count == 0
+
+
+def block_in_the_lanes(groq) -> asyncio.Event:
+    """Make every lane call hang. The returned event is set once the job is inside the lanes."""
+    in_lanes = asyncio.Event()
+
+    async def hang(*args, **kwargs):
+        in_lanes.set()
+        await asyncio.Event().wait()  # never set: the test cancels the job here
+
+    groq.complete_json = hang
+    return in_lanes
+
+
+async def cancel_mid_review(ctx) -> None:
+    job = asyncio.create_task(review_pr(ctx, pr_payload(), "delivery-1"))
+    await asyncio.wait_for(block_in_the_lanes(ctx["groq"]).wait(), 5)
+    job.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await job
+
+
+async def test_cancelled_job_hands_its_run_back_for_the_rerun(ctx, github_api):
+    post = mock_github_pr(github_api)
+    lanes = ctx["groq"].complete_json
+
+    await cancel_mid_review(ctx)
+    assert (await get_run(ctx["sessionmaker"])).status == RunStatus.QUEUED
+
+    # arq's immediate re-run of the cancelled job claims the run and reviews it.
+    ctx["groq"].complete_json = lanes
+    assert await review_pr(ctx, pr_payload(), "delivery-1") == RunStatus.COMPLETED
+    assert post.call_count == 1
+
+
+async def test_cancel_at_the_job_timeout_leaves_the_run_to_go_stale(ctx, github_api, monkeypatch):
+    # arq doesn't run a timed-out job again, so its run is left for the reconciler, as before.
+    mock_github_pr(github_api)
+    monkeypatch.setattr("app.worker.JOB_TIMEOUT_SECONDS", TIMEOUT_MARGIN_SECONDS)
+
+    await cancel_mid_review(ctx)
+
+    assert (await get_run(ctx["sessionmaker"])).status == RunStatus.RUNNING
 
 
 async def test_failed_run_reruns_on_new_delivery(ctx, github_api):

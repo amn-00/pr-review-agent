@@ -11,6 +11,7 @@ from app.db.models import (
     BudgetPurpose,
     ChunkCache,
     DailyTokenUsage,
+    FailureKind,
     Finding,
     Installation,
     PullRequest,
@@ -94,7 +95,13 @@ async def claim_run(session: AsyncSession, run_id: int, stale_after_seconds: int
                 and_(ReviewRun.status == RunStatus.RUNNING, ReviewRun.started_at < stale_before),
             ),
         )
-        .values(status=RunStatus.RUNNING, started_at=func.now(), error=None, finished_at=None)
+        .values(
+            status=RunStatus.RUNNING,
+            started_at=func.now(),
+            error=None,
+            failure_kind=None,
+            finished_at=None,
+        )
         .returning(ReviewRun.id)
     )
     await session.commit()
@@ -133,6 +140,7 @@ async def finish_run(
     status: RunStatus,
     *,
     error: str | None = None,
+    failure_kind: FailureKind | None = None,
     github_review_id: int | None = None,
 ) -> None:
     await session.execute(
@@ -141,11 +149,29 @@ async def finish_run(
         .values(
             status=status,
             error=error,
+            failure_kind=failure_kind,
             github_review_id=github_review_id,
             finished_at=datetime.now(UTC),
         )
     )
     await session.commit()
+
+
+async def take_auto_retry(session: AsyncSession, run_id: int, seen_retries: int) -> bool:
+    """Count one automatic retry of a failed run. False if it was already counted (the check
+    and the increment are one statement)."""
+    taken = await session.scalar(
+        update(ReviewRun)
+        .where(
+            ReviewRun.id == run_id,
+            ReviewRun.status == RunStatus.FAILED,
+            ReviewRun.auto_retries == seen_retries,
+        )
+        .values(auto_retries=ReviewRun.auto_retries + 1)
+        .returning(ReviewRun.id)
+    )
+    await session.commit()
+    return taken is not None
 
 
 async def record_findings(

@@ -6,7 +6,18 @@ import asyncio
 import httpx
 import pytest
 
-from loadtest.failures import TESTS, default_name, in_flight, is_settled, recovery_s, run_summary
+from app import reconciler, worker
+from loadtest import failures
+from loadtest.failures import (
+    TESTS,
+    default_name,
+    in_flight,
+    is_settled,
+    recovery_s,
+    review_seconds,
+    reviews_waited_behind,
+    run_summary,
+)
 from loadtest.fakes import create_app
 from loadtest.report import build_report
 from loadtest.scenarios import mixed
@@ -24,8 +35,20 @@ def _records(pulls: list[dict], reviews=(), first_seen=None) -> dict:
     }
 
 
-def _run(status: str, finished: float | None = None, error: str | None = None) -> dict:
-    return {"status": status, "finished": finished, "error": error}
+def _run(
+    status: str,
+    finished: float | None = None,
+    error: str | None = None,
+    failure_kind: str | None = None,
+    auto_retries: int = 0,
+) -> dict:
+    return {
+        "status": status,
+        "finished": finished,
+        "error": error,
+        "failure_kind": failure_kind,
+        "auto_retries": auto_retries,
+    }
 
 
 def test_settled_when_every_open_head_is_completed_or_failed():
@@ -41,6 +64,14 @@ def test_settled_when_every_open_head_is_completed_or_failed():
     assert is_settled(records, {"a": _run("completed"), "b": _run("failed")})
     assert not is_settled(records, {"a": _run("completed"), "b": _run("running")})
     assert not is_settled(records, {"a": _run("completed")})  # b has no run yet
+
+
+def test_a_transient_failure_with_retries_left_is_not_settled_yet():
+    records = _records([{"head": "a"}])
+
+    assert not is_settled(records, {"a": _run("failed", failure_kind="transient")})
+    assert is_settled(records, {"a": _run("failed", failure_kind="transient", auto_retries=3)})
+    assert is_settled(records, {"a": _run("failed", failure_kind="permanent")})
 
 
 def test_in_flight_is_started_and_not_reviewed_per_worker():
@@ -87,11 +118,15 @@ def test_container_is_found_from_the_hostname():
 
 
 def test_psql_rows_and_docker_memory_are_parsed():
-    out = "abc\tcompleted\t\t1700000000.5\ndef\tfailed\tgave up\t1700000001\nghi\tqueued\t\t\n"
+    out = (
+        "abc\tcompleted\t\t1700000000.5\t\t0\n"
+        "def\tfailed\tgave up\t1700000001\ttransient\t2\n"
+        "ghi\tqueued\t\t\t\t0\n"
+    )
 
     assert parse_runs(out) == {
         "abc": _run("completed", 1700000000.5),
-        "def": _run("failed", 1700000001.0, "gave up"),
+        "def": _run("failed", 1700000001.0, "gave up", "transient", 2),
         "ghi": _run("queued"),
     }
     assert (parse_mib("85.3MiB"), parse_mib("1.5GiB"), parse_mib("512KiB")) == (85.3, 1536, 0.5)
@@ -161,3 +196,25 @@ def test_report_has_a_failure_table_and_timeline():
     assert "| K1 | 2 | True | 1 | 0 | 0 | 0 | 0 | 912.0 |" in report
     assert "- +912 s: done" in report
     assert "- Expected: recovers in ~910 s" in report
+
+
+def test_reviews_waited_behind_counts_other_reviews_until_its_own():
+    records = _records(
+        [],
+        reviews=[
+            {"sha": "a1", "t": 99.0},  # before B was sent
+            {"sha": "a2", "t": 101.0},
+            {"sha": "a3", "t": 102.0},
+            {"sha": "b", "t": 103.0},
+            {"sha": "a4", "t": 104.0},  # after B's review
+        ],
+    )
+
+    assert review_seconds(records, "b", sent=100.0) == 3.0
+    assert reviews_waited_behind(records, "b", sent=100.0) == 2
+    assert reviews_waited_behind(records, "x", sent=100.0) is None
+
+
+def test_the_drivers_constants_match_the_app():
+    assert failures.MAX_JOBS == worker.MAX_JOBS
+    assert failures.MAX_AUTO_RETRIES == reconciler.MAX_AUTO_RETRIES

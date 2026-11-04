@@ -1255,3 +1255,54 @@ queueing: 20 requests in flight ÷ ~78 webhooks/s ≈ 256 ms. GitHub sends one d
   180 s. Every job had given up by +84 s.
 - **Groq 429 storm (Q2):** lane calls gave up after 3 attempts (~60 s), with 240 s of lane
   deadline left. 2 of 10 reviews were posted without their bug. Q1, 30% random 429s: 2 of 30.
+
+## Phase 6c — Fixes for what the failure tests confirmed
+
+The plan is in `docs/plans/phase-6c.md`. Fixes 1 and 2 are done. Fix 3 (Groq 429s) waits until
+the remaining eval runs finish, because it changes how real 429s are handled.
+
+**Fix 1: a cancelled job hands its run back.**
+On SIGTERM arq cancels running jobs and queues them to run again at once. `review_pr` now catches
+`CancelledError`, puts the run back to `queued`, and re-raises, so the immediate re-run claims it.
+- **Not on a job timeout.** A timeout reaches the job as a cancellation too, but arq doesn't run a
+  timed-out job again. Releasing that run would make the reconciler retry it every 5 minutes. So
+  the run is released only when the job has run for less than the timeout minus 10 s; a
+  cancellation that close to the timeout is the timeout.
+- **If the release fails,** it's logged and the cancel goes on. The run then goes stale and the
+  reconciler recovers it, as before the fix.
+- **Tested:** the release, the timeout case, and a real arq `Worker` stopped with
+  `handle_sig(SIGTERM)`. With the release removed, the tests fail.
+- **K2 again:** reviewed 26.6 s after the stop, instead of 1,035 s.
+
+**Fix 2: the reconciler retries transient failures.**
+- **The columns:** `review_runs` gains `failure_kind` (`transient` or `permanent`, with a CHECK
+  added by hand) and `auto_retries`.
+  - Giving up on a `RetryableError` is `transient`.
+  - `NonRetryableError` and unexpected exceptions are `permanent`.
+  - Runs that failed before the migration keep a NULL kind, so they're left alone as before.
+- **The retries:** a transient failure gets a job when it has fewer than 3 automatic retries and
+  failed at least 5, 10 or 20 minutes ago (doubling per retry). In G2 every job gave up within
+  about 1.5 minutes of the outage starting, and the reconciler runs every 5 minutes. So the first
+  retry lands after any outage shorter than ~5 minutes, and three retries cover about 40.
+- **Counted after arq accepts the job (a change from the plan).** Counting before enqueueing would
+  use up a retry whenever the previous retry's job was still queued. arq's job ID lets only one
+  cycle in, and the count is a single conditional `UPDATE`.
+- **Tested:**
+  - the backoff table;
+  - permanent, unknown and used-up failures get no job;
+  - a queued retry isn't counted twice;
+  - two reconciler cycles at once count one retry.
+
+  Breaking the kind check or the counting fails those tests.
+- **G2 again:** 20 of 20 reviewed after both a 60 s outage (before: 9 failed for good) and a 180 s
+  one (before: 16 failed). Every failed run recovered on its first automatic retry, within about
+  10 minutes of the start.
+- **The load-test driver** counts a failed run as settled only once it's permanent or out of
+  automatic retries.
+
+**N1: installation B waited behind 88 reviews.** B's one PR took 1.8 s on an empty queue, and 67 s
+when it arrived 10 s into installation A's 100-PR burst. By the rule in the Phase 6 plan (more
+than `max_jobs` reviews), a per-installation limit is worth building. GitHub rate limits are not
+a reason for one: G4 showed the client defers cleanly. With real Groq, the shared daily budget
+starves B before queue order does. The choice is the user's: a Redis semaphore (the spec's plan),
+a per-installation share of the daily budget, or both.

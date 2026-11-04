@@ -22,14 +22,18 @@ latency goes through Docker's port mapping. Each run is one sample.
 |---|---|---|---|---|---|---|---|---|
 | G1-10pct | 1 | True | 30 | 0 | 0 | 0 | 0 | – |
 | G1-2pct | 1 | True | 30 | 0 | 0 | 0 | 0 | – |
+| G2-180s-fixed | 1 | True | 20 | 0 | 0 | 0 | 0 | – |
 | G2-180s | 1 | True | 4 | 0 | 16 | 16 | 0 | – |
+| G2-60s-fixed | 1 | True | 20 | 0 | 0 | 0 | 0 | – |
 | G2-60s | 1 | True | 11 | 0 | 9 | 9 | 0 | – |
 | G3 | 1 | True | 10 | 0 | 0 | 0 | 0 | – |
 | G4-1w | 1 | True | 40 | 0 | 0 | 0 | 0 | – |
 | K1 | 2 | True | 10 | 0 | 0 | 0 | 0 | 933.5 |
 | K1b | 1 | True | 10 | 0 | 0 | 0 | 0 | 933.4 |
+| K2-fixed | 1 | True | 10 | 0 | 0 | 0 | 0 | 26.6 |
 | K2 | 1 | True | 10 | 0 | 0 | 0 | 0 | 1035.2 |
 | K3 | 1 | True | 1 | 0 | 0 | 0 | 0 | 907.9 |
+| N1 | 1 | True | 102 | 0 | 0 | 0 | 0 | – |
 | Q1 | 1 | True | 30 | 0 | 0 | 0 | 2 | – |
 | Q2 | 1 | True | 10 | 0 | 0 | 0 | 2 | – |
 | Q3-1w | 1 | True | 10 | 0 | 0 | 0 | 0 | – |
@@ -447,6 +451,77 @@ latency goes through Docker's port mapping. Each run is one sample.
 }
 ```
 
+### G2-180s-fixed
+
+- Config: `{"scenario": "failure", "test": "G2", "prs": null, "fault_rate": null, "outage_s": 180.0}`
+- Environment: `{"platform": "Windows-11-10.0.26300-SP0", "cpus": 16, "workers": 1}`, git `6d9eb27`
+- Settled before the timeout: True
+- Expected: Likely gap: the 5 tries are used up in ~40–75 s, so jobs caught in a 180 s outage end `failed`, and the reconciler doesn't retry failed runs.
+
+- +0 s: fakes config: {"groq_latency": 2.0, "agent_latency": 2.0, "github_fault": {"status": 503, "rate": 1.0, "start": 1793798455.8136752, "end": 1793798635.8136752}}
+- +0 s: GitHub answers 503 to everything from +10 s, for 180 s
+- +0 s: sent 20 webhooks: {202: 20}
+- +591 s: done: every run completed or out of retries
+
+```json
+{
+  "run_statuses": {
+    "completed": 20
+  },
+  "failure_errors": {}
+}
+```
+
+```json
+{
+  "webhooks": 20,
+  "enqueue_latency_ms": {
+    "p50": 103.2,
+    "p95": 127.3,
+    "max": 146.2
+  },
+  "review_time_s": {
+    "p50": 566.28,
+    "p95": 588.77,
+    "max": 588.82
+  },
+  "queue_wait_s": {
+    "p50": 562.09,
+    "p95": 584.61,
+    "max": 584.67
+  },
+  "work_time_s": {
+    "p50": 4.17,
+    "p95": 552.59,
+    "max": 557.14
+  },
+  "webhooks_per_s": 145.6,
+  "reviews_per_min": 2.0,
+  "reviews": 20,
+  "duplicates": 0,
+  "lost": 0,
+  "stale_posts": 0,
+  "reviews_without_comment": 0,
+  "unexpected_statuses": {},
+  "github_requests_per_review": 13.7,
+  "agent_calls_per_review": 1.1,
+  "github_errors": {
+    "503": 82
+  },
+  "groq_calls": {
+    "lane 200": 60,
+    "agent 200": 22
+  },
+  "memory_peak_mib": {
+    "api-1": 67.3,
+    "worker-1": 67.8,
+    "postgres-1": 52.9,
+    "redis-1": 4.4,
+    "fakes-1": 39.8
+  }
+}
+```
+
 ### G2-180s
 
 - Config: `{"scenario": "failure", "test": "G2", "prs": null, "fault_rate": null, "outage_s": 180.0}`
@@ -530,6 +605,77 @@ latency goes through Docker's port mapping. Each run is one sample.
     "postgres-1": 45.0,
     "redis-1": 4.1,
     "fakes-1": 39.6
+  }
+}
+```
+
+### G2-60s-fixed
+
+- Config: `{"scenario": "failure", "test": "G2", "prs": null, "fault_rate": null, "outage_s": 60.0}`
+- Environment: `{"platform": "Windows-11-10.0.26300-SP0", "cpus": 16, "workers": 1}`, git `6d9eb27`
+- Settled before the timeout: True
+- Expected: Likely gap: the 5 tries are used up in ~40–75 s, so jobs caught in a 180 s outage end `failed`, and the reconciler doesn't retry failed runs.
+
+- +0 s: fakes config: {"groq_latency": 2.0, "agent_latency": 2.0, "github_fault": {"status": 503, "rate": 1.0, "start": 1793798000.520968, "end": 1793798060.520968}}
+- +0 s: GitHub answers 503 to everything from +10 s, for 60 s
+- +0 s: sent 20 webhooks: {202: 20}
+- +421 s: done: every run completed or out of retries
+
+```json
+{
+  "run_statuses": {
+    "completed": 20
+  },
+  "failure_errors": {}
+}
+```
+
+```json
+{
+  "webhooks": 20,
+  "enqueue_latency_ms": {
+    "p50": 129.2,
+    "p95": 156.1,
+    "max": 173.7
+  },
+  "review_time_s": {
+    "p50": 83.18,
+    "p95": 414.0,
+    "max": 418.53
+  },
+  "queue_wait_s": {
+    "p50": 77.01,
+    "p95": 409.84,
+    "max": 414.41
+  },
+  "work_time_s": {
+    "p50": 4.14,
+    "p95": 62.75,
+    "max": 74.28
+  },
+  "webhooks_per_s": 122.1,
+  "reviews_per_min": 2.9,
+  "reviews": 20,
+  "duplicates": 0,
+  "lost": 0,
+  "stale_posts": 0,
+  "reviews_without_comment": 0,
+  "unexpected_statuses": {},
+  "github_requests_per_review": 13.0,
+  "agent_calls_per_review": 1.1,
+  "github_errors": {
+    "503": 69
+  },
+  "groq_calls": {
+    "lane 200": 60,
+    "agent 200": 22
+  },
+  "memory_peak_mib": {
+    "api-1": 66.8,
+    "worker-1": 67.5,
+    "postgres-1": 51.2,
+    "redis-1": 7.9,
+    "fakes-1": 39.8
   }
 }
 ```
@@ -902,6 +1048,86 @@ latency goes through Docker's port mapping. Each run is one sample.
 }
 ```
 
+### K2-fixed
+
+- Config: `{"scenario": "failure", "test": "K2", "prs": null, "fault_rate": null, "outage_s": null}`
+- Environment: `{"platform": "Windows-11-10.0.26300-SP0", "cpus": 16, "workers": 1}`, git `6d9eb27`
+- Settled before the timeout: True
+- Expected: Likely gap: arq re-queues the cancelled jobs at once, but their runs stay `running`, so the re-runs back off. Recovery only via the reconciler: 900 s + up to 5 min.
+
+- +0 s: fakes config: {"groq_latency": 12.0, "agent_latency": 12.0}
+- +0 s: sent 10 webhooks: {202: 10}
+- +1 s: docker stop pr-review-load-worker-1 (SIGTERM, 10 s grace) with 2 jobs in flight
+- +2 s: stopped; the in-flight runs are now {'176cd2e5a6c971f2db7cf315f859d426c3b5e835': 'queued', '154f8d99e345ceba8c652f17fe9cd8e736900776': 'queued'}
+- +2 s: started pr-review-load-worker-1 again
+- +126 s: done: every run completed or failed
+
+```json
+{
+  "run_statuses": {
+    "completed": 10
+  },
+  "failure_errors": {},
+  "affected": [
+    "176cd2e5a6c971f2db7cf315f859d426c3b5e835",
+    "154f8d99e345ceba8c652f17fe9cd8e736900776"
+  ],
+  "statuses_after_stop": {
+    "176cd2e5a6c971f2db7cf315f859d426c3b5e835": "queued",
+    "154f8d99e345ceba8c652f17fe9cd8e736900776": "queued"
+  },
+  "recovery_s": 26.6
+}
+```
+
+```json
+{
+  "webhooks": 10,
+  "enqueue_latency_ms": {
+    "p50": 60.3,
+    "p95": 82.2,
+    "max": 82.2
+  },
+  "review_time_s": {
+    "p50": 76.66,
+    "p95": 125.82,
+    "max": 125.82
+  },
+  "queue_wait_s": {
+    "p50": 52.48,
+    "p95": 101.59,
+    "max": 101.59
+  },
+  "work_time_s": {
+    "p50": 24.21,
+    "p95": 27.19,
+    "max": 27.19
+  },
+  "webhooks_per_s": 208.1,
+  "reviews_per_min": 4.8,
+  "reviews": 10,
+  "duplicates": 0,
+  "lost": 0,
+  "stale_posts": 0,
+  "reviews_without_comment": 0,
+  "unexpected_statuses": {},
+  "github_requests_per_review": 10.2,
+  "agent_calls_per_review": 1.0,
+  "github_errors": {},
+  "groq_calls": {
+    "lane 200": 36,
+    "agent 200": 10
+  },
+  "memory_peak_mib": {
+    "api-1": 66.7,
+    "postgres-1": 49.4,
+    "redis-1": 4.1,
+    "fakes-1": 39.8,
+    "worker-1": 66.5
+  }
+}
+```
+
 ### K2
 
 - Config: `{"scenario": "failure", "test": "K2", "prs": null, "fault_rate": null, "outage_s": null}`
@@ -1055,6 +1281,81 @@ latency goes through Docker's port mapping. Each run is one sample.
     "postgres-1": 43.3,
     "redis-1": 8.0,
     "fakes-1": 39.6
+  }
+}
+```
+
+### N1
+
+- Config: `{"scenario": "failure", "test": "N1", "prs": null, "fault_rate": null, "outage_s": null}`
+- Environment: `{"platform": "Windows-11-10.0.26300-SP0", "cpus": 16, "workers": 1}`, git `6d9eb27`
+- Settled before the timeout: True
+- Expected: arq's queue is FIFO, so B's one PR waits behind all of A's burst still queued when it arrives: far more than max_jobs (2) reviews.
+
+- +0 s: fakes config: {"groq_latency": 0.5, "agent_latency": 0.5}
+- +0 s: sent 1 webhooks: {202: 1}
+- +2 s: done: B's PR reviewed on an empty queue
+- +4 s: sent 100 webhooks: {202: 100}
+- +12 s: sent 1 webhooks: {202: 1}
+- +81 s: done: every run completed or failed
+
+```json
+{
+  "run_statuses": {
+    "completed": 102
+  },
+  "failure_errors": {},
+  "b_alone_s": 1.79,
+  "b_behind_burst_s": 66.98,
+  "b_waited_behind_reviews": 88,
+  "limit_rule_triggered": true
+}
+```
+
+```json
+{
+  "webhooks": 102,
+  "enqueue_latency_ms": {
+    "p50": 99.8,
+    "p95": 173.8,
+    "max": 265.5
+  },
+  "review_time_s": {
+    "p50": 37.22,
+    "p95": 71.23,
+    "max": 74.2
+  },
+  "queue_wait_s": {
+    "p50": 36.06,
+    "p95": 70.06,
+    "max": 73.05
+  },
+  "work_time_s": {
+    "p50": 1.15,
+    "p95": 1.18,
+    "max": 1.21
+  },
+  "webhooks_per_s": 8.3,
+  "reviews_per_min": 77.1,
+  "reviews": 102,
+  "duplicates": 0,
+  "lost": 0,
+  "stale_posts": 0,
+  "reviews_without_comment": 0,
+  "unexpected_statuses": {},
+  "github_requests_per_review": 7.1,
+  "agent_calls_per_review": 1.0,
+  "github_errors": {},
+  "groq_calls": {
+    "lane 200": 306,
+    "agent 200": 102
+  },
+  "memory_peak_mib": {
+    "api-1": 69.0,
+    "worker-1": 80.7,
+    "postgres-1": 54.9,
+    "redis-1": 4.9,
+    "fakes-1": 51.1
   }
 }
 ```

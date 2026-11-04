@@ -1,8 +1,12 @@
 # Phase 6c plan: fixes for what the failure tests confirmed
 
-Draft 2026-11-04, awaiting approval. The measured results are in `loadtest/results/report.md`
-and in `docs/decisions.md` ("Phase 6 — Measured results"). Fixes 1 and 2 were agreed before the
-runs; fix 3 and the concurrency-limit decision are new.
+Approved 2026-11-04, with fix 3(b) changed (below). The measured results are in
+`loadtest/results/report.md` and in `docs/decisions.md` ("Phase 6 — Measured results"). Fixes 1
+and 2 were agreed before the runs; fix 3 and the concurrency-limit decision are new.
+
+**Order agreed:** N1 first, then fixes 1 and 2 tonight. Fix 3 waits until the next eval session
+has finished. After each fix, its failure test runs again (K2; G2 at 60 s and 180 s; later Q1 and
+Q2), and the engineering log gets the before/after numbers.
 
 **Done when:**
 - K2, G2 (60 s and 180 s), Q1 and Q2 run again and show the gaps closed, with the numbers below.
@@ -48,9 +52,10 @@ by +84 s, while GitHub was still down. Random 502s didn't fail any run, even at 
   - `NonRetryableError` (other 4xx, a rejected Groq key): `permanent`;
   - an unexpected exception (a bug): `permanent`, because retrying won't fix it.
 - **The reconciler's `should_enqueue`:** a `failed` run gets a job when it's `transient`, has
-  `auto_retries < 3`, and failed long enough ago: 5, 10, then 20 minutes. The reconciler bumps
-  `auto_retries` in the same statement that selects the run, so two reconciler cycles can't both
-  count the same retry. `permanent` runs stay failed; a new delivery still retries any failed run,
+  `auto_retries < 3`, and failed long enough ago: 5, 10, then 20 minutes. The reconciler counts
+  the retry only once arq accepts the job (changed while building), so a retry whose job is still
+  queued from the last cycle isn't used up. Because of arq's job ID only one cycle gets in, and the
+  count is a single conditional `UPDATE`. `permanent` runs stay failed; a new delivery still retries any failed run,
   as now.
 - **Why these numbers:** in G2 every job had given up within about 1.5 minutes of the outage
   starting. The reconciler runs every 5 minutes, so a shorter wait would just be rounded up. With
@@ -83,19 +88,21 @@ with no lane output, and their runs are `completed`, so nothing retries them. Wi
   and asks again, until waiting would pass the call's deadline. Then it raises
   `DeadlineExceeded` as today, and the chunk is listed as skipped for time. This covers lanes and
   the agent alike; the agent's per-finding time already leaves waits out.
-- **(b) `app/worker.py`: don't post a review when no lane produced anything.** If no lane call
-  succeeded or came from the cache, and calls failed or ran out of time, raise `RetryableError`
-  instead of posting a review that reviewed nothing. That's the same rule as today's "nothing
-  reviewed under the daily budget", applied to every cause. The job then retries with backoff,
-  and if its tries run out, fix 2 makes it a transient failure the reconciler retries.
+- **(b) `app/worker.py`: don't post a partial review when a lane call failed** (changed at
+  approval). The rule is about failed calls, not about findings: a clean PR rightly has none.
+  - **If any lane call failed after its retries,** the job posts nothing and the run fails as
+    `transient`, so fix 2's reconciler retry handles it. The lane cache makes that retry cheap:
+    only the failed calls are paid for again.
+  - **A budget or deadline skip still posts,** with the "not reviewed" note, as today.
 
 **Tests:**
 - 429s past 3 attempts succeed within the deadline.
 - A 429 past the deadline raises `DeadlineExceeded`.
 - `retry-after: 0` waits 1 s.
 - 5xx still stops at 3 attempts.
-- A run where every lane call failed raises `RetryableError` and posts nothing; a run where one
-  lane call succeeded still posts.
+- A run with one failed lane call posts nothing and ends `failed` as `transient`.
+- A run with only budget or deadline skips still posts, with the "not reviewed" note.
+- A clean run with zero findings posts as before.
 
 **Re-run:** Q2. Expect 10 of 10 reviews with their comment, and lane calls waiting out the
 120 s storm. Q1: expect 0 failed lane calls and 30 of 30 with their comment.
@@ -132,7 +139,8 @@ N1.
 - Burst enqueue latency (queueing; 56 ms p95 at 10/s).
 - SIGKILL recovery in about 15 minutes (K1, K1b: 933 s), accepted in Phase 2a.
 - The Phase 5 issue "lane calls aren't retried on `output_parse_failed`" stays with the evals
-  work. Fix 3(b) would at least stop it posting a review that reviewed nothing.
+  work. Fix 3(b) changes its effect: such a run no longer posts a partial review, and the
+  reconciler retries it instead.
 
 ## Order
 1. N1 (harness only; can run now).
@@ -145,11 +153,10 @@ re-run is in.
 
 ## Files
 ```
-app/worker.py                      fix 1; failure_kind (fix 2); nothing-reviewed retry (3b)
+app/worker.py                      fix 1; failure_kind (fix 2); failed lane call -> transient (3b)
 app/reconciler.py                  retry transient failures (fix 2)
 app/db/models.py, app/db/queries.py, app/db/migrations/versions/<new>.py   fix 2
 app/llm/groq.py                    429 handling (3a)
-app/pipeline/orchestrator.py       "nothing reviewed" for any cause (3b)
 loadtest/failures.py, loadtest/scenarios.py   N1; is_settled for fix 2
 tests/                             the tests listed under each fix
 ```

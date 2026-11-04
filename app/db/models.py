@@ -45,6 +45,15 @@ class RunStatus(StrEnum):
     SKIPPED = "skipped"
 
 
+class FailureKind(StrEnum):
+    """Why a `failed` run failed, which decides whether the reconciler retries it."""
+
+    # Gave up on a RetryableError (5xx, timeout, 429, rate limit): may work later.
+    TRANSIENT = "transient"
+    # A 4xx, a rejected API key, or a bug: retrying won't help.
+    PERMANENT = "permanent"
+
+
 class BudgetPurpose(StrEnum):
     """Who spent the tokens. Each model's daily budget is split between the two."""
 
@@ -91,6 +100,7 @@ class ReviewRun(Base):
             "status IN ('queued', 'running', 'completed', 'failed', 'skipped')",
             name="valid_status",
         ),
+        CheckConstraint("failure_kind IN ('transient', 'permanent')", name="valid_failure_kind"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -113,6 +123,10 @@ class ReviewRun(Base):
     cached_calls: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     tokens_saved: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     error: Mapped[str | None] = mapped_column(Text)
+    # Set only on `failed` runs. The reconciler retries transient failures, up to
+    # MAX_AUTO_RETRIES times; auto_retries counts those retries.
+    failure_kind: Mapped[str | None] = mapped_column(String(20))
+    auto_retries: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     # Whether the verification agent checked this run's findings (AGENT_ENABLED at the time),
     # so evals can tell "pipeline only" runs from "pipeline + agent" runs.
     agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")

@@ -98,14 +98,17 @@ async def redis_up() -> bool:
 
 
 def parse_runs(out: str) -> dict[str, dict]:
-    """psql's tab-separated rows -> {head SHA: {status, error, finished}}."""
+    """psql's tab-separated rows -> {head SHA: {status, error, finished, failure_kind,
+    auto_retries}}."""
     runs = {}
     for line in out.splitlines():
-        sha, status, error, finished = line.split("\t")
+        sha, status, error, finished, failure_kind, auto_retries = line.split("\t")
         runs[sha] = {
             "status": status,
             "error": error or None,
             "finished": float(finished) if finished else None,
+            "failure_kind": failure_kind or None,
+            "auto_retries": int(auto_retries),
         }
     return runs
 
@@ -114,7 +117,8 @@ async def runs() -> dict[str, dict]:
     """Every review run, by head SHA. `finished` is on the containers' clock, like the fakes'."""
     sql = (
         "SELECT head_sha, status, coalesce(left(error, 80), ''), "
-        "coalesce(extract(epoch FROM finished_at)::text, '') FROM review_runs"
+        "coalesce(extract(epoch FROM finished_at)::text, ''), coalesce(failure_kind, ''), "
+        "auto_retries FROM review_runs"
     )
     out = await sh(
         "docker", "exec", POSTGRES,

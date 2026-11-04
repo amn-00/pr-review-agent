@@ -1,5 +1,6 @@
 """arq worker. Start it with: arq app.worker.WorkerSettings"""
 
+import asyncio
 import logging
 import random
 import time
@@ -10,7 +11,7 @@ from arq import Retry, cron, func
 
 from app.agent.verify import AgentResult, verify_findings
 from app.config import get_settings
-from app.db.models import RunStatus
+from app.db.models import FailureKind, RunStatus
 from app.db.queries import (
     claim_run,
     finish_run,
@@ -52,6 +53,8 @@ MAX_JOBS = 2
 DAILY_RESET_MARGIN_SECONDS = 300
 BACKOFF_BASE_SECONDS = 5
 BACKOFF_MAX_SECONDS = 300
+# A cancellation this close to the job timeout is the timeout, not a shutdown.
+TIMEOUT_MARGIN_SECONDS = 10
 
 
 def run_marker(run_id: int) -> str:
@@ -99,7 +102,10 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
         if job_try >= JOB_MAX_TRIES:
             error = f"gave up after {job_try} tries: {exc}"
             logger.error(error)
-            await _finish(ctx, run.id, RunStatus.FAILED, error=error)
+            # The reconciler retries it later (fix for Phase 6 G2: an outage outlasts 5 tries).
+            await _finish(
+                ctx, run.id, RunStatus.FAILED, error=error, failure_kind=FailureKind.TRANSIENT
+            )
             return RunStatus.FAILED
         delay = retry_delay(job_try, exc.retry_after)
         logger.warning(
@@ -112,11 +118,27 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
         raise Retry(defer=delay) from exc
     except NonRetryableError as exc:
         logger.error("permanent error, not retrying: %s", exc)
-        await _finish(ctx, run.id, RunStatus.FAILED, error=str(exc))
+        await _finish(
+            ctx, run.id, RunStatus.FAILED, error=str(exc), failure_kind=FailureKind.PERMANENT
+        )
         return RunStatus.FAILED
+    except asyncio.CancelledError:
+        # On shutdown (SIGTERM, e.g. a deploy) arq cancels running jobs and queues them to run
+        # again at once. Hand the run back, or that re-run finds it `running` and leaves it to
+        # go stale (measured: 17 minutes). A job timeout cancels too, but arq doesn't run the
+        # job again then, so that run is left to go stale for the reconciler, as before.
+        if time.monotonic() - started < JOB_TIMEOUT_SECONDS - TIMEOUT_MARGIN_SECONDS:
+            await _release_after_cancel(sessionmaker, run.id)
+        raise
     except Exception as exc:
         # A bug, not a GitHub problem: record it, then let arq log the traceback.
-        await _finish(ctx, run.id, RunStatus.FAILED, error=f"unexpected error: {exc!r}")
+        await _finish(
+            ctx,
+            run.id,
+            RunStatus.FAILED,
+            error=f"unexpected error: {exc!r}",
+            failure_kind=FailureKind.PERMANENT,
+        )
         raise
 
     await _finish(ctx, run.id, status, github_review_id=review_id)
@@ -284,6 +306,16 @@ def seconds_until_utc_midnight(now: datetime | None = None) -> float:
     now = now or datetime.now(UTC)
     midnight = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
     return (midnight - now).total_seconds()
+
+
+async def _release_after_cancel(sessionmaker, run_id: int) -> None:
+    try:
+        async with sessionmaker() as session:
+            await release_run(session, run_id)
+        logger.warning("job cancelled (worker shutting down); run released for the re-run")
+    except Exception:
+        # Not fatal: the run goes stale and the reconciler picks it up, as before this fix.
+        logger.exception("job cancelled, and the run couldn't be released")
 
 
 async def _finish(ctx: dict, run_id: int, status: RunStatus, **fields) -> None:

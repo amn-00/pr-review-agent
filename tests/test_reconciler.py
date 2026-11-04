@@ -1,14 +1,21 @@
+import asyncio
 from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
-from sqlalchemy import update
+from sqlalchemy import select, update
 
-from app.db.models import ReviewRun, RunStatus
+from app.db.models import FailureKind, ReviewRun, RunStatus
 from app.db.queries import get_or_create_run
 from app.github.webhooks import PullRequestPayload
 from app.queue import JOB_TIMEOUT_SECONDS
-from app.reconciler import LOOKBACK, RECONCILER_DELIVERY_ID, reconcile, should_enqueue
+from app.reconciler import (
+    LOOKBACK,
+    MAX_AUTO_RETRIES,
+    RECONCILER_DELIVERY_ID,
+    reconcile,
+    should_enqueue,
+)
 from tests.factories import INSTALLATION_ID, PR_NUMBER, REPO, SHA_1, pr_payload
 
 NOW = datetime(2026, 11, 1, 12, 0, tzinfo=UTC)
@@ -49,16 +56,33 @@ def ctx(sessionmaker, github, arq_redis):
     return {"sessionmaker": sessionmaker, "github": github, "redis": arq_redis}
 
 
-async def create_run(ctx, status: RunStatus, started_ago: timedelta = timedelta(0)) -> None:
+async def create_run(
+    ctx, status: RunStatus, started_ago: timedelta = timedelta(0), **values
+) -> None:
     async with ctx["sessionmaker"]() as session:
         run = await get_or_create_run(session, PullRequestPayload.model_validate(pr_payload()))
         started_at = datetime.now(UTC) - started_ago
         await session.execute(
             update(ReviewRun)
             .where(ReviewRun.id == run.id)
-            .values(status=status, started_at=started_at)
+            .values(status=status, started_at=started_at, **values)
         )
         await session.commit()
+
+
+async def get_run(ctx) -> ReviewRun:
+    async with ctx["sessionmaker"]() as session:
+        return await session.scalar(select(ReviewRun))
+
+
+async def create_transient_failure(ctx, failed_ago: timedelta, auto_retries: int = 0) -> None:
+    await create_run(
+        ctx,
+        RunStatus.FAILED,
+        failure_kind=FailureKind.TRANSIENT,
+        auto_retries=auto_retries,
+        finished_at=datetime.now(UTC) - failed_ago,
+    )
 
 
 @pytest.mark.parametrize(
@@ -80,6 +104,33 @@ def test_should_enqueue(status, started_ago, expected):
 
 def test_should_enqueue_when_there_is_no_run():
     assert should_enqueue(None, NOW) is True
+
+
+@pytest.mark.parametrize(
+    ("kind", "auto_retries", "failed_minutes_ago", "expected"),
+    [
+        (FailureKind.TRANSIENT, 0, 6, True),  # first retry: 5 minutes after the failure
+        (FailureKind.TRANSIENT, 0, 4, False),
+        (FailureKind.TRANSIENT, 1, 9, False),  # second: 10 minutes
+        (FailureKind.TRANSIENT, 1, 11, True),
+        (FailureKind.TRANSIENT, 2, 21, True),  # third: 20 minutes
+        (FailureKind.TRANSIENT, MAX_AUTO_RETRIES, 600, False),  # out of retries
+        (FailureKind.PERMANENT, 0, 600, False),  # only a new delivery retries these
+        (None, 0, 600, False),  # failed before failure kinds were recorded
+    ],
+)
+def test_failed_runs_are_retried_only_when_transient_with_backoff(
+    kind, auto_retries, failed_minutes_ago, expected
+):
+    run = ReviewRun(
+        status=RunStatus.FAILED,
+        failure_kind=kind,
+        auto_retries=auto_retries,
+        started_at=NOW - timedelta(hours=1),
+        finished_at=NOW - timedelta(minutes=failed_minutes_ago),
+    )
+
+    assert should_enqueue(run, NOW) is expected
 
 
 async def test_open_pr_without_a_run_gets_a_job(ctx, github_api, arq_redis):
@@ -130,6 +181,54 @@ async def test_stale_running_run_is_requeued(ctx, github_api, arq_redis):
     await create_run(ctx, RunStatus.RUNNING, timedelta(seconds=JOB_TIMEOUT_SECONDS + 60))
 
     assert await reconcile(ctx) == 1
+
+
+async def test_transient_failure_is_retried_and_the_retry_counted(ctx, github_api, arq_redis):
+    mock_github(github_api)
+    await create_transient_failure(ctx, failed_ago=timedelta(minutes=6))
+
+    assert await reconcile(ctx) == 1
+    assert (await get_run(ctx)).auto_retries == 1
+
+
+async def test_retry_whose_job_is_still_queued_isnt_used_up(ctx, github_api, arq_redis):
+    # The next cycle comes while the retry's job still waits in the queue: arq refuses the
+    # duplicate job, and the retry mustn't be counted twice.
+    mock_github(github_api)
+    await create_transient_failure(ctx, failed_ago=timedelta(hours=1))
+
+    await reconcile(ctx)
+    second = await reconcile(ctx)
+
+    assert second == 0
+    assert (await get_run(ctx)).auto_retries == 1
+
+
+async def test_two_cycles_at_once_count_one_retry(ctx, github_api, arq_redis):
+    mock_github(github_api)
+    await create_transient_failure(ctx, failed_ago=timedelta(hours=1))
+
+    results = await asyncio.gather(reconcile(ctx), reconcile(ctx))
+
+    assert sorted(results) == [0, 1]
+    assert len(await arq_redis.queued_jobs()) == 1
+    assert (await get_run(ctx)).auto_retries == 1
+
+
+@pytest.mark.parametrize(
+    "values",
+    [
+        {"failure_kind": FailureKind.PERMANENT},
+        {"failure_kind": FailureKind.TRANSIENT, "auto_retries": MAX_AUTO_RETRIES},
+    ],
+)
+async def test_permanent_or_used_up_failures_get_no_job(ctx, github_api, arq_redis, values):
+    mock_github(github_api)
+    old = datetime.now(UTC) - timedelta(hours=2)
+    await create_run(ctx, RunStatus.FAILED, finished_at=old, **values)
+
+    assert await reconcile(ctx) == 0
+    assert await arq_redis.queued_jobs() == []
 
 
 async def test_job_already_in_the_queue_is_not_duplicated(ctx, github_api, arq_redis):

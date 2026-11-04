@@ -4,6 +4,10 @@ These check what unit tests can't: that arq lets the same commit be queued again
 earlier job has finished (keep_result=0), and that Postgres then decides whether to rerun.
 """
 
+import asyncio
+import contextlib
+import signal
+
 import httpx
 from arq.worker import Worker
 from sqlalchemy import select
@@ -131,5 +135,45 @@ async def test_reconciler_catches_a_missed_webhook_and_the_review_is_posted(
     await run_worker(arq_redis, sessionmaker, github, groq)
 
     assert enqueued == 1
+    assert await run_status(sessionmaker) == RunStatus.COMPLETED
+    assert post.call_count == 1
+
+
+async def test_job_cancelled_by_a_shutdown_is_run_again_and_posts_once(
+    client, arq_redis, sessionmaker, github, groq, github_api
+):
+    """SIGTERM: arq cancels the running job and queues it to run again at once. The re-run must
+    get the run back, not find it `running` and leave it to go stale (Phase 6 K2)."""
+    post = mock_github_pr(github_api)
+    lanes = groq.complete_json
+    in_lanes = asyncio.Event()
+
+    async def hang(*args, **kwargs):
+        in_lanes.set()
+        await asyncio.Event().wait()
+
+    groq.complete_json = hang
+    await send_event(client, pr_payload("opened"), delivery="delivery-1")
+    worker = Worker(
+        functions=WorkerSettings.functions,
+        redis_pool=arq_redis,
+        burst=True,
+        poll_delay=0.01,
+        handle_signals=False,
+        job_timeout=WorkerSettings.job_timeout,
+        keep_result=WorkerSettings.keep_result,
+        ctx={"sessionmaker": sessionmaker, "github": github, "groq": groq},
+    )
+    worker.main_task = asyncio.create_task(worker.main())
+    await asyncio.wait_for(in_lanes.wait(), 10)
+
+    worker.handle_sig(signal.SIGTERM)  # what arq does when the process gets SIGTERM
+    await asyncio.gather(*worker.tasks.values())
+    with contextlib.suppress(asyncio.CancelledError):
+        await worker.main_task
+    assert await run_status(sessionmaker) == RunStatus.QUEUED
+
+    groq.complete_json = lanes
+    await run_worker(arq_redis, sessionmaker, github, groq)  # the restarted worker
     assert await run_status(sessionmaker) == RunStatus.COMPLETED
     assert post.call_count == 1
