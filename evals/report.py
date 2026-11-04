@@ -176,6 +176,7 @@ def render(
         "",
     ]
     lines += _summary(paired, len(cases), compare)
+    lines += _untested_traps(paired)
     if compare:
         lines += _changed_verdicts(paired, compare)
     lines += _per_case(paired)
@@ -329,24 +330,46 @@ def _summary(paired: list, total_cases: int, compare: tuple[str, dict] | None) -
 
 
 def _over_correction(runs: list, other_runs: list, other_name: str) -> list[str]:
-    """Did catching more bugs bring false positives back? The agent wins only if it didn't."""
+    """This agent wins only if it's no worse anywhere and better somewhere: no fewer bugs
+    caught, no more traps posted, clean PRs with a false positive or false positives, and at
+    least one of the four strictly better."""
     new, old = totals(runs, "agent"), totals(other_runs, "agent")
-    deltas = {
+    # Each change, signed so that positive is better.
+    better = {
         "bugs caught": new.caught - old.caught,
-        "traps posted": new.traps_posted - old.traps_posted,
-        "clean PRs with a false positive": new.clean_with_fp - old.clean_with_fp,
-        "false positives": new.false_positives - old.false_positives,
+        "traps posted": old.traps_posted - new.traps_posted,
+        "clean PRs with a false positive": old.clean_with_fp - new.clean_with_fp,
+        "false positives": old.false_positives - new.false_positives,
     }
-    wins = deltas["bugs caught"] > 0 and all(
-        change <= 0 for name, change in deltas.items() if name != "bugs caught"
+    wins = all(change >= 0 for change in better.values()) and any(better.values())
+    changes = ", ".join(
+        f"{name} {change if name == 'bugs caught' else -change:+d}"
+        for name, change in better.items()
     )
-    changes = ", ".join(f"{name} {change:+d}" for name, change in deltas.items())
     return [
         f"**Over-correction check, against `{other_name}`:** {changes}. This agent wins only "
-        "if bugs caught go up and none of the other three do: "
-        + ("**passes**." if wins else "**doesn't pass**.")
-        + " With one sample per finding, a change of 1–2 can be noise.",
+        "if bugs caught don't go down, none of the other three go up, and at least one of the "
+        "four gets better: " + ("**passes**." if wins else "**doesn't pass**.") + " With one "
+        "sample per finding, a change of 1–2 can be noise.",
     ]
+
+
+def _untested_traps(paired: list) -> list[str]:
+    """Traps no lane reported, not even as a dropped duplicate: the agent never saw a false
+    positive there, so they test nothing about it. "Traps posted" counts them as 0 either way."""
+    untested = [
+        f"- `{case.id}`: {label.note}"
+        for case, pipeline, _ in paired
+        for label in case.traps
+        if not any(label.matches(f) for f in pipeline["findings"])
+    ]
+    if not untested:
+        return []
+    intro = (
+        "**Traps that test nothing.** No lane reported anything on these, so there was no false "
+        'positive for the agent to drop. They count in "Traps posted" as 0/1 in every column:'
+    )
+    return [intro, "", *untested, ""]
 
 
 def _changed_verdicts(paired: list, compare: tuple[str, dict]) -> list[str]:

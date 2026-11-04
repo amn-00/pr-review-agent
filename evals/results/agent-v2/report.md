@@ -1,6 +1,6 @@
 # Eval report: agent-v2
 
-Generated 2026-11-04 10:35 UTC from `evals/results/agent-v2/`.
+Generated 2026-11-04 10:42 UTC from `evals/results/agent-v2/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 23 small Python cases, written for this project. The
@@ -34,7 +34,7 @@ Generated 2026-11-04 10:35 UTC from `evals/results/agent-v2/`.
 | Latency per PR | 6 s (max 6 s) | 58 s (max 129 s) | 44 s (max 124 s) |
 | Rate-limit waits per PR (summed over parallel calls) | 0 s | 32 s | 27 s |
 
-**Over-correction check, against `baseline`:** bugs caught +2, traps posted +0, clean PRs with a false positive +0, false positives -1. This agent wins only if bugs caught go up and none of the other three do: **passes**. With one sample per finding, a change of 1–2 can be noise.
+**Over-correction check, against `baseline`:** bugs caught +2, traps posted +0, clean PRs with a false positive +0, false positives -1. This agent wins only if bugs caught don't go down, none of the other three go up, and at least one of the four gets better: **passes**. With one sample per finding, a change of 1–2 can be noise.
 
 Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run got every lane call from the cache). Latency leaves out runs that took more than one attempt. False positives are inline comments that match no planted bug and no `acceptable` label; precision = inline comments matching a planted bug / all inline comments that aren't `acceptable`. A bug lost to an uncertain verdict was reported by a finding that passed aggregation but that the agent ended `uncertain`; the number in brackets is how many of those the evidence check made uncertain (a quote not on its line, or a line the agent wasn't shown).
 

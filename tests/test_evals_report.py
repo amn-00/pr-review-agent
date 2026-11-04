@@ -190,8 +190,11 @@ def judged(bug_verdict: str, trap_verdict: str) -> list[dict]:
     return found
 
 
-def compared(bug_verdict: str, trap_verdict: str) -> str:
-    """agent-v2's report against a baseline whose agent dropped the bug and the trap."""
+def compared(
+    bug_verdict: str, trap_verdict: str, baseline_bug="dropped", baseline_trap="dropped"
+) -> str:
+    """agent-v2's report against a baseline (by default, one that dropped the bug and the
+    trap)."""
     case = make_case(traps=[TRAP])
     v2 = result(case, "agent", judged(bug_verdict, trap_verdict))
     v2["agent_prompt_version"] = "v2"
@@ -199,7 +202,8 @@ def compared(bug_verdict: str, trap_verdict: str) -> str:
         (case.id, "pipeline"): result(case, "pipeline", candidates()),
         (case.id, "agent"): v2,
     }
-    baseline = {(case.id, "agent"): result(case, "agent", judged("dropped", "dropped"))}
+    old = judged(baseline_bug, baseline_trap)
+    baseline = {(case.id, "agent"): result(case, "agent", old)}
     return render("agent-v2", [case], results, ("baseline", baseline))
 
 
@@ -231,6 +235,43 @@ def test_over_correction_check_fails_when_a_trap_comes_back():
 
     assert "traps posted +1" in text and "false positives +1" in text
     assert "**doesn't pass**" in text
+
+
+def test_over_correction_check_passes_on_fewer_false_positives_alone():
+    # Same bugs, and the trap the baseline posted is now dropped.
+    text = compared("dropped", "dropped", baseline_bug="dropped", baseline_trap="confirmed")
+
+    assert "bugs caught +0, traps posted -1" in text and "false positives -1." in text
+    assert "**passes**" in text
+
+
+def test_over_correction_check_needs_something_strictly_better():
+    text = compared("confirmed", "dropped", baseline_bug="confirmed", baseline_trap="dropped")
+
+    assert "bugs caught +0, traps posted +0" in text and "false positives +0." in text
+    assert "**doesn't pass**" in text
+
+
+def test_over_correction_check_fails_on_fewer_bugs_even_with_fewer_false_positives():
+    text = compared("dropped", "dropped", baseline_bug="confirmed", baseline_trap="confirmed")
+
+    assert "bugs caught -1" in text and "false positives -1." in text
+    assert "**doesn't pass**" in text
+
+
+def test_a_trap_no_lane_reported_is_flagged_as_testing_nothing():
+    case = make_case(traps=[TRAP])  # the trap is on line 20
+
+    untested = report(case, [finding(1, 10, posted=True)], [])
+    tested = report(
+        case,
+        [finding(1, 10, posted=True), finding(2, 20, drop_reason="duplicate", duplicate_of=1)],
+        [],
+    )
+
+    assert "**Traps that test nothing.**" in untested
+    assert "- `c`: the trap" in untested
+    assert "**Traps that test nothing.**" not in tested  # a lane reported it, even if dropped
 
 
 def test_changed_verdicts_are_listed_with_both_sides():

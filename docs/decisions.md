@@ -1179,3 +1179,30 @@ the review to be stored instead of sleeping a fixed time.)*
   through `NO_EVIDENCE`. It shows whether the quote rule costs real bugs.
 - **So far:** v1 lost 1 bug to `uncertain` and v2 none, neither through the evidence check;
   neither ran with the quote rule.
+
+**The over-correction check: no worse anywhere, better somewhere.**
+The first rule (bugs caught must go up, nothing else up) fit v2, whose aim was catching more
+bugs. It couldn't credit v3, whose aim was fewer style false positives.
+- **The rule now, for every comparison:** an agent wins only if bugs caught don't go down,
+  traps posted, clean PRs with a false positive and false positives don't go up, and at least
+  one of the four is strictly better.
+- **Under it:**
+  - **v2 vs v1:** passes (bugs +2, false positives −1).
+  - **v3 vs v2, on the 14 cases both have:** doesn't pass (all equal). Those cases hold none of
+    the traps and clean PRs v3 was aimed at.
+
+**Traps no lane reported are flagged as testing nothing.**
+If no lane reports anything on a trap, not even a finding later dropped, the agent never saw a
+false positive there. "Traps posted" still counts it (0/1 in every column), so the report lists
+such traps under the summary. Computed from the results, not hard-coded: today that's only
+held-04 (`random` for backoff jitter); every trap in the tuning set was reported.
+
+**The agent is frozen after v3.** No more prompt changes or new cases. The remaining runs finish
+v2's two traps (with `--agent-prompt v2`), v3 on the tuning set, and v1 and v3 on the held-out
+cases.
+
+**A run-order mistake, corrected.** On 2026-11-04 agent-v2's last two traps ran without
+`--agent-prompt v2`, so they used the new default, v3. They were valid v3 runs on the same
+candidates, so they were moved into agent-v3, and agent-v2's two traps run again with v2. Every
+eval now names its prompt explicitly. `agent_prompt_override` is set only when the version
+differs from prod's, so naming v3 explicitly doesn't add the "older prompt" warning.
