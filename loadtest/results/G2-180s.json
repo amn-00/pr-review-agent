@@ -1,0 +1,615 @@
+{
+ "name": "G2-180s",
+ "created": "2026-11-04T11:27:01+00:00",
+ "git_sha": "29c0b6d",
+ "settled": true,
+ "config": {
+  "scenario": "failure",
+  "test": "G2",
+  "prs": null,
+  "fault_rate": null,
+  "outage_s": 180.0
+ },
+ "environment": {
+  "platform": "Windows-11-10.0.26300-SP0",
+  "cpus": 16,
+  "workers": 1
+ },
+ "clock_offset_s": 0.0003,
+ "webhooks": [
+  {
+   "i": 0,
+   "kind": "opened",
+   "delivery": "6d65c954-0",
+   "repo": "load-org-1/repo-3",
+   "number": 1,
+   "sha": "0e2e137af79bbfead92d38bd722a6429a5bcc95c",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.2716026,
+   "latency_ms": 115.13
+  },
+  {
+   "i": 1,
+   "kind": "opened",
+   "delivery": "6d65c954-1",
+   "repo": "load-org-4/repo-4",
+   "number": 1,
+   "sha": "379923192e2f5d7f722928093c237070cc99d882",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.309054,
+   "latency_ms": 167.86
+  },
+  {
+   "i": 2,
+   "kind": "opened",
+   "delivery": "6d65c954-2",
+   "repo": "load-org-2/repo-1",
+   "number": 1,
+   "sha": "ef7df2ea0f9e9c3dd1dc798151bb469b4aba4aa0",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.3192046,
+   "latency_ms": 167.23
+  },
+  {
+   "i": 3,
+   "kind": "opened",
+   "delivery": "6d65c954-3",
+   "repo": "load-org-4/repo-4",
+   "number": 2,
+   "sha": "29cadb2e72d8ebf3bf9c6ef1ebfaab95bfe45c17",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.3369086,
+   "latency_ms": 165.93
+  },
+  {
+   "i": 4,
+   "kind": "opened",
+   "delivery": "6d65c954-4",
+   "repo": "load-org-1/repo-4",
+   "number": 1,
+   "sha": "e5bb4b796e18d7b565db5a91088c484216e35f82",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.340953,
+   "latency_ms": 163.89
+  },
+  {
+   "i": 5,
+   "kind": "opened",
+   "delivery": "6d65c954-5",
+   "repo": "load-org-2/repo-1",
+   "number": 2,
+   "sha": "d82dc3568a3f853d61da267fde892686ba341043",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.3439622,
+   "latency_ms": 161.89
+  },
+  {
+   "i": 6,
+   "kind": "opened",
+   "delivery": "6d65c954-6",
+   "repo": "load-org-1/repo-1",
+   "number": 1,
+   "sha": "cd3ae0e39d6505fca3db7d8b380f8b9991817e3a",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.3591168,
+   "latency_ms": 147.72
+  },
+  {
+   "i": 7,
+   "kind": "opened",
+   "delivery": "6d65c954-7",
+   "repo": "load-org-5/repo-1",
+   "number": 1,
+   "sha": "993f56c374e97399b767e4731ad7ffb5632c6cc4",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.3631816,
+   "latency_ms": 144.66
+  },
+  {
+   "i": 8,
+   "kind": "opened",
+   "delivery": "6d65c954-8",
+   "repo": "load-org-4/repo-2",
+   "number": 1,
+   "sha": "2c9c6f385f405c6f0aadebda3b398e696100ec67",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.382147,
+   "latency_ms": 135.21
+  },
+  {
+   "i": 9,
+   "kind": "opened",
+   "delivery": "6d65c954-9",
+   "repo": "load-org-1/repo-2",
+   "number": 1,
+   "sha": "d0a0f9d60e9e0bf7417a780aecbd6d96b16ed653",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.39428,
+   "latency_ms": 96.19
+  },
+  {
+   "i": 10,
+   "kind": "opened",
+   "delivery": "6d65c954-10",
+   "repo": "load-org-4/repo-2",
+   "number": 2,
+   "sha": "83c9b7c51d8cdf8bd008586f655ef9645a27b4ef",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.4028196,
+   "latency_ms": 134.85
+  },
+  {
+   "i": 11,
+   "kind": "opened",
+   "delivery": "6d65c954-11",
+   "repo": "load-org-2/repo-4",
+   "number": 1,
+   "sha": "da2b1d48b07fb2be39c4b3d6425aaedb4b8ca1a8",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.4113617,
+   "latency_ms": 120.3
+  },
+  {
+   "i": 12,
+   "kind": "opened",
+   "delivery": "6d65c954-12",
+   "repo": "load-org-1/repo-4",
+   "number": 2,
+   "sha": "b5c68587355aa3ad26f86e5bc91ca1b6f92ba619",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.4153702,
+   "latency_ms": 112.21
+  },
+  {
+   "i": 13,
+   "kind": "opened",
+   "delivery": "6d65c954-13",
+   "repo": "load-org-5/repo-1",
+   "number": 2,
+   "sha": "a2821adb2d4a6cbd4e16a65d7d08341ff7281a10",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.4329515,
+   "latency_ms": 108.24
+  },
+  {
+   "i": 14,
+   "kind": "opened",
+   "delivery": "6d65c954-14",
+   "repo": "load-org-3/repo-1",
+   "number": 1,
+   "sha": "fcf6d175eea8e7d0c5e99774e45fae7624d8a95d",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.3751218,
+   "latency_ms": 141.23
+  },
+  {
+   "i": 15,
+   "kind": "opened",
+   "delivery": "6d65c954-15",
+   "repo": "load-org-5/repo-4",
+   "number": 1,
+   "sha": "67e0ec46045c177ea4459ef68092987e1def7f27",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.4497383,
+   "latency_ms": 95.44
+  },
+  {
+   "i": 16,
+   "kind": "opened",
+   "delivery": "6d65c954-16",
+   "repo": "load-org-2/repo-3",
+   "number": 1,
+   "sha": "88aafca8433a407b15a13088da8ea5be59e5f802",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.4606059,
+   "latency_ms": 86.57
+  },
+  {
+   "i": 17,
+   "kind": "opened",
+   "delivery": "6d65c954-17",
+   "repo": "load-org-4/repo-4",
+   "number": 3,
+   "sha": "c7f9ede896aef7cbfa0800040da15823dc24c317",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.4824185,
+   "latency_ms": 67.26
+  },
+  {
+   "i": 18,
+   "kind": "opened",
+   "delivery": "6d65c954-18",
+   "repo": "load-org-1/repo-4",
+   "number": 3,
+   "sha": "a0978b86dc44e7f35fa290964878e42fcef100a5",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.427415,
+   "latency_ms": 111.77
+  },
+  {
+   "i": 19,
+   "kind": "opened",
+   "delivery": "6d65c954-19",
+   "repo": "load-org-4/repo-4",
+   "number": 4,
+   "sha": "7d6bb6671c81091cfa0a65a72e3c9c21d1124e5e",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793791522.4657218,
+   "latency_ms": 80.45
+  }
+ ],
+ "records": {
+  "pulls": [
+   {
+    "repo": "load-org-1/repo-3",
+    "number": 1,
+    "head": "0e2e137af79bbfead92d38bd722a6429a5bcc95c",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-4",
+    "number": 1,
+    "head": "379923192e2f5d7f722928093c237070cc99d882",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-2/repo-1",
+    "number": 1,
+    "head": "ef7df2ea0f9e9c3dd1dc798151bb469b4aba4aa0",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-4",
+    "number": 2,
+    "head": "29cadb2e72d8ebf3bf9c6ef1ebfaab95bfe45c17",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-4",
+    "number": 1,
+    "head": "e5bb4b796e18d7b565db5a91088c484216e35f82",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-2/repo-1",
+    "number": 2,
+    "head": "d82dc3568a3f853d61da267fde892686ba341043",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-1",
+    "number": 1,
+    "head": "cd3ae0e39d6505fca3db7d8b380f8b9991817e3a",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-5/repo-1",
+    "number": 1,
+    "head": "993f56c374e97399b767e4731ad7ffb5632c6cc4",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-2",
+    "number": 1,
+    "head": "2c9c6f385f405c6f0aadebda3b398e696100ec67",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-3/repo-1",
+    "number": 1,
+    "head": "fcf6d175eea8e7d0c5e99774e45fae7624d8a95d",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-2",
+    "number": 1,
+    "head": "d0a0f9d60e9e0bf7417a780aecbd6d96b16ed653",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-2",
+    "number": 2,
+    "head": "83c9b7c51d8cdf8bd008586f655ef9645a27b4ef",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-2/repo-4",
+    "number": 1,
+    "head": "da2b1d48b07fb2be39c4b3d6425aaedb4b8ca1a8",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-4",
+    "number": 2,
+    "head": "b5c68587355aa3ad26f86e5bc91ca1b6f92ba619",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-5/repo-1",
+    "number": 2,
+    "head": "a2821adb2d4a6cbd4e16a65d7d08341ff7281a10",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-4",
+    "number": 3,
+    "head": "a0978b86dc44e7f35fa290964878e42fcef100a5",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-5/repo-4",
+    "number": 1,
+    "head": "67e0ec46045c177ea4459ef68092987e1def7f27",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-2/repo-3",
+    "number": 1,
+    "head": "88aafca8433a407b15a13088da8ea5be59e5f802",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-4",
+    "number": 4,
+    "head": "7d6bb6671c81091cfa0a65a72e3c9c21d1124e5e",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-4",
+    "number": 3,
+    "head": "c7f9ede896aef7cbfa0800040da15823dc24c317",
+    "state": "open",
+    "draft": false
+   }
+  ],
+  "reviews": [
+   {
+    "id": 1,
+    "t": 1793791526.8439417,
+    "repo": "load-org-1/repo-3",
+    "number": 1,
+    "sha": "0e2e137af79bbfead92d38bd722a6429a5bcc95c",
+    "comments": 1,
+    "worker": "6f743ac762f4",
+    "stale": false
+   },
+   {
+    "id": 2,
+    "t": 1793791527.151236,
+    "repo": "load-org-4/repo-4",
+    "number": 1,
+    "sha": "379923192e2f5d7f722928093c237070cc99d882",
+    "comments": 1,
+    "worker": "6f743ac762f4",
+    "stale": false
+   },
+   {
+    "id": 3,
+    "t": 1793791531.17913,
+    "repo": "load-org-2/repo-1",
+    "number": 1,
+    "sha": "ef7df2ea0f9e9c3dd1dc798151bb469b4aba4aa0",
+    "comments": 1,
+    "worker": "6f743ac762f4",
+    "stale": false
+   },
+   {
+    "id": 4,
+    "t": 1793791531.625717,
+    "repo": "load-org-1/repo-2",
+    "number": 1,
+    "sha": "d0a0f9d60e9e0bf7417a780aecbd6d96b16ed653",
+    "comments": 1,
+    "worker": "6f743ac762f4",
+    "stale": false
+   }
+  ],
+  "first_seen": {
+   "0e2e137af79bbfead92d38bd722a6429a5bcc95c": {
+    "t": 1793791522.6279094,
+    "worker": "6f743ac762f4"
+   },
+   "379923192e2f5d7f722928093c237070cc99d882": {
+    "t": 1793791523.024594,
+    "worker": "6f743ac762f4"
+   },
+   "ef7df2ea0f9e9c3dd1dc798151bb469b4aba4aa0": {
+    "t": 1793791527.0271568,
+    "worker": "6f743ac762f4"
+   },
+   "d0a0f9d60e9e0bf7417a780aecbd6d96b16ed653": {
+    "t": 1793791527.4906132,
+    "worker": "6f743ac762f4"
+   },
+   "e5bb4b796e18d7b565db5a91088c484216e35f82": {
+    "t": 1793791531.4871004,
+    "worker": "6f743ac762f4"
+   },
+   "29cadb2e72d8ebf3bf9c6ef1ebfaab95bfe45c17": {
+    "t": 1793791531.995437,
+    "worker": "6f743ac762f4"
+   }
+  },
+  "github_requests": {
+   "app": 25,
+   "1": 39,
+   "4": 37,
+   "2": 22
+  },
+  "github_errors": {
+   "503": 82
+  },
+  "groq_calls": {
+   "lane 200": 18,
+   "agent 200": 6
+  }
+ },
+ "memory_peak_mib": {
+  "worker-1": 66.9,
+  "api-1": 66.7,
+  "postgres-1": 45.0,
+  "redis-1": 4.1,
+  "fakes-1": 39.6
+ },
+ "failure": {
+  "test": "G2",
+  "expect": "Likely gap: the 5 tries are used up in ~40\u201375 s, so jobs caught in a 180 s outage end `failed`, and the reconciler doesn't retry failed runs.",
+  "timeline": [
+   {
+    "t": 1793791522.131,
+    "what": "fakes config: {\"groq_latency\": 2.0, \"agent_latency\": 2.0, \"github_fault\": {\"status\": 503, \"rate\": 1.0, \"start\": 1793791532.0759096, \"end\": 1793791712.0759096}}"
+   },
+   {
+    "t": 1793791522.131,
+    "what": "GitHub answers 503 to everything from +10 s, for 180 s"
+   },
+   {
+    "t": 1793791522.551,
+    "what": "sent 20 webhooks: {202: 20}"
+   },
+   {
+    "t": 1793791606.286,
+    "what": "done: every run completed or failed"
+   }
+  ],
+  "run_statuses": {
+   "failed": 16,
+   "completed": 4
+  },
+  "failure_errors": {
+   "gave up after 5 tries: GitHub POST /app/installations/5/access_tokens -> 503: {\"": 3,
+   "gave up after 5 tries: GitHub GET /repos/load-org-2/repo-1/pulls/2 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-4/repo-4/pulls/2 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-1/repo-4/pulls/1 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-2/repo-3/pulls/1 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-4/repo-4/pulls/3 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub POST /app/installations/3/access_tokens -> 503: {\"": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-2/repo-4/pulls/1 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-4/repo-2/pulls/2 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-1/repo-1/pulls/1 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-4/repo-2/pulls/1 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-4/repo-4/pulls/4 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-1/repo-4/pulls/2 -> 503: {\"mes": 1,
+   "gave up after 5 tries: GitHub GET /repos/load-org-1/repo-4/pulls/3 -> 503: {\"mes": 1
+  }
+ }
+}

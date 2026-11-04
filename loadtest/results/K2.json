@@ -1,0 +1,461 @@
+{
+ "name": "K2",
+ "created": "2026-11-04T12:55:42+00:00",
+ "git_sha": "ecce23d",
+ "settled": true,
+ "config": {
+  "scenario": "failure",
+  "test": "K2",
+  "prs": null,
+  "fault_rate": null,
+  "outage_s": null
+ },
+ "environment": {
+  "platform": "Windows-11-10.0.26300-SP0",
+  "cpus": 16,
+  "workers": 1
+ },
+ "clock_offset_s": -0.0006,
+ "webhooks": [
+  {
+   "i": 0,
+   "kind": "opened",
+   "delivery": "a0a95104-0",
+   "repo": "load-org-1/repo-3",
+   "number": 1,
+   "sha": "c30e8c07e946acefdc099511a92fadf3ed269dd4",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.2313583,
+   "latency_ms": 71.22
+  },
+  {
+   "i": 1,
+   "kind": "opened",
+   "delivery": "a0a95104-1",
+   "repo": "load-org-4/repo-4",
+   "number": 1,
+   "sha": "957aea5486f838664256301fd59a0f747c6f7667",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.2169743,
+   "latency_ms": 68.44
+  },
+  {
+   "i": 2,
+   "kind": "opened",
+   "delivery": "a0a95104-2",
+   "repo": "load-org-2/repo-1",
+   "number": 1,
+   "sha": "970f06b1bce950be423102610773414dd31893ac",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.2247567,
+   "latency_ms": 68.9
+  },
+  {
+   "i": 3,
+   "kind": "opened",
+   "delivery": "a0a95104-3",
+   "repo": "load-org-4/repo-4",
+   "number": 2,
+   "sha": "2db4403db23892fb20044730fc464bcea6bb755f",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.235074,
+   "latency_ms": 63.97
+  },
+  {
+   "i": 4,
+   "kind": "opened",
+   "delivery": "a0a95104-4",
+   "repo": "load-org-1/repo-4",
+   "number": 1,
+   "sha": "4498aad4115ef9ba74d447cd627cd04b8ac466d5",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.2430842,
+   "latency_ms": 61.49
+  },
+  {
+   "i": 5,
+   "kind": "opened",
+   "delivery": "a0a95104-5",
+   "repo": "load-org-2/repo-1",
+   "number": 2,
+   "sha": "0fc0be0212ac3828541a7249708942dea817a06b",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.246777,
+   "latency_ms": 60.96
+  },
+  {
+   "i": 6,
+   "kind": "opened",
+   "delivery": "a0a95104-6",
+   "repo": "load-org-1/repo-1",
+   "number": 1,
+   "sha": "74d20f5d7c4cbb607f6aff2f28b7d98aab9f47df",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.2500057,
+   "latency_ms": 57.73
+  },
+  {
+   "i": 7,
+   "kind": "opened",
+   "delivery": "a0a95104-7",
+   "repo": "load-org-5/repo-1",
+   "number": 1,
+   "sha": "fd92221595e8711c7522e367500788423e76ae48",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.2523794,
+   "latency_ms": 58.6
+  },
+  {
+   "i": 8,
+   "kind": "opened",
+   "delivery": "a0a95104-8",
+   "repo": "load-org-4/repo-2",
+   "number": 1,
+   "sha": "50fa5995a8e9c04d7c48828e2070ad9300c53107",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.2614381,
+   "latency_ms": 52.07
+  },
+  {
+   "i": 9,
+   "kind": "opened",
+   "delivery": "a0a95104-9",
+   "repo": "load-org-1/repo-2",
+   "number": 1,
+   "sha": "168f5b2427974f55f4317a66ee5dba97dfd224b3",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793795889.264135,
+   "latency_ms": 49.38
+  }
+ ],
+ "records": {
+  "pulls": [
+   {
+    "repo": "load-org-4/repo-4",
+    "number": 1,
+    "head": "957aea5486f838664256301fd59a0f747c6f7667",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-2/repo-1",
+    "number": 1,
+    "head": "970f06b1bce950be423102610773414dd31893ac",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-3",
+    "number": 1,
+    "head": "c30e8c07e946acefdc099511a92fadf3ed269dd4",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-4",
+    "number": 2,
+    "head": "2db4403db23892fb20044730fc464bcea6bb755f",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-4",
+    "number": 1,
+    "head": "4498aad4115ef9ba74d447cd627cd04b8ac466d5",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-2/repo-1",
+    "number": 2,
+    "head": "0fc0be0212ac3828541a7249708942dea817a06b",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-1",
+    "number": 1,
+    "head": "74d20f5d7c4cbb607f6aff2f28b7d98aab9f47df",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-5/repo-1",
+    "number": 1,
+    "head": "fd92221595e8711c7522e367500788423e76ae48",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-2",
+    "number": 1,
+    "head": "50fa5995a8e9c04d7c48828e2070ad9300c53107",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-2",
+    "number": 1,
+    "head": "168f5b2427974f55f4317a66ee5dba97dfd224b3",
+    "state": "open",
+    "draft": false
+   }
+  ],
+  "reviews": [
+   {
+    "id": 1,
+    "t": 1793795917.1897066,
+    "repo": "load-org-4/repo-4",
+    "number": 2,
+    "sha": "2db4403db23892fb20044730fc464bcea6bb755f",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 2,
+    "t": 1793795917.1961508,
+    "repo": "load-org-1/repo-3",
+    "number": 1,
+    "sha": "c30e8c07e946acefdc099511a92fadf3ed269dd4",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 3,
+    "t": 1793795941.5170758,
+    "repo": "load-org-1/repo-4",
+    "number": 1,
+    "sha": "4498aad4115ef9ba74d447cd627cd04b8ac466d5",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 4,
+    "t": 1793795941.5331578,
+    "repo": "load-org-1/repo-1",
+    "number": 1,
+    "sha": "74d20f5d7c4cbb607f6aff2f28b7d98aab9f47df",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 5,
+    "t": 1793795966.1292155,
+    "repo": "load-org-1/repo-2",
+    "number": 1,
+    "sha": "168f5b2427974f55f4317a66ee5dba97dfd224b3",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 6,
+    "t": 1793795966.1344407,
+    "repo": "load-org-2/repo-1",
+    "number": 2,
+    "sha": "0fc0be0212ac3828541a7249708942dea817a06b",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 7,
+    "t": 1793795990.6724494,
+    "repo": "load-org-5/repo-1",
+    "number": 1,
+    "sha": "fd92221595e8711c7522e367500788423e76ae48",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 8,
+    "t": 1793795990.6788857,
+    "repo": "load-org-4/repo-2",
+    "number": 1,
+    "sha": "50fa5995a8e9c04d7c48828e2070ad9300c53107",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 9,
+    "t": 1793796925.1463885,
+    "repo": "load-org-2/repo-1",
+    "number": 1,
+    "sha": "970f06b1bce950be423102610773414dd31893ac",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   },
+   {
+    "id": 10,
+    "t": 1793796925.1470063,
+    "repo": "load-org-4/repo-4",
+    "number": 1,
+    "sha": "957aea5486f838664256301fd59a0f747c6f7667",
+    "comments": 1,
+    "worker": "84cdc7338b86",
+    "stale": false
+   }
+  ],
+  "first_seen": {
+   "970f06b1bce950be423102610773414dd31893ac": {
+    "t": 1793795889.5872827,
+    "worker": "84cdc7338b86"
+   },
+   "957aea5486f838664256301fd59a0f747c6f7667": {
+    "t": 1793795889.593987,
+    "worker": "84cdc7338b86"
+   },
+   "2db4403db23892fb20044730fc464bcea6bb755f": {
+    "t": 1793795892.9537075,
+    "worker": "84cdc7338b86"
+   },
+   "c30e8c07e946acefdc099511a92fadf3ed269dd4": {
+    "t": 1793795892.9550602,
+    "worker": "84cdc7338b86"
+   },
+   "4498aad4115ef9ba74d447cd627cd04b8ac466d5": {
+    "t": 1793795917.3432913,
+    "worker": "84cdc7338b86"
+   },
+   "74d20f5d7c4cbb607f6aff2f28b7d98aab9f47df": {
+    "t": 1793795917.3604703,
+    "worker": "84cdc7338b86"
+   },
+   "168f5b2427974f55f4317a66ee5dba97dfd224b3": {
+    "t": 1793795941.939737,
+    "worker": "84cdc7338b86"
+   },
+   "0fc0be0212ac3828541a7249708942dea817a06b": {
+    "t": 1793795941.941647,
+    "worker": "84cdc7338b86"
+   },
+   "fd92221595e8711c7522e367500788423e76ae48": {
+    "t": 1793795966.47339,
+    "worker": "84cdc7338b86"
+   },
+   "50fa5995a8e9c04d7c48828e2070ad9300c53107": {
+    "t": 1793795966.4845815,
+    "worker": "84cdc7338b86"
+   }
+  },
+  "github_requests": {
+   "app": 16,
+   "2": 28,
+   "4": 40,
+   "1": 53,
+   "5": 17
+  },
+  "github_errors": {},
+  "groq_calls": {
+   "lane 200": 36,
+   "agent 200": 10
+  }
+ },
+ "memory_peak_mib": {
+  "api-1": 66.7,
+  "postgres-1": 53.5,
+  "redis-1": 8.2,
+  "fakes-1": 39.8,
+  "worker-1": 66.8
+ },
+ "failure": {
+  "test": "K2",
+  "expect": "Likely gap: arq re-queues the cancelled jobs at once, but their runs stay `running`, so the re-runs back off. Recovery only via the reconciler: 900 s + up to 5 min.",
+  "timeline": [
+   {
+    "t": 1793795889.118,
+    "what": "fakes config: {\"groq_latency\": 12.0, \"agent_latency\": 12.0}"
+   },
+   {
+    "t": 1793795889.314,
+    "what": "sent 10 webhooks: {202: 10}"
+   },
+   {
+    "t": 1793795889.917,
+    "what": "docker stop pr-review-load-worker-1 (SIGTERM, 10 s grace) with 2 jobs in flight"
+   },
+   {
+    "t": 1793795890.642,
+    "what": "stopped; the in-flight runs are now {'970f06b1bce950be423102610773414dd31893ac': 'running', '957aea5486f838664256301fd59a0f747c6f7667': 'running'}"
+   },
+   {
+    "t": 1793795891.039,
+    "what": "started pr-review-load-worker-1 again"
+   },
+   {
+    "t": 1793796926.65,
+    "what": "done: every run completed or failed"
+   }
+  ],
+  "run_statuses": {
+   "completed": 10
+  },
+  "failure_errors": {},
+  "affected": [
+   "970f06b1bce950be423102610773414dd31893ac",
+   "957aea5486f838664256301fd59a0f747c6f7667"
+  ],
+  "statuses_after_stop": {
+   "970f06b1bce950be423102610773414dd31893ac": "running",
+   "957aea5486f838664256301fd59a0f747c6f7667": "running"
+  },
+  "recovery_s": 1035.2
+ }
+}

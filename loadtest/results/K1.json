@@ -1,0 +1,449 @@
+{
+ "name": "K1",
+ "created": "2026-11-04T12:21:37+00:00",
+ "git_sha": "ecce23d",
+ "settled": true,
+ "config": {
+  "scenario": "failure",
+  "test": "K1",
+  "prs": null,
+  "fault_rate": null,
+  "outage_s": null
+ },
+ "environment": {
+  "platform": "Windows-11-10.0.26300-SP0",
+  "cpus": 16,
+  "workers": 2
+ },
+ "clock_offset_s": 0.0023,
+ "webhooks": [
+  {
+   "i": 0,
+   "kind": "opened",
+   "delivery": "f4975546-0",
+   "repo": "load-org-1/repo-3",
+   "number": 1,
+   "sha": "70da2e051361d4c1ee95f9c9020f75952ed6bd38",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.2067778,
+   "latency_ms": 65.49
+  },
+  {
+   "i": 1,
+   "kind": "opened",
+   "delivery": "f4975546-1",
+   "repo": "load-org-4/repo-4",
+   "number": 1,
+   "sha": "7193f8f5e92e3168baf3575a6ae7b872783544d8",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.2118542,
+   "latency_ms": 71.26
+  },
+  {
+   "i": 2,
+   "kind": "opened",
+   "delivery": "f4975546-2",
+   "repo": "load-org-2/repo-1",
+   "number": 1,
+   "sha": "20a4afbf7ca168273c561af717d4bee5e28c7b12",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.2166579,
+   "latency_ms": 63.24
+  },
+  {
+   "i": 3,
+   "kind": "opened",
+   "delivery": "f4975546-3",
+   "repo": "load-org-4/repo-4",
+   "number": 2,
+   "sha": "7719c9bd6d9b0d1a0ad392b75b772efd87b4e039",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.2194216,
+   "latency_ms": 60.48
+  },
+  {
+   "i": 4,
+   "kind": "opened",
+   "delivery": "f4975546-4",
+   "repo": "load-org-1/repo-4",
+   "number": 1,
+   "sha": "f7c47f7dd2b6789944291567850d1dbfc9d2dc84",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.2272878,
+   "latency_ms": 55.83
+  },
+  {
+   "i": 5,
+   "kind": "opened",
+   "delivery": "f4975546-5",
+   "repo": "load-org-2/repo-1",
+   "number": 2,
+   "sha": "a42380c663f4cbfc83d7cb10d9bdb2ccf5dba0e1",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.2327712,
+   "latency_ms": 54.17
+  },
+  {
+   "i": 6,
+   "kind": "opened",
+   "delivery": "f4975546-6",
+   "repo": "load-org-1/repo-1",
+   "number": 1,
+   "sha": "39edc52064c706af2589531e6262ebee2d20e2dc",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.2359543,
+   "latency_ms": 54.09
+  },
+  {
+   "i": 7,
+   "kind": "opened",
+   "delivery": "f4975546-7",
+   "repo": "load-org-5/repo-1",
+   "number": 1,
+   "sha": "5b634e662a41ee970f6e9f7c3b65aae3972936db",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.2386875,
+   "latency_ms": 51.36
+  },
+  {
+   "i": 8,
+   "kind": "opened",
+   "delivery": "f4975546-8",
+   "repo": "load-org-4/repo-2",
+   "number": 1,
+   "sha": "803f06361809ecceb70455b9ba4166b94807b467",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.24446,
+   "latency_ms": 48.94
+  },
+  {
+   "i": 9,
+   "kind": "opened",
+   "delivery": "f4975546-9",
+   "repo": "load-org-1/repo-2",
+   "number": 1,
+   "sha": "7c8ec584bd82afae6fee280840fdebb57eb67227",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793793946.251917,
+   "latency_ms": 41.48
+  }
+ ],
+ "records": {
+  "pulls": [
+   {
+    "repo": "load-org-1/repo-3",
+    "number": 1,
+    "head": "70da2e051361d4c1ee95f9c9020f75952ed6bd38",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-4",
+    "number": 1,
+    "head": "7193f8f5e92e3168baf3575a6ae7b872783544d8",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-2/repo-1",
+    "number": 1,
+    "head": "20a4afbf7ca168273c561af717d4bee5e28c7b12",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-4",
+    "number": 2,
+    "head": "7719c9bd6d9b0d1a0ad392b75b772efd87b4e039",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-4",
+    "number": 1,
+    "head": "f7c47f7dd2b6789944291567850d1dbfc9d2dc84",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-2/repo-1",
+    "number": 2,
+    "head": "a42380c663f4cbfc83d7cb10d9bdb2ccf5dba0e1",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-1",
+    "number": 1,
+    "head": "39edc52064c706af2589531e6262ebee2d20e2dc",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-5/repo-1",
+    "number": 1,
+    "head": "5b634e662a41ee970f6e9f7c3b65aae3972936db",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-4/repo-2",
+    "number": 1,
+    "head": "803f06361809ecceb70455b9ba4166b94807b467",
+    "state": "open",
+    "draft": false
+   },
+   {
+    "repo": "load-org-1/repo-2",
+    "number": 1,
+    "head": "7c8ec584bd82afae6fee280840fdebb57eb67227",
+    "state": "open",
+    "draft": false
+   }
+  ],
+  "reviews": [
+   {
+    "id": 1,
+    "t": 1793793971.1124995,
+    "repo": "load-org-1/repo-4",
+    "number": 1,
+    "sha": "f7c47f7dd2b6789944291567850d1dbfc9d2dc84",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 2,
+    "t": 1793793971.1176043,
+    "repo": "load-org-4/repo-4",
+    "number": 2,
+    "sha": "7719c9bd6d9b0d1a0ad392b75b772efd87b4e039",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 3,
+    "t": 1793793995.4946523,
+    "repo": "load-org-4/repo-4",
+    "number": 1,
+    "sha": "7193f8f5e92e3168baf3575a6ae7b872783544d8",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 4,
+    "t": 1793793995.4995172,
+    "repo": "load-org-2/repo-1",
+    "number": 2,
+    "sha": "a42380c663f4cbfc83d7cb10d9bdb2ccf5dba0e1",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 5,
+    "t": 1793794020.0197537,
+    "repo": "load-org-1/repo-1",
+    "number": 1,
+    "sha": "39edc52064c706af2589531e6262ebee2d20e2dc",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 6,
+    "t": 1793794020.0275812,
+    "repo": "load-org-5/repo-1",
+    "number": 1,
+    "sha": "5b634e662a41ee970f6e9f7c3b65aae3972936db",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 7,
+    "t": 1793794044.536601,
+    "repo": "load-org-1/repo-2",
+    "number": 1,
+    "sha": "7c8ec584bd82afae6fee280840fdebb57eb67227",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 8,
+    "t": 1793794044.5410435,
+    "repo": "load-org-4/repo-2",
+    "number": 1,
+    "sha": "803f06361809ecceb70455b9ba4166b94807b467",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 9,
+    "t": 1793794880.7259035,
+    "repo": "load-org-2/repo-1",
+    "number": 1,
+    "sha": "20a4afbf7ca168273c561af717d4bee5e28c7b12",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   },
+   {
+    "id": 10,
+    "t": 1793794880.730495,
+    "repo": "load-org-1/repo-3",
+    "number": 1,
+    "sha": "70da2e051361d4c1ee95f9c9020f75952ed6bd38",
+    "comments": 1,
+    "worker": "c4198ec10b3d",
+    "stale": false
+   }
+  ],
+  "first_seen": {
+   "20a4afbf7ca168273c561af717d4bee5e28c7b12": {
+    "t": 1793793946.6262264,
+    "worker": "0b744119a735"
+   },
+   "70da2e051361d4c1ee95f9c9020f75952ed6bd38": {
+    "t": 1793793946.6269288,
+    "worker": "0b744119a735"
+   },
+   "f7c47f7dd2b6789944291567850d1dbfc9d2dc84": {
+    "t": 1793793946.8927562,
+    "worker": "c4198ec10b3d"
+   },
+   "7719c9bd6d9b0d1a0ad392b75b772efd87b4e039": {
+    "t": 1793793946.8937333,
+    "worker": "c4198ec10b3d"
+   },
+   "7193f8f5e92e3168baf3575a6ae7b872783544d8": {
+    "t": 1793793971.2912452,
+    "worker": "c4198ec10b3d"
+   },
+   "a42380c663f4cbfc83d7cb10d9bdb2ccf5dba0e1": {
+    "t": 1793793971.2962701,
+    "worker": "c4198ec10b3d"
+   },
+   "39edc52064c706af2589531e6262ebee2d20e2dc": {
+    "t": 1793793995.8436916,
+    "worker": "c4198ec10b3d"
+   },
+   "5b634e662a41ee970f6e9f7c3b65aae3972936db": {
+    "t": 1793793995.8455324,
+    "worker": "c4198ec10b3d"
+   },
+   "7c8ec584bd82afae6fee280840fdebb57eb67227": {
+    "t": 1793794020.3584952,
+    "worker": "c4198ec10b3d"
+   },
+   "803f06361809ecceb70455b9ba4166b94807b467": {
+    "t": 1793794020.3640883,
+    "worker": "c4198ec10b3d"
+   }
+  },
+  "github_requests": {
+   "app": 13,
+   "2": 24,
+   "1": 47,
+   "4": 30,
+   "5": 13
+  },
+  "github_errors": {},
+  "groq_calls": {
+   "lane 200": 36,
+   "agent 200": 10
+  }
+ },
+ "memory_peak_mib": {
+  "api-1": 66.7,
+  "worker-1": 66.6,
+  "postgres-1": 53.7,
+  "redis-1": 8.0,
+  "fakes-1": 39.8
+ },
+ "failure": {
+  "test": "K1",
+  "expect": "Queued jobs go to the other worker at once. The 2 killed jobs come back when arq's in-progress key expires (~910 s); claim_run takes over the stale run. 1 review each.",
+  "timeline": [
+   {
+    "t": 1793793946.115,
+    "what": "fakes config: {\"groq_latency\": 12.0, \"agent_latency\": 12.0}"
+   },
+   {
+    "t": 1793793946.293,
+    "what": "sent 10 webhooks: {202: 10}"
+   },
+   {
+    "t": 1793793947.253,
+    "what": "SIGKILL pr-review-load-worker-2 with 2 jobs in flight; it stays down"
+   },
+   {
+    "t": 1793794882.545,
+    "what": "done: every run completed or failed"
+   }
+  ],
+  "run_statuses": {
+   "completed": 10
+  },
+  "failure_errors": {},
+  "affected": [
+   "20a4afbf7ca168273c561af717d4bee5e28c7b12",
+   "70da2e051361d4c1ee95f9c9020f75952ed6bd38"
+  ],
+  "recovery_s": 933.5
+ }
+}

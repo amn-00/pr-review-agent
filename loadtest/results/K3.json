@@ -1,0 +1,125 @@
+{
+ "name": "K3",
+ "created": "2026-11-04T12:05:25+00:00",
+ "git_sha": "ecce23d",
+ "settled": true,
+ "config": {
+  "scenario": "failure",
+  "test": "K3",
+  "prs": null,
+  "fault_rate": null,
+  "outage_s": null
+ },
+ "environment": {
+  "platform": "Windows-11-10.0.26300-SP0",
+  "cpus": 16,
+  "workers": 1
+ },
+ "clock_offset_s": 0.0008,
+ "webhooks": [
+  {
+   "i": 0,
+   "kind": "opened",
+   "delivery": "50def933-0",
+   "repo": "load-org-1/repo-3",
+   "number": 1,
+   "sha": "318f9dc20cfb0711400f027c9f4c0926d1d19537",
+   "expected": [
+    202
+   ],
+   "status": 202,
+   "answer": "queued",
+   "error": null,
+   "t": 1793792998.9850643,
+   "latency_ms": 50.58
+  }
+ ],
+ "records": {
+  "pulls": [
+   {
+    "repo": "load-org-1/repo-3",
+    "number": 1,
+    "head": "318f9dc20cfb0711400f027c9f4c0926d1d19537",
+    "state": "open",
+    "draft": false
+   }
+  ],
+  "reviews": [
+   {
+    "id": 1,
+    "t": 1793792999.4290764,
+    "repo": "load-org-1/repo-3",
+    "number": 1,
+    "sha": "318f9dc20cfb0711400f027c9f4c0926d1d19537",
+    "comments": 1,
+    "worker": "40bd03207611",
+    "stale": false
+   }
+  ],
+  "first_seen": {
+   "318f9dc20cfb0711400f027c9f4c0926d1d19537": {
+    "t": 1793792999.262319,
+    "worker": "40bd03207611"
+   }
+  },
+  "github_requests": {
+   "app": 10,
+   "1": 19
+  },
+  "github_errors": {},
+  "groq_calls": {
+   "lane 200": 3,
+   "agent 200": 1
+  }
+ },
+ "memory_peak_mib": {
+  "worker-1": 65.5,
+  "api-1": 66.3,
+  "postgres-1": 43.3,
+  "redis-1": 8.0,
+  "fakes-1": 39.6
+ },
+ "failure": {
+  "test": "K3",
+  "expect": "The re-run (~910 s later) finds the run marker and posts nothing: 1 review, and the run completed.",
+  "timeline": [
+   {
+    "t": 1793792998.937,
+    "what": "fakes config: {\"review_hold_seconds\": 30}"
+   },
+   {
+    "t": 1793792999.036,
+    "what": "sent 1 webhooks: {202: 1}"
+   },
+   {
+    "t": 1793793001.063,
+    "what": "done: the review is stored and its answer held"
+   },
+   {
+    "t": 1793793001.455,
+    "what": "SIGKILL pr-review-load-worker-1 after GitHub stored the review, before it answered"
+   },
+   {
+    "t": 1793793001.501,
+    "what": "fakes config: {}"
+   },
+   {
+    "t": 1793793001.852,
+    "what": "started pr-review-load-worker-1 again"
+   },
+   {
+    "t": 1793793910.165,
+    "what": "done: the run completed"
+   }
+  ],
+  "run_statuses": {
+   "completed": 1
+  },
+  "failure_errors": {},
+  "affected": [
+   "318f9dc20cfb0711400f027c9f4c0926d1d19537"
+  ],
+  "reviews_of_affected": 1,
+  "recovery_s": 907.9
+ }
+}

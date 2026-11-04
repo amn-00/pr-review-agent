@@ -25,8 +25,9 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **Fix:** a hidden `<!-- pr-review-agent run:{id} -->` marker in every review. Before any LLM
   spend, the job lists the PR's reviews and stops if its marker is already there.
 - **Result:** unit test for "posted, then died". Phase 6 G3, where GitHub stores the review and
-  then answers 502: 10 PRs, 10 reviews, 0 duplicates, 0 repeated agent calls. (K3, a real kill
-  during the post: in this batch.)
+  then answers 502: 10 PRs, 10 reviews, 0 duplicates, 0 repeated agent calls. Phase 6 K3, a real
+  SIGKILL after GitHub stored the review and before it answered: the re-run 908 s later found the
+  marker, posted nothing, and made no LLM calls. 1 review.
 
 ### arq's kept results blocked re-reviews for an hour
 - **Problem:** arq keeps a finished job's result for 1 hour by default and refuses a job with
@@ -44,8 +45,11 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **Fix:** claiming a run is one atomic `UPDATE ... RETURNING`. It succeeds for `queued`, `failed`
   and `skipped` runs, and takes over a `running` run only once it's older than the job timeout
   (900 s). A job sets its run back to `queued` before retrying.
-- **Result:** a test races two claims and only one wins. (Real SIGKILL recovery time: K1/K1b, in
-  this batch.)
+- **Result:** a test races two claims and only one wins. Phase 6 K1, a real SIGKILL of a worker
+  holding 2 jobs: the other worker took the queue at once, and the 2 killed jobs were reviewed
+  933 s later (arq's in-progress key expiry), once each. K1b, restarting the worker at once: the
+  same 933 s. This is the 15-minute recovery accepted in Phase 2a. A graceful stop is a different
+  story: see the SIGTERM entry under Phase 6.
 
 ## Security
 
@@ -291,6 +295,19 @@ we changed, and what the numbers were before and after. Details and reasoning ar
   event, so a 20-at-once burst from one source is a stress shape, not the normal case.
 - **Result:** paced at 10/s (L4), p95 is 56 ms. In bursts p95 stays 259–396 ms, explained above.
 
+### A graceful restart delayed in-flight reviews by 17 minutes
+- **Problem:** on SIGTERM (a deploy or restart), arq cancels running jobs and queues them to run
+  again at once. `review_pr` catches only `Exception`, so the cancel leaves the run `running`. The
+  immediate re-run sees a fresh `running` run, decides another worker has it, and exits. The
+  review then waits until the run is stale (900 s) and the reconciler's next 5-minute cycle.
+- **How we found it:** predicted from reading arq's code while planning Phase 6, then confirmed
+  by K2 (`docker stop` with 2 jobs in flight). Both runs were still `running` after the stop. The
+  re-runs logged "in progress elsewhere, nothing to do" 2 s later. The reconciler re-enqueued
+  them at +17 min, and they completed 1,035 s after the stop.
+- **Fix:** pending (agreed). On cancellation, `review_pr` puts the run back to `queued` before
+  re-raising, so arq's immediate re-run claims it.
+- **Result:** pending; K2 runs again after the fix.
+
 ### A one-minute GitHub outage lost 45% of reviews
 - **Problem:** any GitHub 5xx restarts the whole job, and the 5 tries with backoff (5, 10, 20,
   40 s, jittered) are used up within about a minute. The run ends `failed`, and the reconciler
@@ -310,5 +327,6 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **How we found it:** Phase 6 Q2, every Groq call answered 429 for 120 s: 2 of 10 reviews were
   posted without their bug. Q1 (30% random 429s): 4 of 90 lane calls failed, and 2 of 30 reviews
   lost their bug.
-- **Fix:** pending (to plan).
+- **Fix:** pending, planned in `docs/plans/phase-6c.md`. 429s stop using up the 3 attempts and
+  wait until the deadline, and a run where no lane produced anything retries instead of posting.
 - **Result:** pending; Q1 and Q2 run again after the fix.

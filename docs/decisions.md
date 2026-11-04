@@ -1206,3 +1206,52 @@ cases.
 candidates, so they were moved into agent-v3, and agent-v2's two traps run again with v2. Every
 eval now names its prompt explicitly. `agent_prompt_override` is set only when the version
 differs from prod's, so naming v3 explicitly doesn't add the "older prompt" warning.
+
+## Phase 6 — Measured results
+
+20 runs on 2026-11-04, each on a fresh load-test stack: fake Groq and GitHub, one machine, one
+sample each. The JSON and `report.md` are in `loadtest/results/`.
+
+**No duplicate reviews anywhere.** 1,313 reviews from the 1,850 mixed load-test webhooks, plus
+every failure test: 0 duplicates and 0 stale posts. Every webhook got its expected status, apart
+from 503s while Redis was down.
+
+**Throughput is one worker's two job slots.** About 76 reviews/min with 1 worker, 151 with 2 (L5),
+and the same ~1.2 s of work per review either way. So neither Postgres nor the fakes was the
+bottleneck. With real Groq the quota sets throughput (Q3: 10 PRs took about 300 s with 1 or 2
+workers). Peak memory: about 70 MB for the worker and 67 MB for the API.
+
+**Enqueue latency: 56 ms p95 paced, 259–396 ms in bursts. Accepted.** The burst figure is
+queueing: 20 requests in flight ÷ ~78 webhooks/s ≈ 256 ms. GitHub sends one delivery per event.
+
+**Deferred questions answered without code changes:**
+- **Groq limiter in Redis: not needed.** Q3, 1 worker: 8 429s, all retried; they come from
+  concurrent calls inside one process. 2 workers: 20 429s, one lane call lost, and no faster. Prod
+  runs one process.
+- **GitHub rate-limit state in Redis: not needed.** G4, one installation at 200 requests per
+  300 s: 0 rate-limit 403s, 0 failures. Jobs deferred until the window reset.
+- **A verdict cache: not needed.** Retries repeated agent work: 1.23 agent calls per review at 10%
+  GitHub errors (G1), 1.05 under the rate limit (G4). The repeats are rare and cheap next to a
+  cache keyed by run and finding.
+- **`max_jobs = 2`: kept.** Memory is low, and with real Groq more slots would only wait on the
+  quota.
+
+**Recovery that works as designed:**
+- **SIGKILL (K1, K1b):** the other worker takes the queue at once, and the killed jobs return
+  after 933 s (arq's in-progress key expiry), with or without a restart. That's the 15 minutes
+  accepted in Phase 2a.
+- **Kill after GitHub stored the review (K3):** the re-run 908 s later found the marker: 1 review,
+  no LLM calls.
+- **Redis restart (R1):** 74 queued PRs lost with Redis, plus 1 webhook answered 503. All were
+  reviewed 218 s after Redis came back, through the reconciler's next cycle. The worker didn't
+  exit. R2 replayed all 80 deliveries: 61 accepted, 19 duplicates, 0 new reviews.
+- **GitHub 502s at random (G1):** 0 of 30 runs failed at 2% or at 10% errors. **Stored then 502
+  (G3):** 10 reviews for 10 PRs.
+
+**Gaps confirmed (fixes planned in `docs/plans/phase-6c.md`):**
+- **SIGTERM (K2):** in-flight runs stayed `running`, the immediate re-runs backed off, and the
+  reviews came 1,035 s later through the reconciler.
+- **GitHub outage (G2):** 9 of 20 runs `failed` for good after a 60 s outage, and 16 of 20 after
+  180 s. Every job had given up by +84 s.
+- **Groq 429 storm (Q2):** lane calls gave up after 3 attempts (~60 s), with 240 s of lane
+  deadline left. 2 of 10 reviews were posted without their bug. Q1, 30% random 429s: 2 of 30.
