@@ -302,9 +302,16 @@ we changed, and what the numbers were before and after. Details and reasoning ar
   limit. Installation B's one PR took 1.8 s on an empty queue, and 67 s when it arrived 10 s into
   installation A's 100-PR burst. It waited behind 88 reviews; the rule's threshold is `max_jobs`
   (2).
-- **Fix:** pending, to decide: a Redis semaphore per installation, or a per-installation share of
-  the daily budget. With real Groq the shared daily token budget runs out first.
-- **Result:** pending.
+- **Fix:** not built: a known limit. The App runs on one installation, and with real Groq the
+  shared daily token budget is the real fairness problem. A's burst uses up the day's budget
+  (about 5 agent-checked PRs), and B waits for midnight whatever the queue order. At
+  multi-tenant scale we'd add, in this order:
+  1. **A per-installation share of the daily budget:** split across installations with work that
+     day; unused shares released late in the day.
+  2. **A Redis semaphore per installation:** 1 job each, a TTL so a dead worker's slot frees
+     itself. A job over the cap defers itself so others go first.
+- **Result:** unchanged by decision: B waits behind A's queued reviews (N1: 88 reviews, 67 s).
+  Recorded in `docs/decisions.md`.
 
 ### A graceful restart delayed in-flight reviews by 17 minutes
 - **Problem:** on SIGTERM (a deploy or restart), arq cancels running jobs and queues them to run

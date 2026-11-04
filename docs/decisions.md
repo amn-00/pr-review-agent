@@ -59,7 +59,8 @@ set is sized to fit the daily free quota.
 Groq's free tier costs $0, so we compute cost from list prices in config. That keeps per-run cost
 meaningful for comparing pipeline-only vs pipeline + agent.
 
-**The per-installation concurrency limit is a Redis semaphore.**
+**The per-installation concurrency limit is a Redis semaphore.** *(Not built: decided in Phase
+6c after N1. It's a known limit; see "The per-installation limit is not built".)*
 arq has no per-key concurrency control, so a small Redis counter with a TTL limits jobs per
 installation.
 
@@ -1306,3 +1307,26 @@ than `max_jobs` reviews), a per-installation limit is worth building. GitHub rat
 a reason for one: G4 showed the client defers cleanly. With real Groq, the shared daily budget
 starves B before queue order does. The choice is the user's: a Redis semaphore (the spec's plan),
 a per-installation share of the daily budget, or both.
+
+**The per-installation limit is not built (decided 2026-11-04). A known limit.**
+SPEC 5.3 lists a per-installation concurrency limit. N1 showed the problem it would solve:
+installation B's one PR waited behind 88 of installation A's reviews (67 s, against 1.8 s on an
+empty queue). It isn't built, for two reasons:
+- **One installation:** the App runs on one installation, so there is no other tenant to protect.
+- **It wouldn't fix the real problem:** with real Groq, fairness fails on the shared daily token
+  budget first. A's burst uses up the day's budget (about 5 agent-checked PRs), and B's review is
+  deferred to midnight whatever order the queue is in.
+
+What we'd build at multi-tenant scale, in this order:
+1. **A per-installation share of the daily budget.** `daily_token_usage` gains `installation_id`
+   in its key, and each call is checked against that installation's share as well as the global
+   budget. The share is the day's budget split evenly across installations with a PR that day.
+   Late in the UTC day, unused shares are released to whoever still has work. This is the part
+   that makes it fair under Groq's quota.
+2. **A concurrency semaphore per installation in Redis.** `INCR` on a key per installation, with
+   a TTL of the job timeout so a dead worker's slot frees itself, and `DECR` when the job ends. A
+   job over the cap (1 per installation) raises `Retry(defer=...)` with a short jittered delay,
+   so other installations' jobs go first. This fixes the queue order that N1 measured.
+
+The budget share comes first because it's the limit that binds with real Groq. The semaphore
+alone would only reorder a queue that's waiting on the same exhausted budget.
