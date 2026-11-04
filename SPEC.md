@@ -77,7 +77,7 @@ flowchart TD
 - One job per (repo, PR, head SHA). If a newer commit arrives, cancel or skip the older job.
 - Retries with exponential backoff for transient errors (5xx, timeouts, 429). Non-retryable errors are recorded and stop.
 - If a worker dies mid-job, the job must be picked up again without posting a duplicate review.
-- Per-installation concurrency limit.
+- Per-installation concurrency limit. *(Deferred: see "The per-installation limit is not built" in `docs/decisions.md`.)*
 
 ### 5.4 Chunking
 - Chunk by diff hunk, with N lines of surrounding context from the full file.
