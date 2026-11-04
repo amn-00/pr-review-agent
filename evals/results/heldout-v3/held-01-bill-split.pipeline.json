@@ -1,0 +1,113 @@
+{
+ "case": "held-01-bill-split",
+ "mode": "pipeline",
+ "agent_prompt_version": null,
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "f620bb0e297540929dd59795c9d2787f901142f5",
+ "started_at": "2026-11-04T10:28:21.198365+00:00",
+ "wall_seconds": 5.2,
+ "run": {
+  "id": 88,
+  "head_sha": "f620bb0e297540929dd59795c9d2787f901142f5",
+  "status": "completed",
+  "started_at": "2026-11-04 10:28:21.244985+00:00",
+  "finished_at": "2026-11-04 10:28:26.389352+00:00",
+  "tokens_in": 3469,
+  "tokens_out": 539,
+  "cost_usd": "0.000686700",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1155,
+   "tokens_out": 66,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.73
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1150,
+   "tokens_out": 236,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.05
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1164,
+   "tokens_out": 237,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.22
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 239,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "billing/split.py",
+   "line_start": 9,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "high",
+   "title": "Share distribution may not sum to total amount",
+   "explanation": "The function uses integer division to compute each person's share, which discards any remainder cents. The returned list of shares can sum to less than the original total, violating the documented guarantee that shares must add up to the total.",
+   "suggested_fix": "Compute the base share with integer division, then distribute the remainder cents one by one (e.g., add 1 cent to the first `remainder` shares).",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 240,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "billing/split.py",
+   "line_start": 4,
+   "line_end": 10,
+   "category": "readability",
+   "severity": "high",
+   "title": "Function does not guarantee shares add up to total",
+   "explanation": "The docstring states that the returned shares must sum to the total amount, but the implementation simply repeats the floor division result, ignoring any remainder. This can mislead readers into believing the function fulfills its contract.",
+   "suggested_fix": "Distribute the remainder among the first few people: \n```\nremainder = cents % people\nshares = [share + (i < remainder) for i in range(people)]\nreturn shares\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 239,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:88 -->\n### Automated review of `f620bb0`\nFound 1 issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0007 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "billing/split.py",
+    "line": 10,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Share distribution may not sum to total amount\n\nThe function uses integer division to compute each person's share, which discards any remainder cents. The returned list of shares can sum to less than the original total, violating the documented guarantee that shares must add up to the total.\n\n**Suggested fix:** Compute the base share with integer division, then distribute the remainder cents one by one (e.g., add 1 cent to the first `remainder` shares).",
+    "start_line": 9,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

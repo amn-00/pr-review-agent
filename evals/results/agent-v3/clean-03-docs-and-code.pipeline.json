@@ -1,0 +1,162 @@
+{
+ "case": "clean-03-docs-and-code",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "3210e9a189c23824a964cfe9a796ad51a17c480a",
+ "started_at": "2026-11-01T18:33:43.899779+00:00",
+ "wall_seconds": 5.2,
+ "run": {
+  "id": 26,
+  "head_sha": "3210e9a189c23824a964cfe9a796ad51a17c480a",
+  "status": "completed",
+  "started_at": "2026-11-01 18:33:43.937695+00:00",
+  "finished_at": "2026-11-01 18:33:49.049339+00:00",
+  "tokens_in": 7518,
+  "tokens_out": 783,
+  "cost_usd": "0.001248150",
+  "llm_calls": 6,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1348,
+   "tokens_out": 59,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.5
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1339,
+   "tokens_out": 404,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.7
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1349,
+   "tokens_out": 65,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.78
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1169,
+   "tokens_out": 50,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.58
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1155,
+   "tokens_out": 137,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.31
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1158,
+   "tokens_out": 68,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.64
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 72,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 5,
+   "line_end": 5,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Docstring formatting inconsistency",
+   "explanation": "The class docstring is indented with a space before the opening quotes, which is unconventional and may confuse tools that process docstrings.",
+   "suggested_fix": "Align the docstring with the method definition, removing the leading space: `    \"\"\"A dict whose entries expire ...\"\"\"`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 73,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Inconsistent indentation for class methods",
+   "explanation": "The class methods are indented with two spaces instead of the conventional four, deviating from PEP\u202f8 style and making the code harder to read and maintain.",
+   "suggested_fix": "Use four spaces for each method definition, e.g. replace `  def __init__` with `    def __init__`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 74,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "weather/cache.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "readability",
+   "severity": "low",
+   "title": "Missing return type annotation for get method",
+   "explanation": "The `get` method lacks a return type annotation, making it unclear whether it returns `None` or a value type.",
+   "suggested_fix": "Add a return type hint, e.g. `def get(self, key: str) -> Any:` or more specific if applicable.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:26 -->\n### Automated review of `3210e9a`\nFound 2 issue(s): 2 medium.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0012 at list prices (free tier); 0 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "weather/cache.py",
+    "line": 5,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 idiom \u00b7 Docstring formatting inconsistency\n\nThe class docstring is indented with a space before the opening quotes, which is unconventional and may confuse tools that process docstrings.\n\n**Suggested fix:** Align the docstring with the method definition, removing the leading space: `    \"\"\"A dict whose entries expire ...\"\"\"`."
+   },
+   {
+    "path": "weather/cache.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 idiom \u00b7 Inconsistent indentation for class methods\n\nThe class methods are indented with two spaces instead of the conventional four, deviating from PEP\u202f8 style and making the code harder to read and maintain.\n\n**Suggested fix:** Use four spaces for each method definition, e.g. replace `  def __init__` with `    def __init__`."
+   }
+  ]
+ }
+}

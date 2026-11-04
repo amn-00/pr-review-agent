@@ -1,0 +1,35 @@
+{
+ "case": "held-04-retry-jitter",
+ "mode": "agent",
+ "agent_prompt_version": "v1",
+ "agent_prompt_override": true,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "7eede94d2a0771fc1a5f99d4764a0073303ddc68",
+ "started_at": "2026-11-04T10:34:39.416265+00:00",
+ "wall_seconds": 4.5,
+ "run": {
+  "id": 93,
+  "head_sha": "7eede94d2a0771fc1a5f99d4764a0073303ddc68",
+  "status": "completed",
+  "started_at": "2026-11-04 10:34:39.455180+00:00",
+  "finished_at": "2026-11-04 10:34:43.955740+00:00",
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "cost_usd": "0E-9",
+  "llm_calls": 0,
+  "cached_calls": 3,
+  "tokens_saved": 4073,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [],
+ "review": {
+  "body": "<!-- pr-review-agent run:93 -->\n### Automated review of `7eede94`\nNo issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0000 at list prices (free tier); 3 of 3 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

@@ -1,0 +1,63 @@
+{
+ "case": "held-04-retry-jitter",
+ "mode": "pipeline",
+ "agent_prompt_version": null,
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "7eede94d2a0771fc1a5f99d4764a0073303ddc68",
+ "started_at": "2026-11-04T10:32:02.741691+00:00",
+ "wall_seconds": 6.7,
+ "run": {
+  "id": 91,
+  "head_sha": "7eede94d2a0771fc1a5f99d4764a0073303ddc68",
+  "status": "completed",
+  "started_at": "2026-11-04 10:32:02.786663+00:00",
+  "finished_at": "2026-11-04 10:32:09.393584+00:00",
+  "tokens_in": 3784,
+  "tokens_out": 289,
+  "cost_usd": "0.000623025",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1260,
+   "tokens_out": 85,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.2
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1257,
+   "tokens_out": 79,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 2.55
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1267,
+   "tokens_out": 125,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 2.61
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [],
+ "review": {
+  "body": "<!-- pr-review-agent run:91 -->\n### Automated review of `7eede94`\nNo issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0006 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

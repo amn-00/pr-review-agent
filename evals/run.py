@@ -301,8 +301,8 @@ async def run_one(
         "case": case.id,
         "mode": mode,
         "agent_prompt_version": prompt_used if mode == "agent" else None,
-        # Set by --agent-prompt: an older prompt ran with today's agent code.
-        "agent_prompt_override": mode == "agent" and agent_prompt is not None,
+        # --agent-prompt picked a version other than prod's: it ran with today's agent code.
+        "agent_prompt_override": mode == "agent" and prompt_used != prompt_was,
         "status": "incomplete" if problems else "complete",
         "problems": problems,
         "notes": notes,

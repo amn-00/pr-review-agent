@@ -1,0 +1,314 @@
+{
+ "case": "bug-03-mutable-default",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "dceda750872b6c5bd98f09fe0b225b6e82ba4f52",
+ "started_at": "2026-11-04T10:05:30.287702+00:00",
+ "wall_seconds": 53.2,
+ "run": {
+  "id": 76,
+  "head_sha": "dceda750872b6c5bd98f09fe0b225b6e82ba4f52",
+  "status": "completed",
+  "started_at": "2026-11-04 10:05:30.341407+00:00",
+  "finished_at": "2026-11-04 10:06:23.435601+00:00",
+  "tokens_in": 14243,
+  "tokens_out": 806,
+  "cost_usd": "0.002620050",
+  "llm_calls": 7,
+  "cached_calls": 6,
+  "tokens_saved": 7892,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1965,
+   "tokens_out": 63,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.66
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1858,
+   "tokens_out": 63,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.12
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1948,
+   "tokens_out": 50,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.36
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2103,
+   "tokens_out": 46,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.83
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2023,
+   "tokens_out": 78,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.41
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2254,
+   "tokens_out": 278,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.05
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2092,
+   "tokens_out": 228,
+   "waited_s": 41.92,
+   "error": null,
+   "latency_s": 43.02
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "tags/registry.py",
+   "tool": "ruff",
+   "line": 7,
+   "code": "B006",
+   "message": "Do not use mutable data structures for argument defaults",
+   "lane": "correctness"
+  }
+ ],
+ "findings": [
+  {
+   "id": 206,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tags/registry.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "high",
+   "title": "Mutable default argument for 'seen' leads to shared state",
+   "explanation": "The function uses a set as a default value, which is created only once at definition time. Subsequent calls will share the same set, causing tags from previous calls to be considered already seen, resulting in incorrect deduplication.",
+   "suggested_fix": "Change the default to None and create a new set inside the function, e.g.,\n```python\ndef normalize_tags(raw: list[str], seen: set[str] | None = None) -> list[str]:\n    if seen is None:\n        seen = set()\n    ...\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The function normalize_tags uses a mutable default argument (a set) which is shared across calls. import_feed invokes it for each article without overriding the argument, leading to tags from earlier articles being considered already seen and omitted, confirming the bug.",
+   "evidence": [
+    {
+     "why": "Defines mutable default set that persists across calls",
+     "line": 7,
+     "path": "tags/registry.py",
+     "quote": "def normalize_tags(raw: list[str], seen: set[str] = set()) -> list[str]:"
+    },
+    {
+     "why": "Calls normalize_tags without providing 'seen', so default shared set is used for each article",
+     "line": 5,
+     "path": "tags/import_feed.py",
+     "quote": "return [Article(entry[\"title\"], normalize_tags(entry.get(\"tags\", []))) for entry in feed]"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "normalize_tags"
+     },
+     "result_chars": 313,
+     "result_summary": "Lines containing 'normalize_tags':\ntags/import_feed.py:1: from tags.registry import Article, normalize_tags\ntags/import_feed.py:5: return [Article(entry[\"title\"], normalize_tags(entry.get(\"tags\", []))) for entry in feed]\ntags/registry.py:7: def normalize_tags(raw: list[str], seen: set[str] = set()) ",
+     "tokens_in": 1965,
+     "tokens_out": 63,
+     "latency_ms": 672
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tags/import_feed.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 273,
+     "result_summary": "tags/import_feed.py, lines 1-5 of 5:\n    1  from tags.registry import Article, normalize_tags\n    2  \n    3  \n    4  def import_articles(feed: list[dict]) -> list[Article]:\n    5      return [Article(entry[\"title\"], normalize_tags(entry.get(\"tags\", []))) for entry in feed]",
+     "tokens_in": 2103,
+     "tokens_out": 46,
+     "latency_ms": 828
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function normalize_tags uses a mutable default argument (a set) which is shared across calls. import_feed invokes it for each article without overriding the argument, leading to tags from earlier articles being considered already seen and omitted, confirming the bug.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Defines mutable default set that persists across calls",
+        "line": 7,
+        "path": "tags/registry.py",
+        "quote": "def normalize_tags(raw: list[str], seen: set[str] = set()) -> list[str]:"
+       },
+       {
+        "why": "Calls normalize_tags without providing 'seen', so default shared set is used for each article",
+        "line": 5,
+        "path": "tags/import_feed.py",
+        "quote": "return [Article(entry[\"title\"], normalize_tags(entry.get(\"tags\", []))) for entry in feed]"
+       }
+      ]
+     },
+     "result_chars": 282,
+     "result_summary": "confirmed: The function normalize_tags uses a mutable default argument (a set) which is shared across calls. import_feed invokes it for each article without overriding the argument, leading to tags from earlier articles being considered already seen and omitted, confirming the bug.",
+     "tokens_in": 2254,
+     "tokens_out": 278,
+     "latency_ms": 1047
+    }
+   ]
+  },
+  {
+   "id": 207,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tags/import_feed.py",
+   "line_start": 5,
+   "line_end": 5,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential KeyError when entry lacks 'title'",
+   "explanation": "The list comprehension accesses entry[\"title\"] directly. If a feed entry does not contain a \"title\" key, a KeyError will be raised, causing the import to fail for the whole feed.",
+   "suggested_fix": "Use entry.get(\"title\", \"\") or add validation to handle missing titles gracefully.",
+   "verdict": "confirmed",
+   "verdict_reason": "The list comprehension indexes the 'title' key without checking its existence, so a feed entry without a 'title' will cause a KeyError and abort the import.",
+   "evidence": [
+    {
+     "why": "Accesses entry[\"title\"] directly; if missing raises KeyError",
+     "line": 5,
+     "path": "tags/import_feed.py",
+     "quote": "return [Article(entry[\"title\"], normalize_tags(entry.get(\"tags\", []))) for entry in feed]"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "import_articles("
+     },
+     "result_chars": 115,
+     "result_summary": "Lines containing 'import_articles(':\ntags/import_feed.py:4: def import_articles(feed: list[dict]) -> list[Article]:",
+     "tokens_in": 1858,
+     "tokens_out": 63,
+     "latency_ms": 1125
+    },
+    {
+     "step_no": 2,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "import_articles"
+     },
+     "result_chars": 38,
+     "result_summary": "Uses of 'import_articles': no matches.",
+     "tokens_in": 1948,
+     "tokens_out": 50,
+     "latency_ms": 360
+    },
+    {
+     "step_no": 3,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "import_articles("
+     },
+     "result_chars": 57,
+     "result_summary": "Already called with these arguments; the result is above.",
+     "tokens_in": 2023,
+     "tokens_out": 78,
+     "latency_ms": 406
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The list comprehension indexes the 'title' key without checking its existence, so a feed entry without a 'title' will cause a KeyError and abort the import.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Accesses entry[\"title\"] directly; if missing raises KeyError",
+        "line": 5,
+        "path": "tags/import_feed.py",
+        "quote": "return [Article(entry[\"title\"], normalize_tags(entry.get(\"tags\", []))) for entry in feed]"
+       }
+      ]
+     },
+     "result_chars": 167,
+     "result_summary": "confirmed: The list comprehension indexes the 'title' key without checking its existence, so a feed entry without a 'title' will cause a KeyError and abort the import.",
+     "tokens_in": 2092,
+     "tokens_out": 228,
+     "latency_ms": 43015
+    }
+   ]
+  },
+  {
+   "id": 208,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tags/import_feed.py",
+   "line_start": 4,
+   "line_end": 5,
+   "category": "readability",
+   "severity": "low",
+   "title": "Missing documentation for import_articles",
+   "explanation": "The function import_articles has no docstring, making its purpose and expected input/output unclear for future maintainers.",
+   "suggested_fix": "Add a docstring explaining that it converts a list of feed entries into Article objects, detailing the expected structure of each entry.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 207,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:76 -->\n### Automated review of `dceda75`\nFound 2 confirmed issue(s): 1 high, 1 medium.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0026 at list prices (free tier; agent $0.0026); 6 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "tags/registry.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Mutable default argument for 'seen' leads to shared state\n\nThe function uses a set as a default value, which is created only once at definition time. Subsequent calls will share the same set, causing tags from previous calls to be considered already seen, resulting in incorrect deduplication.\n\n**Suggested fix:** Change the default to None and create a new set inside the function, e.g.,\n```python\ndef normalize_tags(raw: list[str], seen: set[str] | None = None) -> list[str]:\n    if seen is None:\n        seen = set()\n    ...\n```\n\n_Checked against `tags/registry.py:7`, `tags/import_feed.py:5`_"
+   },
+   {
+    "path": "tags/import_feed.py",
+    "line": 5,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Potential KeyError when entry lacks 'title'\n\nThe list comprehension accesses entry[\"title\"] directly. If a feed entry does not contain a \"title\" key, a KeyError will be raised, causing the import to fail for the whole feed.\n\n**Suggested fix:** Use entry.get(\"title\", \"\") or add validation to handle missing titles gracefully.\n\n_Checked against `tags/import_feed.py:5`_"
+   }
+  ]
+ }
+}

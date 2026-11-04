@@ -1,0 +1,111 @@
+{
+ "case": "bug-10-path-traversal",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "b848fd434c03508f1631bf7423ed8946162757b2",
+ "started_at": "2026-11-01T18:22:46.748445+00:00",
+ "wall_seconds": 5.5,
+ "run": {
+  "id": 17,
+  "head_sha": "b848fd434c03508f1631bf7423ed8946162757b2",
+  "status": "completed",
+  "started_at": "2026-11-01 18:22:46.779000+00:00",
+  "finished_at": "2026-11-01 18:22:52.253630+00:00",
+  "tokens_in": 3498,
+  "tokens_out": 643,
+  "cost_usd": "0.000784125",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1173,
+   "tokens_out": 224,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.84
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1161,
+   "tokens_out": 131,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.0
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1164,
+   "tokens_out": 288,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.12
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 56,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "files/download.py",
+   "line_start": 8,
+   "line_end": 9,
+   "category": "bug",
+   "severity": "high",
+   "title": "Potential path traversal allowing access to files outside REPORTS_DIR",
+   "explanation": "The function joins the user-supplied filename directly with REPORTS_DIR without sanitizing it. A crafted filename like \"../secret.txt\" can traverse directories and cause the function to read files outside the intended reports directory, leading to unauthorized data exposure.",
+   "suggested_fix": "Validate and sanitize the filename to prevent directory traversal, e.g., ensure it does not contain '..' or use pathlib's resolve() and check that the resulting path is within REPORTS_DIR.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 57,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "files/download.py",
+   "line_start": 8,
+   "line_end": 8,
+   "category": "security",
+   "severity": "high",
+   "title": "Path traversal vulnerability in file read",
+   "explanation": "The `read_report` function concatenates a user-supplied filename directly with `REPORTS_DIR` using `os.path.join` without validating or sanitizing the input. An attacker can supply a filename like `../secret.txt` to traverse directories and read arbitrary files outside the intended reports directory.",
+   "suggested_fix": "Validate the filename to ensure it does not contain path traversal sequences, or resolve the absolute path and verify it starts with `REPORTS_DIR`. Example:\n```python\npath = os.path.abspath(os.path.join(REPORTS_DIR, filename))\nif not path.startswith(os.path.abspath(REPORTS_DIR) + os.sep):\n    raise ValueError(\"Invalid filename\")\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 56,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:17 -->\n### Automated review of `b848fd4`\nFound 1 issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0008 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "files/download.py",
+    "line": 9,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Potential path traversal allowing access to files outside REPORTS_DIR\n\nThe function joins the user-supplied filename directly with REPORTS_DIR without sanitizing it. A crafted filename like \"../secret.txt\" can traverse directories and cause the function to read files outside the intended reports directory, leading to unauthorized data exposure.\n\n**Suggested fix:** Validate and sanitize the filename to prevent directory traversal, e.g., ensure it does not contain '..' or use pathlib's resolve() and check that the resulting path is within REPORTS_DIR.",
+    "start_line": 8,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

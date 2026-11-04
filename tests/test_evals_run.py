@@ -270,3 +270,12 @@ async def test_an_eval_run_can_pick_an_older_agent_prompt(tmp_path, sessionmaker
 
     default = await run_one(sessionmaker, scripted(groq), case, "pipeline", [])
     assert (default["agent_prompt_version"], default["agent_prompt_override"]) == (None, False)
+
+    # Naming prod's own version isn't an override: nothing older ran.
+    named = await run_one(
+        sessionmaker, scripted(groq), case, "agent", [], agent_prompt=AGENT_PROMPT_VERSION
+    )
+    assert (named["agent_prompt_version"], named["agent_prompt_override"]) == (
+        AGENT_PROMPT_VERSION,
+        False,
+    )

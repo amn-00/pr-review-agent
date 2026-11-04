@@ -1,0 +1,61 @@
+{
+ "case": "clean-05-perf-fix",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "7001e331a33397ce75a4a5d642a8b69583783ff6",
+ "started_at": "2026-11-01T18:37:19.350891+00:00",
+ "wall_seconds": 4.7,
+ "run": {
+  "id": 29,
+  "head_sha": "7001e331a33397ce75a4a5d642a8b69583783ff6",
+  "status": "completed",
+  "started_at": "2026-11-01 18:37:19.389664+00:00",
+  "finished_at": "2026-11-01 18:37:24.053901+00:00",
+  "tokens_in": 3313,
+  "tokens_out": 239,
+  "cost_usd": "0.000518400",
+  "llm_calls": 3,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1103,
+   "tokens_out": 57,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.61
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1098,
+   "tokens_out": 132,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.66
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1112,
+   "tokens_out": 50,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.73
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [],
+ "review": {
+  "body": "<!-- pr-review-agent run:29 -->\n### Automated review of `7001e33`\nNo issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0005 at list prices (free tier); 0 of 3 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

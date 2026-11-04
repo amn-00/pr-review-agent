@@ -1,0 +1,157 @@
+{
+ "case": "bug-12-blocking-sleep",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "070dbba1ec109da05270dcf1554f54d5b8f56e12",
+ "started_at": "2026-11-04T10:24:13.529095+00:00",
+ "wall_seconds": 6.8,
+ "run": {
+  "id": 85,
+  "head_sha": "070dbba1ec109da05270dcf1554f54d5b8f56e12",
+  "status": "completed",
+  "started_at": "2026-11-04 10:24:13.564322+00:00",
+  "finished_at": "2026-11-04 10:24:20.343631+00:00",
+  "tokens_in": 4177,
+  "tokens_out": 305,
+  "cost_usd": "0.000809550",
+  "llm_calls": 2,
+  "cached_calls": 3,
+  "tokens_saved": 4056,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1964,
+   "tokens_out": 86,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.69
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2213,
+   "tokens_out": 219,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.08
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 237,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "jobs/poller.py",
+   "line_start": 14,
+   "line_end": 14,
+   "category": "bug",
+   "severity": "high",
+   "title": "Blocking call in async function",
+   "explanation": "The async function `wait_until_ready` uses `time.sleep`, which blocks the event loop and prevents other async tasks from running during the sleep period. This can cause performance degradation and deadlocks in an async application.",
+   "suggested_fix": "Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and import asyncio at the top of the file.",
+   "verdict": "confirmed",
+   "verdict_reason": "The async function wait_until_ready calls time.sleep, which blocks the event loop and can prevent other async tasks from running, confirming the bug.",
+   "evidence": [
+    {
+     "why": "defines async function where blocking call occurs",
+     "line": 8,
+     "path": "jobs/poller.py",
+     "quote": "async def wait_until_ready(client: httpx.AsyncClient, url: str, attempts: int = 10) -> bool:"
+    },
+    {
+     "why": "uses blocking time.sleep inside async function, blocking event loop",
+     "line": 14,
+     "path": "jobs/poller.py",
+     "quote": "time.sleep(2**attempt)"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "jobs/poller.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 601,
+     "result_summary": "jobs/poller.py, lines 1-15 of 15:\n    1  import time\n    2  \n    3  import httpx\n    4  \n    5  from jobs.client import fetch_status\n    6  \n    7  \n    8  async def wait_until_ready(client: httpx.AsyncClient, url: str, attempts: int = 10) -> bool:\n    9      \"\"\"Poll a health URL until it answers 20",
+     "tokens_in": 1964,
+     "tokens_out": 86,
+     "latency_ms": 1688
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The async function wait_until_ready calls time.sleep, which blocks the event loop and can prevent other async tasks from running, confirming the bug.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "defines async function where blocking call occurs",
+        "line": 8,
+        "path": "jobs/poller.py",
+        "quote": "async def wait_until_ready(client: httpx.AsyncClient, url: str, attempts: int = 10) -> bool:"
+       },
+       {
+        "why": "uses blocking time.sleep inside async function, blocking event loop",
+        "line": 14,
+        "path": "jobs/poller.py",
+        "quote": "time.sleep(2**attempt)"
+       }
+      ]
+     },
+     "result_chars": 160,
+     "result_summary": "confirmed: The async function wait_until_ready calls time.sleep, which blocks the event loop and can prevent other async tasks from running, confirming the bug.",
+     "tokens_in": 2213,
+     "tokens_out": 219,
+     "latency_ms": 1078
+    }
+   ]
+  },
+  {
+   "id": 238,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "jobs/poller.py",
+   "line_start": 14,
+   "line_end": 14,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Blocking sleep in async function",
+   "explanation": "Using time.sleep inside an async function blocks the event loop, preventing other coroutines from running. The idiomatic approach is to use await asyncio.sleep for non-blocking delays.",
+   "suggested_fix": "Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and remove the unnecessary import of `time`. ",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 237,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:85 -->\n### Automated review of `070dbba`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 1 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0008 at list prices (free tier; agent $0.0008); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "jobs/poller.py",
+    "line": 14,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Blocking call in async function\n\nThe async function `wait_until_ready` uses `time.sleep`, which blocks the event loop and prevents other async tasks from running during the sleep period. This can cause performance degradation and deadlocks in an async application.\n\n**Suggested fix:** Replace `time.sleep(2**attempt)` with `await asyncio.sleep(2**attempt)` and import asyncio at the top of the file.\n\n_Checked against `jobs/poller.py:8`, `jobs/poller.py:14`_"
+   }
+  ]
+ }
+}

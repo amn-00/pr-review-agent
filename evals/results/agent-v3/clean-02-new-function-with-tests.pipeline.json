@@ -1,0 +1,88 @@
+{
+ "case": "clean-02-new-function-with-tests",
+ "mode": "pipeline",
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "4515afcacc620b92f1826f71a3d634b1120b9ed8",
+ "started_at": "2026-11-01T18:31:25.445709+00:00",
+ "wall_seconds": 5.9,
+ "run": {
+  "id": 24,
+  "head_sha": "4515afcacc620b92f1826f71a3d634b1120b9ed8",
+  "status": "completed",
+  "started_at": "2026-11-01 18:31:25.477707+00:00",
+  "finished_at": "2026-11-01 18:31:31.374448+00:00",
+  "tokens_in": 7402,
+  "tokens_out": 517,
+  "cost_usd": "0.001169850",
+  "llm_calls": 6,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "agent_enabled": false
+ },
+ "calls": [
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1293,
+   "tokens_out": 71,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.56
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1304,
+   "tokens_out": 117,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.81
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1290,
+   "tokens_out": 100,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.94
+  },
+  {
+   "kind": "maintainability",
+   "model": "openai/gpt-oss-20b",
+   "tokens_in": 1164,
+   "tokens_out": 122,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.33
+  },
+  {
+   "kind": "correctness",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1178,
+   "tokens_out": 51,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.81
+  },
+  {
+   "kind": "security",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1173,
+   "tokens_out": 56,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.67
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [],
+ "review": {
+  "body": "<!-- pr-review-agent run:24 -->\n### Automated review of `4515afc`\nNo issues found.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0012 at list prices (free tier); 0 of 6 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

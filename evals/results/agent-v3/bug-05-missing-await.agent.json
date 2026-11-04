@@ -1,0 +1,418 @@
+{
+ "case": "bug-05-missing-await",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "c16a1d8fdbc3d82bd3ed6da12bc36009f289e210",
+ "started_at": "2026-11-04T10:09:45.484116+00:00",
+ "wall_seconds": 119.8,
+ "run": {
+  "id": 78,
+  "head_sha": "c16a1d8fdbc3d82bd3ed6da12bc36009f289e210",
+  "status": "completed",
+  "started_at": "2026-11-04 10:09:45.540410+00:00",
+  "finished_at": "2026-11-04 10:11:45.294161+00:00",
+  "tokens_in": 16684,
+  "tokens_out": 1098,
+  "cost_usd": "0.003161400",
+  "llm_calls": 10,
+  "cached_calls": 3,
+  "tokens_saved": 4406,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1924,
+   "tokens_out": 42,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.44
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2012,
+   "tokens_out": 103,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.47
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1927,
+   "tokens_out": 53,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.31
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2306,
+   "tokens_out": 87,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.73
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2003,
+   "tokens_out": 42,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.66
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool choice is required, but model did not call a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\n  \\\\\"evidence\\\\\": [\\\\n    {\\\\n      \\\\\"line\\\\\": 12,\\\\n      \\\\\"path\\\\\": \\\\\"accounts/db.py\\\\\",\\\\n      \\\\\"quote\\\\\": \\",
+   "latency_s": 42.91
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool choice is required, but model did not call a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\n  \\\\\"evidence\\\\\": [\\\\n    {\\\\n      \\\\\"line\\\\\": 12,\\\\n      \\\\\"path\\\\\": \\\\\"accounts/db.py\\\\\",\\\\n      \\\\\"quote\\\\\": \\",
+   "latency_s": 0.99
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2295,
+   "tokens_out": 306,
+   "waited_s": 45.63,
+   "error": null,
+   "latency_s": 47.7
+  },
+  {
+   "kind": "submit_verdict",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2303,
+   "tokens_out": 235,
+   "waited_s": 40.03,
+   "error": null,
+   "latency_s": 41.11
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1914,
+   "tokens_out": 230,
+   "waited_s": 55.91,
+   "error": null,
+   "latency_s": 57.55
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 213,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 8,
+   "line_end": 8,
+   "category": "bug",
+   "severity": "high",
+   "title": "Missing check for non\u2011existent user",
+   "explanation": "If `db.get_user` returns `None` (e.g., the user_id does not exist), the next line attempts to assign to `user[\"name\"]`, causing a TypeError. The function should verify that a user was retrieved before modifying it.",
+   "suggested_fix": "Add a check after retrieving the user, e.g.,\n```python\nuser = await db.get_user(user_id)\nif user is None:\n    raise KeyError(f\"User with id {user_id} not found\")\n```",
+   "verdict": "uncertain",
+   "verdict_reason": "dropped without evidence from code it read (the quote for accounts/db.py:8 isn't on that line): get_user never returns None \u2013 it attempts to build a dict from the query result, raising TypeError itself when no row is found. Thus rename_user will not receive None, making the reported missing check unnecessary.",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class Database"
+     },
+     "result_chars": 68,
+     "result_summary": "Lines containing 'class Database':\naccounts/db.py:1: class Database:",
+     "tokens_in": 1927,
+     "tokens_out": 53,
+     "latency_ms": 1328
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "accounts/db.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 801,
+     "result_summary": "accounts/db.py, lines 1-19 of 19:\n    1  class Database:\n    2      \"\"\"Async access to the accounts table.\"\"\"\n    3  \n    4      def __init__(self, pool):\n    5          self.pool = pool\n    6  \n    7      async def get_user(self, user_id: int) -> dict:\n    8          async with self.pool.acquire() ",
+     "tokens_in": 2003,
+     "tokens_out": 42,
+     "latency_ms": 656
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "get_user never returns None \u2013 it attempts to build a dict from the query result, raising TypeError itself when no row is found. Thus rename_user will not receive None, making the reported missing check unnecessary.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "get_user converts the fetched row to a dict; if no user exists fetchrow returns None, dict(None) raises TypeError before rename_user gets a None value",
+        "line": 8,
+        "path": "accounts/db.py",
+        "quote": "return dict(row)"
+       },
+       {
+        "why": "rename_user assumes get_user returns a dict, but get_user will raise if user not found, so missing None check is not the issue",
+        "line": 8,
+        "path": "accounts/service.py",
+        "quote": "user = await db.get_user(user_id)"
+       }
+      ]
+     },
+     "result_chars": 321,
+     "result_summary": "uncertain: dropped without evidence from code it read (the quote for accounts/db.py:8 isn't on that line): get_user never returns None \u2013 it attempts to build a dict from the query result, raising TypeError itself when no row is found. Thus rename_user will not receive None, making the reported missi",
+     "tokens_in": 2295,
+     "tokens_out": 306,
+     "latency_ms": 47703
+    }
+   ]
+  },
+  {
+   "id": 214,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "high",
+   "title": "Asynchronous save operation not awaited",
+   "explanation": "`db.save_user` is likely an async method (matching the async nature of the service). Calling it without `await` means the save may not complete before the function returns, leading to data loss or race conditions.",
+   "suggested_fix": "Await the save operation:\n```python\nawait db.save_user(user)\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The `save_user` method is defined as an async function, but `rename_user` calls it without `await`, so the coroutine is not executed before returning, causing a potential data loss bug.",
+   "evidence": [
+    {
+     "why": "Defines `save_user` as an async method.",
+     "line": 12,
+     "path": "accounts/db.py",
+     "quote": "async def save_user(self, user: dict) -> None:"
+    },
+    {
+     "why": "Calls the async `save_user` without `await`.",
+     "line": 10,
+     "path": "accounts/service.py",
+     "quote": "db.save_user(user)"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def save_user"
+     },
+     "result_chars": 99,
+     "result_summary": "Lines containing 'def save_user':\naccounts/db.py:12: async def save_user(self, user: dict) -> None:",
+     "tokens_in": 1924,
+     "tokens_out": 42,
+     "latency_ms": 485
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "accounts/db.py",
+      "line_end": 30,
+      "line_start": 1
+     },
+     "result_chars": 801,
+     "result_summary": "accounts/db.py, lines 1-19 of 19:\n    1  class Database:\n    2      \"\"\"Async access to the accounts table.\"\"\"\n    3  \n    4      def __init__(self, pool):\n    5          self.pool = pool\n    6  \n    7      async def get_user(self, user_id: int) -> dict:\n    8          async with self.pool.acquire() ",
+     "tokens_in": 2012,
+     "tokens_out": 103,
+     "latency_ms": 484
+    },
+    {
+     "step_no": 3,
+     "tool": "read_file",
+     "args_json": {
+      "path": "accounts/service.py",
+      "line_end": 15,
+      "line_start": 1
+     },
+     "result_chars": 433,
+     "result_summary": "accounts/service.py, lines 1-11 of 11:\n    1  from accounts.db import Database\n    2  \n    3  \n    4  async def rename_user(db: Database, user_id: int, new_name: str) -> dict:\n    5      new_name = new_name.strip()\n    6      if not new_name:\n    7          raise ValueError(\"name must not be empty\")",
+     "tokens_in": 2306,
+     "tokens_out": 87,
+     "latency_ms": 734
+    },
+    {
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool choice is required, but model did not call a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\n  \\\"evidence\\\": [\\n    {\\n      \\\"line\\\": 12,\\n      \\\"path\\\": \\\"accounts/db.py\\\",\\n      \\\"quote\\\": \\\"async def save_user(self, user",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 42906
+    },
+    {
+     "step_no": 5,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool choice is required, but model did not call a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\n  \\\"evidence\\\": [\\n    {\\n      \\\"line\\\": 12,\\n      \\\"path\\\": \\\"accounts/db.py\\\",\\n      \\\"quote\\\": \\\"async def save_user(self, user",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 985
+    },
+    {
+     "step_no": 6,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The `save_user` method is defined as an async function, but `rename_user` calls it without `await`, so the coroutine is not executed before returning, causing a potential data loss bug.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Defines `save_user` as an async method.",
+        "line": 12,
+        "path": "accounts/db.py",
+        "quote": "async def save_user(self, user: dict) -> None:"
+       },
+       {
+        "why": "Calls the async `save_user` without `await`.",
+        "line": 10,
+        "path": "accounts/service.py",
+        "quote": "db.save_user(user)"
+       }
+      ]
+     },
+     "result_chars": 196,
+     "result_summary": "confirmed: The `save_user` method is defined as an async function, but `rename_user` calls it without `await`, so the coroutine is not executed before returning, causing a potential data loss bug.",
+     "tokens_in": 2303,
+     "tokens_out": 235,
+     "latency_ms": 41110
+    }
+   ]
+  },
+  {
+   "id": 215,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 11,
+   "line_end": 11,
+   "category": "readability",
+   "severity": "low",
+   "title": "Return type is a raw dict",
+   "explanation": "Returning a plain dictionary makes it harder to understand the expected structure of the result and can lead to accidental misuse. Using a typed response model or a dataclass would improve clarity for future readers.",
+   "suggested_fix": "Define a `UserResponse` dataclass and return an instance instead of a raw dict.",
+   "verdict": "confirmed",
+   "verdict_reason": "The function returns the raw dict `user` without a typed model, confirming the finding about low readability.",
+   "evidence": [
+    {
+     "why": "Function returns a plain dictionary, matching the finding's claim",
+     "line": 11,
+     "path": "accounts/service.py",
+     "quote": "return user"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function returns the raw dict `user` without a typed model, confirming the finding about low readability.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Function returns a plain dictionary, matching the finding's claim",
+        "line": 11,
+        "path": "accounts/service.py",
+        "quote": "return user"
+       }
+      ]
+     },
+     "result_chars": 120,
+     "result_summary": "confirmed: The function returns the raw dict `user` without a typed model, confirming the finding about low readability.",
+     "tokens_in": 1914,
+     "tokens_out": 230,
+     "latency_ms": 57547
+    }
+   ]
+  },
+  {
+   "id": 216,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 4,
+   "line_end": 11,
+   "category": "security",
+   "severity": "high",
+   "title": "Missing authorization check before renaming user",
+   "explanation": "The function allows renaming a user based solely on user_id without verifying that the caller has permission to modify that account. An attacker could call this endpoint to change other users' names, leading to privilege escalation or data integrity issues.",
+   "suggested_fix": "Add an authorization check (e.g., verify the current session's user matches user_id or has admin rights) before performing the rename.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 213,
+   "agent_steps": []
+  },
+  {
+   "id": 217,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "accounts/service.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Missing await on asynchronous DB operation",
+   "explanation": "`db.save_user(user)` is an async method but is called without `await`, which will schedule the coroutine but never execute it, potentially leaving the user unsaved and causing subtle bugs.",
+   "suggested_fix": "Add `await` before the call: `await db.save_user(user)`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 214,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:78 -->\n### Automated review of `c16a1d8`\nFound 1 confirmed issue(s): 1 high. 1 style suggestion(s) below.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 0 dropped, 1 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0032 at list prices (free tier; agent $0.0032); 3 of 3 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `accounts/service.py:11` Return type is a raw dict: Returning a plain dictionary makes it harder to understand the expected structure of the result and can lead to accidental misuse. Using a typed response model or a dataclass would improve clarity for future readers.\n\n</details>\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `accounts/service.py:8` **high** Missing check for non\u2011existent user \u2014 dropped without evidence from code it read (the quote for accounts/db.py:8 isn't on that line): get_user never returns None \u2013 it attempts to build a dict from the query result, raising TypeError itself when no row is found. Thus rename_user will not receive None, making the reported missing check unnecessary.\n\n</details>",
+  "comments": [
+   {
+    "path": "accounts/service.py",
+    "line": 10,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Asynchronous save operation not awaited\n\n`db.save_user` is likely an async method (matching the async nature of the service). Calling it without `await` means the save may not complete before the function returns, leading to data loss or race conditions.\n\n**Suggested fix:** Await the save operation:\n```python\nawait db.save_user(user)\n```\n\n_Checked against `accounts/db.py:12`, `accounts/service.py:10`_"
+   }
+  ]
+ }
+}

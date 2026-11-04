@@ -1,0 +1,361 @@
+{
+ "case": "bug-11-hardcoded-key",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "6ae7679c4afde778e811aa62710c185d37efc858",
+ "started_at": "2026-11-04T10:22:17.142927+00:00",
+ "wall_seconds": 51.9,
+ "run": {
+  "id": 84,
+  "head_sha": "6ae7679c4afde778e811aa62710c185d37efc858",
+  "status": "completed",
+  "started_at": "2026-11-04 10:22:17.188046+00:00",
+  "finished_at": "2026-11-04 10:23:09.043579+00:00",
+  "tokens_in": 13553,
+  "tokens_out": 778,
+  "cost_usd": "0.002499750",
+  "llm_calls": 7,
+  "cached_calls": 6,
+  "tokens_saved": 7936,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1858,
+   "tokens_out": 44,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.45
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1858,
+   "tokens_out": 62,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.69
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1945,
+   "tokens_out": 36,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.44
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2010,
+   "tokens_out": 158,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.81
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2030,
+   "tokens_out": 207,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.69
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1850,
+   "tokens_out": 61,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.38
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2002,
+   "tokens_out": 210,
+   "waited_s": 44.41,
+   "error": null,
+   "latency_s": 45.75
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "payments/settings.py",
+   "tool": "semgrep",
+   "line": 3,
+   "code": "hardcoded-secret",
+   "message": "Looks like a hard-coded secret. Load it from the environment or a secret store.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 232,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "payments/settings.py",
+   "line_start": 3,
+   "line_end": 3,
+   "category": "security",
+   "severity": "high",
+   "title": "Hard-coded API key",
+   "explanation": "The code contains a hard-coded payment API key, which can be exposed in version control and lead to credential leakage. This secret should be loaded from a secure source such as environment variables or a secret manager.",
+   "suggested_fix": "Replace the hard-coded key with something like:\nPAYMENTS_API_KEY = os.getenv(\"PAYMENTS_API_KEY\")\nand ensure the variable is set securely in the deployment environment.",
+   "verdict": "confirmed",
+   "verdict_reason": "The file defines PAYMENTS_API_KEY as a literal string, exposing a production API key in version control.",
+   "evidence": [
+    {
+     "why": "Hard-coded secret value directly in source code",
+     "line": 3,
+     "path": "payments/settings.py",
+     "quote": "PAYMENTS_API_KEY = \"pk_prod_3f9a1c7e5b2d4086a9e1c4f7\""
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "payments/settings.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 196,
+     "result_summary": "payments/settings.py, lines 1-4 of 4:\n    1  import os\n    2  \n    3  PAYMENTS_API_KEY = \"pk_prod_3f9a1c7e5b2d4086a9e1c4f7\"\n    4  TIMEOUT_SECONDS = float(os.environ.get(\"PAYMENTS_TIMEOUT\", \"10\"))",
+     "tokens_in": 1858,
+     "tokens_out": 62,
+     "latency_ms": 687
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The file defines PAYMENTS_API_KEY as a literal string, exposing a production API key in version control.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Hard-coded secret value directly in source code",
+        "line": 3,
+        "path": "payments/settings.py",
+        "quote": "PAYMENTS_API_KEY = \"pk_prod_3f9a1c7e5b2d4086a9e1c4f7\""
+       }
+      ]
+     },
+     "result_chars": 115,
+     "result_summary": "confirmed: The file defines PAYMENTS_API_KEY as a literal string, exposing a production API key in version control.",
+     "tokens_in": 2010,
+     "tokens_out": 158,
+     "latency_ms": 813
+    }
+   ]
+  },
+  {
+   "id": 233,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "payments/settings.py",
+   "line_start": 4,
+   "line_end": 4,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Unvalidated environment variable may cause ValueError",
+   "explanation": "The code converts the PAYMENTS_TIMEOUT environment variable directly to float without handling non-numeric values. If the variable is set to a non\u2011numeric string, a ValueError will be raised, crashing the application at import time.",
+   "suggested_fix": "Wrap the conversion in a try/except block and fallback to the default, e.g.,\n```python\ntry:\n    TIMEOUT_SECONDS = float(os.getenv(\"PAYMENTS_TIMEOUT\", \"10\"))\nexcept (TypeError, ValueError):\n    TIMEOUT_SECONDS = 10.0\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The setting reads PAYMENTS_TIMEOUT from the environment and immediately casts it to float. If the variable contains a non\u2011numeric string, Python raises ValueError during module import, causing a crash. No validation or exception handling is present.",
+   "evidence": [
+    {
+     "why": "Converts env var directly to float without validation; non\u2011numeric value raises ValueError at import",
+     "line": 4,
+     "path": "payments/settings.py",
+     "quote": "TIMEOUT_SECONDS = float(os.environ.get(\"PAYMENTS_TIMEOUT\", \"10\"))"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "PAYMENTS_TIMEOUT"
+     },
+     "result_chars": 126,
+     "result_summary": "Lines containing 'PAYMENTS_TIMEOUT':\npayments/settings.py:4: TIMEOUT_SECONDS = float(os.environ.get(\"PAYMENTS_TIMEOUT\", \"10\"))",
+     "tokens_in": 1858,
+     "tokens_out": 44,
+     "latency_ms": 484
+    },
+    {
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "TIMEOUT_SECONDS"
+     },
+     "result_chars": 125,
+     "result_summary": "Lines containing 'TIMEOUT_SECONDS':\npayments/settings.py:4: TIMEOUT_SECONDS = float(os.environ.get(\"PAYMENTS_TIMEOUT\", \"10\"))",
+     "tokens_in": 1945,
+     "tokens_out": 36,
+     "latency_ms": 438
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The setting reads PAYMENTS_TIMEOUT from the environment and immediately casts it to float. If the variable contains a non\u2011numeric string, Python raises ValueError during module import, causing a crash. No validation or exception handling is present.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Converts env var directly to float without validation; non\u2011numeric value raises ValueError at import",
+        "line": 4,
+        "path": "payments/settings.py",
+        "quote": "TIMEOUT_SECONDS = float(os.environ.get(\"PAYMENTS_TIMEOUT\", \"10\"))"
+       }
+      ]
+     },
+     "result_chars": 260,
+     "result_summary": "confirmed: The setting reads PAYMENTS_TIMEOUT from the environment and immediately casts it to float. If the variable contains a non\u2011numeric string, Python raises ValueError during module import, causing a crash. No validation or exception handling is present.",
+     "tokens_in": 2030,
+     "tokens_out": 207,
+     "latency_ms": 687
+    }
+   ]
+  },
+  {
+   "id": 234,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "payments/checkout.py",
+   "line_start": 5,
+   "line_end": 6,
+   "category": "readability",
+   "severity": "low",
+   "title": "Missing docstring for checkout function",
+   "explanation": "The checkout function has no docstring, making its purpose, parameters, and return value unclear to future maintainers.",
+   "suggested_fix": "Add a descriptive docstring explaining the function\u2019s purpose, parameters, and return value.",
+   "verdict": "confirmed",
+   "verdict_reason": "The checkout function is defined without any docstring, matching the finding that documentation is missing.",
+   "evidence": [
+    {
+     "why": "Function definition without a following docstring",
+     "line": 5,
+     "path": "payments/checkout.py",
+     "quote": "def checkout(cart_total_cents: int, card_token: str) -> dict:"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "payments/checkout.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 291,
+     "result_summary": "payments/checkout.py, lines 1-6 of 6:\n    1  from payments.client import charge\n    2  from payments.settings import PAYMENTS_API_KEY\n    3  \n    4  \n    5  def checkout(cart_total_cents: int, card_token: str) -> dict:\n    6      return charge(cart_total_cents, card_token, PAYMENTS_API_KEY)",
+     "tokens_in": 1850,
+     "tokens_out": 61,
+     "latency_ms": 375
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The checkout function is defined without any docstring, matching the finding that documentation is missing.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Function definition without a following docstring",
+        "line": 5,
+        "path": "payments/checkout.py",
+        "quote": "def checkout(cart_total_cents: int, card_token: str) -> dict:"
+       }
+      ]
+     },
+     "result_chars": 118,
+     "result_summary": "confirmed: The checkout function is defined without any docstring, matching the finding that documentation is missing.",
+     "tokens_in": 2002,
+     "tokens_out": 210,
+     "latency_ms": 45750
+    }
+   ]
+  },
+  {
+   "id": 235,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "payments/settings.py",
+   "line_start": 3,
+   "line_end": 3,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Hardcoded API key",
+   "explanation": "The API key is hardcoded in source, making it difficult to change per environment and risky to expose.",
+   "suggested_fix": "Move the key to an environment variable or a separate config file and load it with os.getenv.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 232,
+   "agent_steps": []
+  },
+  {
+   "id": 236,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "payments/settings.py",
+   "line_start": 4,
+   "line_end": 4,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Unsafe conversion of environment variable to float",
+   "explanation": "Converting os.environ.get to float without validation can raise ValueError if the env variable contains non-numeric data.",
+   "suggested_fix": "Use a try/except block or a helper that validates the value before converting.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 233,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:84 -->\n### Automated review of `6ae7679`\nFound 2 confirmed issue(s): 1 high, 1 medium. 1 style suggestion(s) below.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 3 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0025 at list prices (free tier; agent $0.0025); 6 of 6 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `payments/checkout.py:5` Missing docstring for checkout function: The checkout function has no docstring, making its purpose, parameters, and return value unclear to future maintainers.\n\n</details>",
+  "comments": [
+   {
+    "path": "payments/settings.py",
+    "line": 3,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 security \u00b7 Hard-coded API key\n\nThe code contains a hard-coded payment API key, which can be exposed in version control and lead to credential leakage. This secret should be loaded from a secure source such as environment variables or a secret manager.\n\n**Suggested fix:** Replace the hard-coded key with something like:\nPAYMENTS_API_KEY = os.getenv(\"PAYMENTS_API_KEY\")\nand ensure the variable is set securely in the deployment environment.\n\n_Checked against `payments/settings.py:3`_"
+   },
+   {
+    "path": "payments/settings.py",
+    "line": 4,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Unvalidated environment variable may cause ValueError\n\nThe code converts the PAYMENTS_TIMEOUT environment variable directly to float without handling non-numeric values. If the variable is set to a non\u2011numeric string, a ValueError will be raised, crashing the application at import time.\n\n**Suggested fix:** Wrap the conversion in a try/except block and fallback to the default, e.g.,\n```python\ntry:\n    TIMEOUT_SECONDS = float(os.getenv(\"PAYMENTS_TIMEOUT\", \"10\"))\nexcept (TypeError, ValueError):\n    TIMEOUT_SECONDS = 10.0\n```\n\n_Checked against `payments/settings.py:4`_"
+   }
+  ]
+ }
+}

@@ -1,0 +1,421 @@
+{
+ "case": "bug-01-empty-average",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "e7c12a694d92668df2d73807d45e4a798d43521d",
+ "started_at": "2026-11-04T10:01:03.925325+00:00",
+ "wall_seconds": 114.6,
+ "run": {
+  "id": 74,
+  "head_sha": "e7c12a694d92668df2d73807d45e4a798d43521d",
+  "status": "completed",
+  "started_at": "2026-11-04 10:01:04.015260+00:00",
+  "finished_at": "2026-11-04 10:02:58.548265+00:00",
+  "tokens_in": 18577,
+  "tokens_out": 1137,
+  "cost_usd": "0.003468750",
+  "llm_calls": 9,
+  "cached_calls": 6,
+  "tokens_saved": 7846,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1885,
+   "tokens_out": 37,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.84
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1903,
+   "tokens_out": 53,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.88
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1977,
+   "tokens_out": 42,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.64
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2178,
+   "tokens_out": 72,
+   "waited_s": 44.65,
+   "error": null,
+   "latency_s": 45.23
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2031,
+   "tokens_out": 32,
+   "waited_s": 45.26,
+   "error": null,
+   "latency_s": 46.53
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2135,
+   "tokens_out": 71,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.72
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2257,
+   "tokens_out": 275,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.45
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1888,
+   "tokens_out": 351,
+   "waited_s": 51.75,
+   "error": null,
+   "latency_s": 54.41
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2323,
+   "tokens_out": 204,
+   "waited_s": 55.92,
+   "error": null,
+   "latency_s": 56.77
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 200,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "shop/report.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "high",
+   "title": "Potential division by zero when calculating average order value",
+   "explanation": "The added call to `average_order_value(customer.orders)` may raise a ZeroDivisionError if the customer has no orders, causing the function to crash for valid customers with an empty order list.",
+   "suggested_fix": "Add a guard for empty orders, e.g., `average = average_order_value(customer.orders) if customer.orders else 0`",
+   "verdict": "confirmed",
+   "verdict_reason": "average_order_value divides by len(paid) without checking for zero, and customer_summary passes customer.orders which may be empty, leading to ZeroDivisionError.",
+   "evidence": [
+    {
+     "why": "function definition used in report",
+     "line": 8,
+     "path": "shop/stats.py",
+     "quote": "def average_order_value(orders: list[Order]) -> float:"
+    },
+    {
+     "why": "division by len(paid) can be zero",
+     "line": 10,
+     "path": "shop/stats.py",
+     "quote": "return sum(order.total for order in paid) / len(paid)"
+    },
+    {
+     "why": "calls function with possibly empty orders list",
+     "line": 7,
+     "path": "shop/report.py",
+     "quote": "average = average_order_value(customer.orders)"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def average_order_value"
+     },
+     "result_chars": 115,
+     "result_summary": "Lines containing 'def average_order_value':\nshop/stats.py:8: def average_order_value(orders: list[Order]) -> float:",
+     "tokens_in": 1885,
+     "tokens_out": 37,
+     "latency_ms": 860
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "shop/stats.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 411,
+     "result_summary": "shop/stats.py, lines 1-10 of 10:\n    1  from shop.models import Order\n    2  \n    3  \n    4  def total_spent(orders: list[Order]) -> float:\n    5      return sum(order.total for order in orders if order.paid)\n    6  \n    7  \n    8  def average_order_value(orders: list[Order]) -> float:\n    9      pa",
+     "tokens_in": 1977,
+     "tokens_out": 42,
+     "latency_ms": 656
+    },
+    {
+     "step_no": 3,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "customer_summary"
+     },
+     "result_chars": 103,
+     "result_summary": "Lines containing 'customer_summary':\nshop/report.py:5: def customer_summary(customer: Customer) -> str:",
+     "tokens_in": 2178,
+     "tokens_out": 72,
+     "latency_ms": 45250
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "average_order_value divides by len(paid) without checking for zero, and customer_summary passes customer.orders which may be empty, leading to ZeroDivisionError.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "function definition used in report",
+        "line": 8,
+        "path": "shop/stats.py",
+        "quote": "def average_order_value(orders: list[Order]) -> float:"
+       },
+       {
+        "why": "division by len(paid) can be zero",
+        "line": 10,
+        "path": "shop/stats.py",
+        "quote": "return sum(order.total for order in paid) / len(paid)"
+       },
+       {
+        "why": "calls function with possibly empty orders list",
+        "line": 7,
+        "path": "shop/report.py",
+        "quote": "average = average_order_value(customer.orders)"
+       }
+      ]
+     },
+     "result_chars": 172,
+     "result_summary": "confirmed: average_order_value divides by len(paid) without checking for zero, and customer_summary passes customer.orders which may be empty, leading to ZeroDivisionError.",
+     "tokens_in": 2257,
+     "tokens_out": 275,
+     "latency_ms": 1454
+    }
+   ]
+  },
+  {
+   "id": 201,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 10,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "high",
+   "title": "ZeroDivisionError when no paid orders",
+   "explanation": "The function divides by len(paid) without checking if the list is empty. If there are no paid orders, len(paid) is zero and a ZeroDivisionError is raised.",
+   "suggested_fix": "Add a guard for an empty list, e.g., return 0.0 or None when len(paid) == 0 before performing the division.",
+   "verdict": "confirmed",
+   "verdict_reason": "The function average_order_value divides by the length of the paid list without checking for zero, and it is called with a customer's orders which may be empty, leading to ZeroDivisionError.",
+   "evidence": [
+    {
+     "why": "Divides by len(paid) which can be zero",
+     "line": 10,
+     "path": "shop/stats.py",
+     "quote": "return sum(order.total for order in paid) / len(paid)"
+    },
+    {
+     "why": "Function may be called with empty orders list",
+     "line": 7,
+     "path": "shop/report.py",
+     "quote": "average = average_order_value(customer.orders)"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "average_order_value"
+     },
+     "result_chars": 250,
+     "result_summary": "Lines containing 'average_order_value':\nshop/report.py:2: from shop.stats import average_order_value, total_spent\nshop/report.py:7: average = average_order_value(customer.orders)\nshop/stats.py:8: def average_order_value(orders: list[Order]) -> float:",
+     "tokens_in": 1903,
+     "tokens_out": 53,
+     "latency_ms": 875
+    },
+    {
+     "step_no": 2,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "average_order_value"
+     },
+     "result_chars": 169,
+     "result_summary": "Uses of 'average_order_value':\nshop/report.py:2: from shop.stats import average_order_value, total_spent\nshop/report.py:7: average = average_order_value(customer.orders)",
+     "tokens_in": 2031,
+     "tokens_out": 32,
+     "latency_ms": 46547
+    },
+    {
+     "step_no": 3,
+     "tool": "read_file",
+     "args_json": {
+      "path": "shop/report.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 393,
+     "result_summary": "shop/report.py, lines 1-8 of 8:\n    1  from shop.models import Customer\n    2  from shop.stats import average_order_value, total_spent\n    3  \n    4  \n    5  def customer_summary(customer: Customer) -> str:\n    6      spent = total_spent(customer.orders)\n    7      average = average_order_value(cust",
+     "tokens_in": 2135,
+     "tokens_out": 71,
+     "latency_ms": 719
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function average_order_value divides by the length of the paid list without checking for zero, and it is called with a customer's orders which may be empty, leading to ZeroDivisionError.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Divides by len(paid) which can be zero",
+        "line": 10,
+        "path": "shop/stats.py",
+        "quote": "return sum(order.total for order in paid) / len(paid)"
+       },
+       {
+        "why": "Function may be called with empty orders list",
+        "line": 7,
+        "path": "shop/report.py",
+        "quote": "average = average_order_value(customer.orders)"
+       }
+      ]
+     },
+     "result_chars": 201,
+     "result_summary": "confirmed: The function average_order_value divides by the length of the paid list without checking for zero, and it is called with a customer's orders which may be empty, leading to ZeroDivisionError.",
+     "tokens_in": 2323,
+     "tokens_out": 204,
+     "latency_ms": 56766
+    }
+   ]
+  },
+  {
+   "id": 202,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 6,
+   "line_end": 7,
+   "category": "readability",
+   "severity": "low",
+   "title": "Unnecessary blank lines added",
+   "explanation": "Two consecutive blank lines were added after the function definition, which adds no value and increases file length.",
+   "suggested_fix": "Remove the extra blank lines.",
+   "verdict": "uncertain",
+   "verdict_reason": "dropped without evidence from code it read (the quote for shop/stats.py:6 isn't on that line): PEP8 recommends exactly two blank lines between top\u2011level function definitions, so the added blank lines are appropriate and not a readability issue.",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "PEP8 recommends exactly two blank lines between top\u2011level function definitions, so the added blank lines are appropriate and not a readability issue.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "end of first function",
+        "line": 5,
+        "path": "shop/stats.py",
+        "quote": "return sum(order.total for order in orders if order.paid)"
+       },
+       {
+        "why": "first blank line between functions",
+        "line": 6,
+        "path": "shop/stats.py",
+        "quote": ""
+       },
+       {
+        "why": "second blank line; PEP8 requires two blank lines between top-level definitions",
+        "line": 7,
+        "path": "shop/stats.py",
+        "quote": ""
+       },
+       {
+        "why": "start of next top-level function",
+        "line": 8,
+        "path": "shop/stats.py",
+        "quote": "def average_order_value(orders: list[Order]) -> float:"
+       }
+      ]
+     },
+     "result_chars": 255,
+     "result_summary": "uncertain: dropped without evidence from code it read (the quote for shop/stats.py:6 isn't on that line): PEP8 recommends exactly two blank lines between top\u2011level function definitions, so the added blank lines are appropriate and not a readability issue.",
+     "tokens_in": 1888,
+     "tokens_out": 351,
+     "latency_ms": 54406
+    }
+   ]
+  },
+  {
+   "id": 203,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "shop/stats.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Duplicate filtering of paid orders",
+   "explanation": "The function filters paid orders into a list and then iterates over that list again for sum and length. This repeats work and makes the code harder to read.",
+   "suggested_fix": "Use a single generator expression: `return sum(order.total for order in orders if order.paid) / len([order for order in orders if order.paid])` or store the generator once.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 201,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:74 -->\n### Automated review of `e7c12a6`\nFound 2 confirmed issue(s): 2 high.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 0 dropped, 1 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0035 at list prices (free tier; agent $0.0035); 6 of 6 lane call(s) answered from cache.\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `shop/stats.py:6` **low** Unnecessary blank lines added \u2014 dropped without evidence from code it read (the quote for shop/stats.py:6 isn't on that line): PEP8 recommends exactly two blank lines between top\u2011level function definitions, so the added blank lines are appropriate and not a readability issue.\n\n</details>",
+  "comments": [
+   {
+    "path": "shop/report.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Potential division by zero when calculating average order value\n\nThe added call to `average_order_value(customer.orders)` may raise a ZeroDivisionError if the customer has no orders, causing the function to crash for valid customers with an empty order list.\n\n**Suggested fix:** Add a guard for empty orders, e.g., `average = average_order_value(customer.orders) if customer.orders else 0`\n\n_Checked against `shop/stats.py:8`, `shop/stats.py:10`, `shop/report.py:7`_"
+   },
+   {
+    "path": "shop/stats.py",
+    "line": 10,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 ZeroDivisionError when no paid orders\n\nThe function divides by len(paid) without checking if the list is empty. If there are no paid orders, len(paid) is zero and a ZeroDivisionError is raised.\n\n**Suggested fix:** Add a guard for an empty list, e.g., return 0.0 or None when len(paid) == 0 before performing the division.\n\n_Checked against `shop/stats.py:10`, `shop/report.py:7`_"
+   }
+  ]
+ }
+}

@@ -1,0 +1,351 @@
+{
+ "case": "bug-07-inverted-permission",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "86139188a154a6bfb5019d1efb334e9ee7b47b31",
+ "started_at": "2026-11-04T10:15:53.711115+00:00",
+ "wall_seconds": 48.7,
+ "run": {
+  "id": 80,
+  "head_sha": "86139188a154a6bfb5019d1efb334e9ee7b47b31",
+  "status": "completed",
+  "started_at": "2026-11-04 10:15:53.755488+00:00",
+  "finished_at": "2026-11-04 10:16:42.444958+00:00",
+  "tokens_in": 12037,
+  "tokens_out": 832,
+  "cost_usd": "0.002304750",
+  "llm_calls": 7,
+  "cached_calls": 6,
+  "tokens_saved": 7942,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1879,
+   "tokens_out": 46,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.42
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1905,
+   "tokens_out": 111,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.58
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1972,
+   "tokens_out": 40,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.42
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2033,
+   "tokens_out": 40,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.75
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2041,
+   "tokens_out": 329,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.03
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool choice is required, but model did not call a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\n  \\\\\"evidence\\\\\": [\\\\n    {\\\\n      \\\\\"line\\\\\": 5,\\\\n      \\\\\"path\\\\\": \\\\\"docs_app/permissions.py\\\\\",\\\\n      \\\\\"quo",
+   "latency_s": 42.45
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2207,
+   "tokens_out": 266,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.81
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 220,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "docs_app/permissions.py",
+   "line_start": 6,
+   "line_end": 7,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect permission check logic",
+   "explanation": "The condition `if user.is_admin or user.id != document.owner_id:` allows editing when the user is not the owner (and not an admin) and blocks the owner, which is opposite of the intended behavior described in the docstring.",
+   "suggested_fix": "Change the condition to `if not (user.is_admin or user.id == document.owner_id):` and raise the error in that branch, or invert the logic accordingly.",
+   "verdict": "confirmed",
+   "verdict_reason": "The function's logic is inverted: it returns (granting edit) when the user is an admin or when the user is NOT the owner, which contradicts the docstring and intended behavior. No other code overrides this, so the bug is real.",
+   "evidence": [
+    {
+     "why": "Condition allows non\u2011owner non\u2011admin to pass and blocks owner",
+     "line": 6,
+     "path": "docs_app/permissions.py",
+     "quote": "if user.is_admin or user.id != document.owner_id:"
+    },
+    {
+     "why": "Returns on the wrong condition, meaning permission is granted incorrectly",
+     "line": 7,
+     "path": "docs_app/permissions.py",
+     "quote": "return"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "check_can_edit"
+     },
+     "result_chars": 246,
+     "result_summary": "Lines containing 'check_can_edit':\ndocs_app/editing.py:2: from docs_app.permissions import check_can_edit\ndocs_app/editing.py:6: check_can_edit(user, document)\ndocs_app/permissions.py:4: def check_can_edit(user: User, document: Document) -> None:",
+     "tokens_in": 1905,
+     "tokens_out": 111,
+     "latency_ms": 578
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "docs_app/editing.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 337,
+     "result_summary": "docs_app/editing.py, lines 1-8 of 8:\n    1  from docs_app.models import Document, User\n    2  from docs_app.permissions import check_can_edit\n    3  \n    4  \n    5  def update_body(user: User, document: Document, body: str) -> Document:\n    6      check_can_edit(user, document)\n    7      document.b",
+     "tokens_in": 2033,
+     "tokens_out": 40,
+     "latency_ms": 750
+    },
+    {
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool choice is required, but model did not call a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\n  \\\"evidence\\\": [\\n    {\\n      \\\"line\\\": 5,\\n      \\\"path\\\": \\\"docs_app/permissions.py\\\",\\n      \\\"quote\\\": \\\"\\\\\\\"\\\\\\\"\\\\\\\"Only the d",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 42453
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function's logic is inverted: it returns (granting edit) when the user is an admin or when the user is NOT the owner, which contradicts the docstring and intended behavior. No other code overrides this, so the bug is real.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Condition allows non\u2011owner non\u2011admin to pass and blocks owner",
+        "line": 6,
+        "path": "docs_app/permissions.py",
+        "quote": "if user.is_admin or user.id != document.owner_id:"
+       },
+       {
+        "why": "Returns on the wrong condition, meaning permission is granted incorrectly",
+        "line": 7,
+        "path": "docs_app/permissions.py",
+        "quote": "return"
+       }
+      ]
+     },
+     "result_chars": 237,
+     "result_summary": "confirmed: The function's logic is inverted: it returns (granting edit) when the user is an admin or when the user is NOT the owner, which contradicts the docstring and intended behavior. No other code overrides this, so the bug is real.",
+     "tokens_in": 2207,
+     "tokens_out": 266,
+     "latency_ms": 812
+    }
+   ]
+  },
+  {
+   "id": 221,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "docs_app/editing.py",
+   "line_start": 5,
+   "line_end": 8,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Document changes are not persisted to the database",
+   "explanation": "The function updates the document's body attribute but never calls `document.save()`, so the modification will not be saved in the database. Callers expecting the change to be persisted will see stale data.",
+   "suggested_fix": "Add `document.save(update_fields=[\"body\"])` before returning the document.",
+   "verdict": "confirmed",
+   "verdict_reason": "The function modifies the document's body but never calls document.save(), so changes are not persisted. No surrounding code shows a save being performed, confirming the bug.",
+   "evidence": [
+    {
+     "why": "function definition showing it returns a Document",
+     "line": 5,
+     "path": "docs_app/editing.py",
+     "quote": "def update_body(user: User, document: Document, body: str) -> Document:"
+    },
+    {
+     "why": "updates attribute but no save call",
+     "line": 7,
+     "path": "docs_app/editing.py",
+     "quote": "document.body = body"
+    },
+    {
+     "why": "returns without persisting changes",
+     "line": 8,
+     "path": "docs_app/editing.py",
+     "quote": "return document"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def update_body"
+     },
+     "result_chars": 130,
+     "result_summary": "Lines containing 'def update_body':\ndocs_app/editing.py:5: def update_body(user: User, document: Document, body: str) -> Document:",
+     "tokens_in": 1879,
+     "tokens_out": 46,
+     "latency_ms": 437
+    },
+    {
+     "step_no": 2,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "update_body"
+     },
+     "result_chars": 34,
+     "result_summary": "Uses of 'update_body': no matches.",
+     "tokens_in": 1972,
+     "tokens_out": 40,
+     "latency_ms": 422
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function modifies the document's body but never calls document.save(), so changes are not persisted. No surrounding code shows a save being performed, confirming the bug.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "function definition showing it returns a Document",
+        "line": 5,
+        "path": "docs_app/editing.py",
+        "quote": "def update_body(user: User, document: Document, body: str) -> Document:"
+       },
+       {
+        "why": "updates attribute but no save call",
+        "line": 7,
+        "path": "docs_app/editing.py",
+        "quote": "document.body = body"
+       },
+       {
+        "why": "returns without persisting changes",
+        "line": 8,
+        "path": "docs_app/editing.py",
+        "quote": "return document"
+       }
+      ]
+     },
+     "result_chars": 185,
+     "result_summary": "confirmed: The function modifies the document's body but never calls document.save(), so changes are not persisted. No surrounding code shows a save being performed, confirming the bug.",
+     "tokens_in": 2041,
+     "tokens_out": 329,
+     "latency_ms": 1031
+    }
+   ]
+  },
+  {
+   "id": 222,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "docs_app/permissions.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "security",
+   "severity": "high",
+   "title": "Incorrect permission check allows unauthorized edits",
+   "explanation": "The condition `if user.is_admin or user.id != document.owner_id:` returns for admins **or** any user whose ID is not the owner, effectively granting edit rights to anyone who is not the owner. This bypasses the intended access control and lets unauthorized users edit documents.",
+   "suggested_fix": "Change the logical operator to `and` so that only admins or the document owner are allowed: `if user.is_admin or user.id == document.owner_id:`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 220,
+   "agent_steps": []
+  },
+  {
+   "id": 223,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "docs_app/permissions.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "readability",
+   "severity": "high",
+   "title": "Confusing edit permission check logic",
+   "explanation": "The condition `if user.is_admin or user.id != document.owner_id:` allows non\u2011owner, non\u2011admin users to pass and returns, which is the opposite of the intended logic. This makes the code hard to understand and error\u2011prone.",
+   "suggested_fix": "Rewrite the condition to explicitly check for allowed users, e.g.\n```python\nif not user.is_admin and user.id != document.owner_id:\n    raise PermissionError(...)\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 220,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:80 -->\n### Automated review of `8613918`\nFound 2 confirmed issue(s): 1 high, 1 medium.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0023 at list prices (free tier; agent $0.0023); 6 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "docs_app/permissions.py",
+    "line": 7,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Incorrect permission check logic\n\nThe condition `if user.is_admin or user.id != document.owner_id:` allows editing when the user is not the owner (and not an admin) and blocks the owner, which is opposite of the intended behavior described in the docstring.\n\n**Suggested fix:** Change the condition to `if not (user.is_admin or user.id == document.owner_id):` and raise the error in that branch, or invert the logic accordingly.\n\n_Checked against `docs_app/permissions.py:6`, `docs_app/permissions.py:7`_",
+    "start_line": 6,
+    "start_side": "RIGHT"
+   },
+   {
+    "path": "docs_app/editing.py",
+    "line": 8,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Document changes are not persisted to the database\n\nThe function updates the document's body attribute but never calls `document.save()`, so the modification will not be saved in the database. Callers expecting the change to be persisted will see stale data.\n\n**Suggested fix:** Add `document.save(update_fields=[\"body\"])` before returning the document.\n\n_Checked against `docs_app/editing.py:5`, `docs_app/editing.py:7`, `docs_app/editing.py:8`_",
+    "start_line": 5,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

@@ -1,0 +1,35 @@
+{
+ "case": "clean-05-perf-fix",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "7001e331a33397ce75a4a5d642a8b69583783ff6",
+ "started_at": "2026-11-04T10:26:53.354352+00:00",
+ "wall_seconds": 3.9,
+ "run": {
+  "id": 87,
+  "head_sha": "7001e331a33397ce75a4a5d642a8b69583783ff6",
+  "status": "completed",
+  "started_at": "2026-11-04 10:26:53.388518+00:00",
+  "finished_at": "2026-11-04 10:26:57.292502+00:00",
+  "tokens_in": 0,
+  "tokens_out": 0,
+  "cost_usd": "0E-9",
+  "llm_calls": 0,
+  "cached_calls": 3,
+  "tokens_saved": 3552,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [],
+ "review": {
+  "body": "<!-- pr-review-agent run:87 -->\n### Automated review of `7001e33`\nNo issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0000 at list prices (free tier); 3 of 3 lane call(s) answered from cache.",
+  "comments": []
+ }
+}

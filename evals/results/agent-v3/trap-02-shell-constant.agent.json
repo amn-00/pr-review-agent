@@ -1,0 +1,252 @@
+{
+ "case": "trap-02-shell-constant",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "b0f0e893040da22cbea3b0d8a084eb5276134891",
+ "started_at": "2026-11-04T09:57:23.191400+00:00",
+ "wall_seconds": 63.5,
+ "run": {
+  "id": 72,
+  "head_sha": "b0f0e893040da22cbea3b0d8a084eb5276134891",
+  "status": "completed",
+  "started_at": "2026-11-04 09:57:23.621712+00:00",
+  "finished_at": "2026-11-04 09:58:26.631028+00:00",
+  "tokens_in": 8281,
+  "tokens_out": 399,
+  "cost_usd": "0.001481550",
+  "llm_calls": 6,
+  "cached_calls": 3,
+  "tokens_saved": 4464,
+  "error": null,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1941,
+   "tokens_out": 50,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.0
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2019,
+   "tokens_out": 46,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.59
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2229,
+   "tokens_out": 79,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.8
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See \\'failed_generation\\' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need decide if bug is real. ",
+   "latency_s": 48.72
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 0,
+   "tokens_out": 0,
+   "waited_s": 0.0,
+   "error": "ToolCallFailed('Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool \\'search_repo\\' which does not match request.tool_choice: \\'submit_verdict\\'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\\\"name\\\\\": \\\\\"s",
+   "latency_s": 0.52
+  },
+  {
+   "kind": "submit_verdict",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2092,
+   "tokens_out": 224,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.0
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [
+  {
+   "file": "ops/version.py",
+   "tool": "semgrep",
+   "line": 8,
+   "code": "subprocess-shell-true",
+   "message": "subprocess call with shell=True. If any part of the command comes from input, this allows shell injection.",
+   "lane": "security"
+  }
+ ],
+ "findings": [
+  {
+   "id": 196,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Uncaught subprocess error if git command fails",
+   "explanation": "The function directly runs a git command with check=True, which raises a CalledProcessError when git is not installed or the command fails (e.g., not a git repository). This exception is not caught, causing the application to crash at runtime.",
+   "suggested_fix": "Wrap the subprocess call in a try/except block, returning a fallback label (e.g., just APP_NAME) when the command fails.",
+   "verdict": "uncertain",
+   "verdict_reason": "confirmed without evidence from code it read (ops/version.com:10 wasn't shown): build_label calls subprocess.run with check=True, which will raise CalledProcessError if the git command fails (e.g., git not installed or not a repo). No surrounding code catches this exception, so the error can crash the application.",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "build_label"
+     },
+     "result_chars": 75,
+     "result_summary": "Lines containing 'build_label':\nops/version.py:6: def build_label() -> str:",
+     "tokens_in": 1941,
+     "tokens_out": 50,
+     "latency_ms": 1000
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "ops/version.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 451,
+     "result_summary": "ops/version.py, lines 1-11 of 11:\n    1  import subprocess\n    2  \n    3  APP_NAME = \"inventory\"\n    4  \n    5  \n    6  def build_label() -> str:\n    7      \"\"\"App name plus the short git commit, e.g. \"inventory@3f9a1c7\", for the /health page.\"\"\"\n    8      commit = subprocess.run(\n    9          \"g",
+     "tokens_in": 2019,
+     "tokens_out": 46,
+     "latency_ms": 594
+    },
+    {
+     "step_no": 3,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "build_label"
+     },
+     "result_chars": 34,
+     "result_summary": "Uses of 'build_label': no matches.",
+     "tokens_in": 2229,
+     "tokens_out": 79,
+     "latency_ms": 813
+    },
+    {
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need decide if bug is real. build_label uses s",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 48719
+    },
+    {
+     "step_no": 5,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 516
+    },
+    {
+     "step_no": 6,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "build_label calls subprocess.run with check=True, which will raise CalledProcessError if the git command fails (e.g., git not installed or not a repo). No surrounding code catches this exception, so the error can crash the application.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "runs git command with check=True",
+        "line": 8,
+        "path": "ops/version.py",
+        "quote": "commit = subprocess.run("
+       },
+       {
+        "why": "check=True causes CalledProcessError on failure",
+        "line": 9,
+        "path": "ops/version.py",
+        "quote": "\"git rev-parse --short HEAD\", shell=True, capture_output=True, text=True, check=True"
+       },
+       {
+        "why": "no try/except around subprocess.run",
+        "line": 10,
+        "path": "ops/version.com",
+        "quote": ").stdout.strip()"
+       }
+      ]
+     },
+     "result_chars": 326,
+     "result_summary": "uncertain: confirmed without evidence from code it read (ops/version.com:10 wasn't shown): build_label calls subprocess.run with check=True, which will raise CalledProcessError if the git command fails (e.g., git not installed or not a repo). No surrounding code catches this exception, so the error ",
+     "tokens_in": 2092,
+     "tokens_out": 224,
+     "latency_ms": 1000
+    }
+   ]
+  },
+  {
+   "id": 197,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 9,
+   "category": "security",
+   "severity": "low",
+   "title": "Use of subprocess.run with shell=True can enable command injection",
+   "explanation": "The code executes a fixed git command using subprocess.run with shell=True. While the current command string is static, using shell=True unnecessarily expands the attack surface and could become vulnerable if the command string is ever modified to include user input.",
+   "suggested_fix": "Replace the shell invocation with a list argument and set shell=False, e.g., subprocess.run([\"git\", \"rev-parse\", \"--short\", \"HEAD\"], capture_output=True, text=True, check=True).",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 196,
+   "agent_steps": []
+  },
+  {
+   "id": 198,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "ops/version.py",
+   "line_start": 8,
+   "line_end": 10,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Avoid shell=True with string arguments in subprocess.run",
+   "explanation": "Using shell=True with a single string argument bypasses the typical subprocess interface and can lead to security and portability issues. The idiomatic way is to pass the command as a list of arguments and omit shell=True.",
+   "suggested_fix": "Replace the call with\n```python\ncommit = subprocess.check_output([\"git\", \"rev-parse\", \"--short\", \"HEAD\"], text=True).strip()\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 196,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:72 -->\n### Automated review of `b0f0e89`\nNo confirmed issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 0 confirmed, 0 dropped, 1 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0015 at list prices (free tier; agent $0.0015); 3 of 3 lane call(s) answered from cache.\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `ops/version.py:8` **medium** Uncaught subprocess error if git command fails \u2014 confirmed without evidence from code it read (ops/version.com:10 wasn't shown): build_label calls subprocess.run with check=True, which will raise CalledProcessError if the git command fails (e.g., git not installed or not a repo). No surrounding code catches this exception, so the error can crash the application.\n\n</details>",
+  "comments": []
+ }
+}
