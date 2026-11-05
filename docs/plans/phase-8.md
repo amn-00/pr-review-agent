@@ -1,6 +1,6 @@
 # Phase 8 plan: deploy on Render free, and the README
 
-Proposed 2026-11-05, not yet approved. Two parts:
+Approved 2026-11-05, with the decisions at the end. Two parts:
 - **8a, the README:** drafted now. It touches no code. Eval numbers are `TBD` until the final
   runs, and the deploy steps are marked as unverified until 8b has run.
 - **8b, the deploy:** waits until the evals finish, because it changes `app/main.py` and
@@ -166,9 +166,8 @@ Step by step:
 - **750 free instance hours a month** per Render workspace, about one service around the clock.
 
 ## Not changing
-- **No keep-alive pinger** (an external cron hitting `/health`) unless you want one: see the
-  questions. It's common, but it hides the cold start rather than handling it, and the reconciler
-  already handles it.
+- **No keep-alive pinger** (an external cron hitting `/health`), as decided at approval. It
+  would hide the cold start rather than handle it, and the reconciler already handles it.
 - **No runs list or dashboard** (SPEC non-goal).
 
 ## Files
@@ -187,10 +186,14 @@ Step by step:
 No new dependencies. The Dockerfile doesn't change: Render sets `PORT`, and the start command
 reads it.
 
-## Questions for you
-1. **Fix 3 before the deploy?** I recommend yes (see "Order").
-2. **The same GitHub App for prod and local dev?** Its webhook URL can point at only one place.
-   I'd point it at Render, and create a second App for local dev if you need both at once.
-3. **A keep-alive ping?** I recommend no, and documenting the cold start as a known limit.
-4. **The demo GIF:** you'd record a PR getting its review after the deploy. The README has a
-   placeholder for it.
+## Decided at approval (2026-11-05)
+1. **Fix 3 lands before the deploy** (see "Order").
+2. **The existing GitHub App's webhook URL points at Render.** After that, local dev with smee no
+   longer gets webhooks. A separate dev App gets created only if it's needed.
+3. **No keep-alive ping.** The cold start is documented as a known limit in the README.
+4. **The demo GIF** is recorded by you after the deploy. Until then the README keeps a visible
+   placeholder.
+
+**The README's top section stands on its own for a 30-second skim:** the one-line pitch, the
+GIF slot and 4 headline numbers (false positives and catch rate, 0 duplicates, outage recovery,
+$0 and the cost per PR). Everything below it is for readers who want more.

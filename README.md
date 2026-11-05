@@ -2,23 +2,23 @@
 
 [![CI](https://github.com/amn-00/pr-review-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/amn-00/pr-review-agent/actions/workflows/ci.yml)
 
-A GitHub App that reviews pull requests. **A parallel LLM pipeline finds candidate issues. A
-tool-using verification agent then checks each one against the repository before anything is
-posted.**
+**A GitHub App that reviews pull requests: a parallel LLM pipeline finds candidate issues, and
+a tool-using agent checks each one against the repo before it's posted.**
 
-<!-- TBD: demo GIF of a PR getting its review, recorded after the Render deploy (Phase 8b). -->
+<!-- TBD: replace this line with the demo GIF (a PR getting its review), recorded after the
+Render deploy. -->
+*Demo GIF: TBD*
 
-- **Precision from the agent:** on a 23-case benchmark, the agent cut false positives from
-  **TBD** to **TBD** per PR and caught **TBD** of **TBD** planted bugs. Every posted comment cites
-  the lines the agent checked.
-- **Backend that holds up:** across 1,850 load-test webhooks and every failure test (killed
-  workers, a Redis restart, GitHub outages, Groq 429 storms), there were **0 duplicate reviews**.
-- **Built for free tiers only:** one 512 MB Render instance, Neon Postgres, Render Key Value and
-  Groq's free tier. The agent loop is hand-written, with no agent framework.
+- **TBD → TBD false positives per PR** with the agent, while catching **TBD of TBD** planted
+  bugs (23-case benchmark).
+- **0 duplicate reviews** across 1,850 load-test webhooks and every failure test: killed workers,
+  a Redis restart, GitHub outages and Groq 429 storms.
+- **20 of 20 reviews recovered** after a 3-minute GitHub outage, up from 4 of 20 before the fix.
+- **$0 a month:** one 512 MB Render instance and free tiers only. **TBD** per PR at Groq's list
+  prices.
 
-Stack: Python 3.12, FastAPI, arq (Redis job queue), PostgreSQL (SQLAlchemy 2 and Alembic),
-httpx, and Groq (`gpt-oss-120b` and `gpt-oss-20b`). Tests use pytest against real Postgres and
-Redis. Ruff and pytest run in GitHub Actions.
+Python 3.12, FastAPI, arq on Redis, PostgreSQL and Groq. The agent loop is hand-written, with no
+agent framework.
 
 ## The problem
 
@@ -293,9 +293,11 @@ Live at: TBD
 - **Throughput is set by Groq's free tier:** 8K tokens a minute, and about 5 agent-checked PRs a
   day under the daily budgets. A review takes TBD on the free tier, mostly waiting for the
   per-minute limit.
-- **Render's free instance sleeps** after 15 minutes without traffic, and takes about a minute to
-  wake. The webhook that wakes it may time out on GitHub's side. The reconciler's run at startup
-  picks that PR up. While the service sleeps, the 5-minute reconciler doesn't run.
+- **Cold starts.** Render's free instance sleeps after 15 minutes without traffic, and takes about
+  a minute to wake. There's no keep-alive ping, by choice. The webhook that wakes the service may
+  time out on GitHub's side. The reconciler's run at startup picks that PR up, so the first review
+  after a quiet spell starts later, but it isn't lost. While the service sleeps, the 5-minute
+  reconciler doesn't run.
 - **Redis has no persistence** (Render Key Value free). A restart loses queued jobs. The
   reconciler re-queues them within one cycle of the service being up (218 s in the test).
 - **A hard-killed worker's jobs restart after about 15 minutes,** when arq's in-progress key
