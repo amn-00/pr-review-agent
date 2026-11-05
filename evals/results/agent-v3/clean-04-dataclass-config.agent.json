@@ -1,0 +1,245 @@
+{
+ "case": "clean-04-dataclass-config",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "d4a39dc4e191d9812643e06fdec3b1dcd3f62d24",
+ "started_at": "2026-11-05T15:41:01.642945+00:00",
+ "wall_seconds": 12.6,
+ "run": {
+  "id": 100,
+  "head_sha": "d4a39dc4e191d9812643e06fdec3b1dcd3f62d24",
+  "status": "completed",
+  "started_at": "2026-11-05 15:41:01.702598+00:00",
+  "finished_at": "2026-11-05 15:41:14.232879+00:00",
+  "tokens_in": 10199,
+  "tokens_out": 565,
+  "cost_usd": "0.001868850",
+  "llm_calls": 5,
+  "cached_calls": 6,
+  "tokens_saved": 7877,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1860,
+   "tokens_out": 38,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.95
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1957,
+   "tokens_out": 176,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.11
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1937,
+   "tokens_out": 42,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.78
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2186,
+   "tokens_out": 92,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.44
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2259,
+   "tokens_out": 217,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.95
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 258,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "app_config/settings.py",
+   "line_start": 15,
+   "line_end": 15,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Uncaught exception when APP_PORT is non-integer",
+   "explanation": "The code casts the APP_PORT environment variable to int without handling ValueError. If the variable contains a non-numeric value, the application will crash at startup.",
+   "suggested_fix": "Wrap the int conversion in a try/except block and fallback to the default port, e.g.,\n```\ntry:\n    port = int(os.environ.get(\"APP_PORT\", Settings.port))\nexcept ValueError:\n    port = Settings.port\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The load_settings function directly casts APP_PORT to int without handling a ValueError, so a non-numeric value will raise an uncaught exception at startup.",
+   "evidence": [
+    {
+     "why": "Casts environment variable to int without try/except, causing ValueError if non-integer",
+     "line": 15,
+     "path": "app_config/settings.py",
+     "quote": "port=int(os.environ.get(\"APP_PORT\", Settings.port)),"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The load_settings function directly casts APP_PORT to int without handling a ValueError, so a non-numeric value will raise an uncaught exception at startup.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Casts environment variable to int without try/except, causing ValueError if non-integer",
+        "line": 15,
+        "path": "app_config/settings.py",
+        "quote": "port=int(os.environ.get(\"APP_PORT\", Settings.port)),"
+       }
+      ]
+     },
+     "result_chars": 167,
+     "result_summary": "confirmed: The load_settings function directly casts APP_PORT to int without handling a ValueError, so a non-numeric value will raise an uncaught exception at startup.",
+     "tokens_in": 1957,
+     "tokens_out": 176,
+     "latency_ms": 1110
+    }
+   ]
+  },
+  {
+   "id": 259,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "app_config/server.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "security",
+   "severity": "low",
+   "title": "Potential unsafe use of unvalidated host in URL construction",
+   "explanation": "The added line builds an HTTP URL directly from settings.host and settings.port without validation. If these values can be influenced by an attacker, they could craft malicious host values leading to SSRF or other injection attacks when the URL is later used in network requests.",
+   "suggested_fix": "Validate and sanitize settings.host (e.g., ensure it matches an allowed whitelist or is a proper hostname) before embedding it in the URL.",
+   "verdict": "confirmed",
+   "verdict_reason": "settings.host may come from an untrusted environment variable and is used directly to build a URL, which can lead to SSRF or injection. No validation is performed.",
+   "evidence": [
+    {
+     "why": "Constructs URL using settings.host without validation",
+     "line": 6,
+     "path": "app_config/server.py",
+     "quote": "return f\"http://{settings.host}:{settings.port}\""
+    },
+    {
+     "why": "settings.host can be set from environment variable, potentially attacker-controlled",
+     "line": 14,
+     "path": "app_config/settings.py",
+     "quote": "host=os.environ.get(\"APP_HOST\", Settings.host),"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class Settings"
+     },
+     "result_chars": 76,
+     "result_summary": "Lines containing 'class Settings':\napp_config/settings.py:6: class Settings:",
+     "tokens_in": 1860,
+     "tokens_out": 38,
+     "latency_ms": 969
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "app_config/settings.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 568,
+     "result_summary": "app_config/settings.py, lines 1-17 of 17:\n    1  import os\n    2  from dataclasses import dataclass\n    3  \n    4  \n    5  @dataclass(frozen=True)\n    6  class Settings:\n    7      host: str = \"127.0.0.1\"\n    8      port: int = 8000\n    9      debug: bool = False\n   10  \n   11  \n   12  def load_sett",
+     "tokens_in": 1937,
+     "tokens_out": 42,
+     "latency_ms": 781
+    },
+    {
+     "step_no": 3,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "server_address"
+     },
+     "result_chars": 37,
+     "result_summary": "Uses of 'server_address': no matches.",
+     "tokens_in": 2186,
+     "tokens_out": 92,
+     "latency_ms": 438
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "settings.host may come from an untrusted environment variable and is used directly to build a URL, which can lead to SSRF or injection. No validation is performed.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Constructs URL using settings.host without validation",
+        "line": 6,
+        "path": "app_config/server.py",
+        "quote": "return f\"http://{settings.host}:{settings.port}\""
+       },
+       {
+        "why": "settings.host can be set from environment variable, potentially attacker-controlled",
+        "line": 14,
+        "path": "app_config/settings.py",
+        "quote": "host=os.environ.get(\"APP_HOST\", Settings.host),"
+       }
+      ]
+     },
+     "result_chars": 174,
+     "result_summary": "confirmed: settings.host may come from an untrusted environment variable and is used directly to build a URL, which can lead to SSRF or injection. No validation is performed.",
+     "tokens_in": 2259,
+     "tokens_out": 217,
+     "latency_ms": 953
+    }
+   ]
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:100 -->\n### Automated review of `d4a39dc`\nFound 2 confirmed issue(s): 1 medium, 1 low.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0019 at list prices (free tier; agent $0.0019); 6 of 6 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "app_config/settings.py",
+    "line": 15,
+    "side": "RIGHT",
+    "body": "**medium** \u00b7 bug \u00b7 Uncaught exception when APP_PORT is non-integer\n\nThe code casts the APP_PORT environment variable to int without handling ValueError. If the variable contains a non-numeric value, the application will crash at startup.\n\n**Suggested fix:** Wrap the int conversion in a try/except block and fallback to the default port, e.g.,\n```\ntry:\n    port = int(os.environ.get(\"APP_PORT\", Settings.port))\nexcept ValueError:\n    port = Settings.port\n```\n\n_Checked against `app_config/settings.py:15`_"
+   },
+   {
+    "path": "app_config/server.py",
+    "line": 6,
+    "side": "RIGHT",
+    "body": "**low** \u00b7 security \u00b7 Potential unsafe use of unvalidated host in URL construction\n\nThe added line builds an HTTP URL directly from settings.host and settings.port without validation. If these values can be influenced by an attacker, they could craft malicious host values leading to SSRF or other injection attacks when the URL is later used in network requests.\n\n**Suggested fix:** Validate and sanitize settings.host (e.g., ensure it matches an allowed whitelist or is a proper hostname) before embedding it in the URL.\n\n_Checked against `app_config/server.py:6`, `app_config/settings.py:14`_"
+   }
+  ]
+ }
+}

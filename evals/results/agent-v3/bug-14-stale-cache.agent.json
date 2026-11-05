@@ -1,0 +1,272 @@
+{
+ "case": "bug-14-stale-cache",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "91374bec7a5f17956b98df568a0d8614e5e00ba8",
+ "started_at": "2026-11-05T15:36:10.862771+00:00",
+ "wall_seconds": 12.6,
+ "run": {
+  "id": 97,
+  "head_sha": "91374bec7a5f17956b98df568a0d8614e5e00ba8",
+  "status": "completed",
+  "started_at": "2026-11-05 15:36:10.943186+00:00",
+  "finished_at": "2026-11-05 15:36:23.475632+00:00",
+  "tokens_in": 8134,
+  "tokens_out": 605,
+  "cost_usd": "0.001583100",
+  "llm_calls": 4,
+  "cached_calls": 3,
+  "tokens_saved": 4428,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1982,
+   "tokens_out": 41,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.55
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1972,
+   "tokens_out": 44,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.31
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2075,
+   "tokens_out": 179,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.06
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2105,
+   "tokens_out": 341,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.83
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 251,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 16,
+   "line_end": 16,
+   "category": "bug",
+   "severity": "high",
+   "title": "Cache not invalidated after price update",
+   "explanation": "The in\u2011memory _cache stores product data loaded by get_product, but update_price does not clear or refresh the cached entry. Subsequent calls to get_product will return stale price information.",
+   "suggested_fix": "Invalidate or update the cache entry after saving the new price, e.g.,\n```python\n    save_price(product_id, round(price, 2))\n    _cache.pop(product_id, None)  # or reload the product into the cache\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "update_price writes the new price to storage but does not modify or invalidate the _cache used by get_product, so subsequent get_product calls may return stale data.",
+   "evidence": [
+    {
+     "why": "defines in\u2011memory cache used by get_product",
+     "line": 4,
+     "path": "products/service.py",
+     "quote": "_cache: dict[int, dict | None] = {}"
+    },
+    {
+     "why": "get_product checks and populates cache",
+     "line": 8,
+     "path": "products/service.py",
+     "quote": "if product_id not in _cache:"
+    },
+    {
+     "why": "stores loaded product in cache",
+     "line": 9,
+     "path": "products/service.py",
+     "quote": "_cache[product_id] = load_product(product_id)"
+    },
+    {
+     "why": "price update function",
+     "line": 13,
+     "path": "products/service.py",
+     "quote": "def update_price(product_id: int, price: float) -> None:"
+    },
+    {
+     "why": "updates persistent store but never clears or updates _cache",
+     "line": 16,
+     "path": "products/service.py",
+     "quote": "save_price(product_id, round(price, 2))"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_cache"
+     },
+     "result_chars": 256,
+     "result_summary": "Lines containing '_cache':\nproducts/service.py:4: _cache: dict[int, dict | None] = {}\nproducts/service.py:8: if product_id not in _cache:\nproducts/service.py:9: _cache[product_id] = load_product(product_id)\nproducts/service.py:10: return _cache[product_id]",
+     "tokens_in": 1972,
+     "tokens_out": 44,
+     "latency_ms": 1328
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "update_price writes the new price to storage but does not modify or invalidate the _cache used by get_product, so subsequent get_product calls may return stale data.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "defines in\u2011memory cache used by get_product",
+        "line": 4,
+        "path": "products/service.py",
+        "quote": "_cache: dict[int, dict | None] = {}"
+       },
+       {
+        "why": "get_product checks and populates cache",
+        "line": 8,
+        "path": "products/service.py",
+        "quote": "if product_id not in _cache:"
+       },
+       {
+        "why": "stores loaded product in cache",
+        "line": 9,
+        "path": "products/service.py",
+        "quote": "_cache[product_id] = load_product(product_id)"
+       },
+       {
+        "why": "price update function",
+        "line": 13,
+        "path": "products/service.py",
+        "quote": "def update_price(product_id: int, price: float) -> None:"
+       },
+       {
+        "why": "updates persistent store but never clears or updates _cache",
+        "line": 16,
+        "path": "products/service.py",
+        "quote": "save_price(product_id, round(price, 2))"
+       }
+      ]
+     },
+     "result_chars": 176,
+     "result_summary": "confirmed: update_price writes the new price to storage but does not modify or invalidate the _cache used by get_product, so subsequent get_product calls may return stale data.",
+     "tokens_in": 2105,
+     "tokens_out": 341,
+     "latency_ms": 1829
+    }
+   ]
+  },
+  {
+   "id": 252,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 4,
+   "line_end": 4,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Type hint for cache is misleading",
+   "explanation": "The hint `_cache: dict[int, dict | None]` suggests the values are either a dict or None, but the `load_product` function may return any type. The annotation also omits the `typing` module. This can confuse readers and static analysers.",
+   "suggested_fix": "Use `dict[int, Any]` or `Dict[int, Optional[Any]]` and import from `typing`. Add a comment explaining the cache contents.",
+   "verdict": "dropped",
+   "verdict_reason": "The cache type hint `_cache: dict[int, dict | None]` matches the actual return type of load_product, which is `dict | None`; there is no broader return type, so the hint is accurate.",
+   "evidence": [
+    {
+     "why": "load_product returns dict or None, matching the cache type hint",
+     "line": 6,
+     "path": "products/repo.py",
+     "quote": "def load_product(product_id: int) -> dict | None:"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def load_product"
+     },
+     "result_chars": 106,
+     "result_summary": "Lines containing 'def load_product':\nproducts/repo.py:6: def load_product(product_id: int) -> dict | None:",
+     "tokens_in": 1982,
+     "tokens_out": 41,
+     "latency_ms": 563
+    },
+    {
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The cache type hint `_cache: dict[int, dict | None]` matches the actual return type of load_product, which is `dict | None`; there is no broader return type, so the hint is accurate.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "load_product returns dict or None, matching the cache type hint",
+        "line": 6,
+        "path": "products/repo.py",
+        "quote": "def load_product(product_id: int) -> dict | None:"
+       }
+      ]
+     },
+     "result_chars": 191,
+     "result_summary": "dropped: The cache type hint `_cache: dict[int, dict | None]` matches the actual return type of load_product, which is `dict | None`; there is no broader return type, so the hint is accurate.",
+     "tokens_in": 2075,
+     "tokens_out": 179,
+     "latency_ms": 1079
+    }
+   ]
+  },
+  {
+   "id": 253,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "products/service.py",
+   "line_start": 4,
+   "line_end": 4,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Mutable default cache not thread\u2011safe",
+   "explanation": "Using a module\u2011level mutable dictionary as a cache can lead to race conditions in multi\u2011threaded contexts and makes the code harder to reason about. It also silently caches None values.",
+   "suggested_fix": "Move the cache into a class or use a thread\u2011safe structure, or at least document its intended single\u2011thread usage.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 252,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:97 -->\n### Automated review of `91374be`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 1 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0016 at list prices (free tier; agent $0.0016); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "products/service.py",
+    "line": 16,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Cache not invalidated after price update\n\nThe in\u2011memory _cache stores product data loaded by get_product, but update_price does not clear or refresh the cached entry. Subsequent calls to get_product will return stale price information.\n\n**Suggested fix:** Invalidate or update the cache entry after saving the new price, e.g.,\n```python\n    save_price(product_id, round(price, 2))\n    _cache.pop(product_id, None)  # or reload the product into the cache\n```\n\n_Checked against `products/service.py:4`, `products/service.py:8`, `products/service.py:9`_"
+   }
+  ]
+ }
+}

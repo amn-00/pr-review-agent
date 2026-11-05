@@ -1,0 +1,165 @@
+{
+ "case": "trap-03-guarded-division",
+ "mode": "agent",
+ "agent_prompt_version": "v2",
+ "agent_prompt_override": true,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "3c471b4d2106bff40a9d61991fc04dbca3d576ae",
+ "started_at": "2026-11-05T15:32:22.195620+00:00",
+ "wall_seconds": 15.4,
+ "run": {
+  "id": 95,
+  "head_sha": "3c471b4d2106bff40a9d61991fc04dbca3d576ae",
+  "status": "completed",
+  "started_at": "2026-11-05 15:32:22.273246+00:00",
+  "finished_at": "2026-11-05 15:32:37.505158+00:00",
+  "tokens_in": 5013,
+  "tokens_out": 311,
+  "cost_usd": "0.000938550",
+  "llm_calls": 3,
+  "cached_calls": 3,
+  "tokens_saved": 3589,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1532,
+   "tokens_out": 38,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.7
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1655,
+   "tokens_out": 46,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.94
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1826,
+   "tokens_out": 227,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.58
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 248,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "reviews/stats.py",
+   "line_start": 3,
+   "line_end": 3,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential division by zero when ratings list is empty",
+   "explanation": "The function computes sum(ratings) / len(ratings) without checking if the list is empty. If an empty list is passed, len(ratings) is zero, causing a ZeroDivisionError at runtime.",
+   "suggested_fix": "Add a guard for an empty list, e.g.,\n```\nif not ratings:\n    return 0.0\nreturn round(sum(ratings) / len(ratings), 1)\n```",
+   "verdict": "dropped",
+   "verdict_reason": "The only call site checks for an empty ratings list and returns before invoking mean_rating, so division by zero cannot occur.",
+   "evidence": [
+    {
+     "why": "gets ratings list, may be empty",
+     "line": 5,
+     "path": "reviews/views.py",
+     "quote": "ratings = product.get(\"ratings\", [])"
+    },
+    {
+     "why": "checks for empty list and returns early",
+     "line": 6,
+     "path": "reviews/views.py",
+     "quote": "if not ratings:"
+    },
+    {
+     "why": "prevents calling mean_rating with empty list",
+     "line": 7,
+     "path": "reviews/views.py",
+     "quote": "return \"No ratings yet\""
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "mean_rating"
+     },
+     "result_chars": 237,
+     "result_summary": "Lines containing 'mean_rating':\nreviews/stats.py:1: def mean_rating(ratings: list[int]) -> float:\nreviews/views.py:1: from reviews.stats import mean_rating\nreviews/views.py:8: return f\"{mean_rating(ratings)} / 5 ({len(ratings)} ratings)\"",
+     "tokens_in": 1532,
+     "tokens_out": 38,
+     "latency_ms": 1750
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "reviews/views.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 328,
+     "result_summary": "reviews/views.py, lines 1-8 of 8:\n    1  from reviews.stats import mean_rating\n    2  \n    3  \n    4  def rating_badge(product: dict) -> str:\n    5      ratings = product.get(\"ratings\", [])\n    6      if not ratings:\n    7          return \"No ratings yet\"\n    8      return f\"{mean_rating(ratings)} /",
+     "tokens_in": 1655,
+     "tokens_out": 46,
+     "latency_ms": 1953
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The only call site checks for an empty ratings list and returns before invoking mean_rating, so division by zero cannot occur.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "gets ratings list, may be empty",
+        "line": 5,
+        "path": "reviews/views.py",
+        "quote": "ratings = product.get(\"ratings\", [])"
+       },
+       {
+        "why": "checks for empty list and returns early",
+        "line": 6,
+        "path": "reviews/views.py",
+        "quote": "if not ratings:"
+       },
+       {
+        "why": "prevents calling mean_rating with empty list",
+        "line": 7,
+        "path": "reviews/views.py",
+        "quote": "return \"No ratings yet\""
+       }
+      ]
+     },
+     "result_chars": 135,
+     "result_summary": "dropped: The only call site checks for an empty ratings list and returns before invoking mean_rating, so division by zero cannot occur.",
+     "tokens_in": 1826,
+     "tokens_out": 227,
+     "latency_ms": 1578
+    }
+   ]
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:95 -->\n### Automated review of `3c471b4`\nNo confirmed issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v2): 0 confirmed, 1 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0009 at list prices (free tier; agent $0.0009); 3 of 3 lane call(s) answered from cache.",
+  "comments": []
+ }
+}
