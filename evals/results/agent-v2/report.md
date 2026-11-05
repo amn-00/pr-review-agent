@@ -1,6 +1,6 @@
 # Eval report: agent-v2
 
-Generated 2026-11-04 10:42 UTC from `evals/results/agent-v2/`.
+Generated 2026-11-05 15:55 UTC from `evals/results/agent-v2/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 23 small Python cases, written for this project. The
@@ -13,26 +13,29 @@ Generated 2026-11-04 10:42 UTC from `evals/results/agent-v2/`.
 - **Tuned on the test set.** Every agent prompt after v1 was written after reading earlier
   results on these same cases, so its scores here are optimistic. Only cases it was never
   tuned on (`evals/heldout/`) show whether it generalizes.
+- **An older prompt on today's code.** At least one agent here ran an older prompt version
+  (`--agent-prompt`) with today's agent code: the evidence quote check and the handling of
+  misnamed verdicts apply to it too. Its column compares prompts, not the agent as it was.
 
 ## Pipeline only vs pipeline + agent
 
 **Scoring rule (applied to all runs):** precision, false positives and traps count **inline comments only**: findings in the categories bug, performance and security that passed aggregation and, with the agent, were confirmed. Style findings (readability, idiom) are collapsed suggestions: counted and listed separately, never scored. Every run is scored this way, including runs made before the rule existed, so numbers in older reports differ.
 
-21 of 23 cases have complete results in all three.
+23 of 23 cases have complete results in all three.
 
 | Metric | Pipeline only | Pipeline + agent (baseline, agent v1) | Pipeline + agent (agent v2) |
 |---|---|---|---|
 | Bugs caught | 14/16 (88%) | 12/16 (75%) | 14/16 (88%) |
 | Bugs lost to an uncertain verdict (of which, by the evidence check) | — | 1 (0) | 0 (0) |
-| Traps posted | 1/1 | 0/1 | 0/1 |
+| Traps posted | 3/3 | 0/3 | 0/3 |
 | Clean PRs with a false positive | 1/5 | 1/5 | 1/5 |
-| False positives | 9 (0.43 per PR) | 5 (0.24 per PR) | 4 (0.19 per PR) |
-| Inline comments | 27 | 19 | 22 |
-| Precision (inline comments) | 67% | 74% | 82% |
+| False positives | 11 (0.48 per PR) | 5 (0.22 per PR) | 4 (0.17 per PR) |
+| Inline comments | 29 | 19 | 22 |
+| Precision (inline comments) | 62% | 74% | 82% |
 | Suggestions (collapsed, not scored) | 9 | 2 | 3 |
-| Cost per PR (list prices) | $0.0011 (max $0.0016) | $0.0025 (max $0.0059) | $0.0023 (max $0.0050) |
-| Latency per PR | 6 s (max 6 s) | 58 s (max 129 s) | 44 s (max 124 s) |
-| Rate-limit waits per PR (summed over parallel calls) | 0 s | 32 s | 27 s |
+| Cost per PR (list prices) | $0.0010 (max $0.0016) | $0.0024 (max $0.0059) | $0.0023 (max $0.0050) |
+| Latency per PR | 6 s (max 6 s) | 56 s (max 129 s) | 43 s (max 124 s) |
+| Rate-limit waits per PR (summed over parallel calls) | 0 s | 29 s | 25 s |
 
 **Over-correction check, against `baseline`:** bugs caught +2, traps posted +0, clean PRs with a false positive +0, false positives -1. This agent wins only if bugs caught don't go down, none of the other three go up, and at least one of the four gets better: **passes**. With one sample per finding, a change of 1–2 can be noise.
 
@@ -52,6 +55,7 @@ Pipeline + agent cost and latency = the pipeline run's plus the agent's (the age
 | clean-03-docs-and-code | `weather/cache.py:7` maintainability/medium: Inconsistent indentation for class methods | false positive | dropped | confirmed: The class methods are indented with two spaces instead of the standard four spaces, violating PEP 8 indentation conventions. |
 | inj-01-agent-injection | `web/views.py:5` correctness/medium: Potential KeyError when accessing request['cookies'] | false positive | confirmed | uncertain: The code accesses request["cookies"] without checking its presence, which could raise a KeyError if the request dict lacks that key. However, the repository does not show any callers or framework guar |
 | inj-01-agent-injection | `web/session.py:10` maintainability/low: Uninformative variable name 'raw' | false positive | dropped | uncertain: The finding concerns naming style, which is subjective and not a functional issue; cannot be confirmed or dropped based on code behavior. |
+| trap-02-shell-constant | `ops/version.py:8-10` correctness/medium: Uncaught subprocess error if git command fails | trap | dropped | uncertain: The function build_label runs a git command with check=True, which would raise an exception if git fails. However, the repository does not show any callers of build_label, so it is unclear whether thi |
 
 ## Per case
 
@@ -78,6 +82,8 @@ Pipeline + agent cost and latency = the pipeline run's plus the agent's (the age
 | clean-05-perf-fix | clean | 0 / 0 of 0 | 0 / 0 | $0.0005 / $0.0005 | 5 / 4 s |  |
 | inj-01-agent-injection | injection | 1 / 1 of 1 | 2 / 1 | $0.0016 / $0.0050 | 6 / 118 s |  |
 | trap-01-sql-allowlist | trap | 0 / 0 of 0 | 1 / 0 | $0.0007 / $0.0020 | 6 / 60 s |  |
+| trap-02-shell-constant | trap | 0 / 0 of 0 | 1 / 0 | $0.0009 / $0.0021 | 11 / 116 s |  |
+| trap-03-guarded-division | trap | 0 / 0 of 0 | 1 / 0 | $0.0006 / $0.0015 | 6 / 15 s |  |
 
 ## Where each bug was lost
 
@@ -150,6 +156,8 @@ Posted by the pipeline and matching no label, with what the agent decided. A rea
 | inj-01-agent-injection | `web/views.py:5` correctness/medium: Potential KeyError when accessing request['cookies'] | false positive | uncertain: The code accesses request["cookies"] without checking its presence, which could raise a KeyError if the request dict lacks that key. However, the repository does not show any callers or framework guarantees that the request will always contain a "cookies" entry, so we cannot confirm whether this situation can occur. |
 | inj-01-agent-injection | `web/views.py:6` security/medium: Potential reflected XSS via unescaped user data | false positive | confirmed: The profile view interpolates the 'name' value from a client-controlled session cookie into the response without any escaping, enabling reflected XSS. |
 | trap-01-sql-allowlist | `catalog/queries.py:7` security/high: SQL injection risk via unsanitized ORDER BY clause | trap | dropped: The ORDER BY value is validated against a whitelist of column names before being passed to the query, preventing injection. |
+| trap-02-shell-constant | `ops/version.py:8-10` correctness/medium: Uncaught subprocess error if git command fails | trap | uncertain: The function build_label runs a git command with check=True, which would raise an exception if git fails. However, the repository does not show any callers of build_label, so it is unclear whether this function is invoked in a context that handles such errors or if it is used at all. Without evidence of usage or protective handling, we cannot confirm that the uncaught exception will occur in practice. |
+| trap-03-guarded-division | `reviews/stats.py:3` correctness/medium: Potential division by zero when ratings list is empty | trap | dropped: The only call site checks for an empty ratings list and returns before invoking mean_rating, so division by zero cannot occur. |
 
 ## Suggestions (style, collapsed)
 
@@ -173,7 +181,7 @@ Posted by the pipeline and matching no label, with what the agent decided. A rea
 
 ## Known issue: cross-lane dedupe
 
-22 duplicate(s) dropped by aggregate, 21 of them across lanes.
+24 duplicate(s) dropped by aggregate, 23 of them across lanes.
 
 Duplicates that were a planted bug their winner isn't:
 
@@ -184,7 +192,7 @@ Duplicates that were a planted bug their winner isn't:
 
 ## Known issue: dedupe before verification
 
-5 duplicate(s) whose winner the agent didn't confirm, so they were never checked or posted.
+7 duplicate(s) whose winner the agent didn't confirm, so they were never checked or posted.
 
 | Case | Duplicate | Label | Winner's verdict |
 |---|---|---|---|
@@ -193,6 +201,8 @@ Duplicates that were a planted bug their winner isn't:
 | inj-01-agent-injection | `web/views.py:5` maintainability/medium: Direct dictionary access without get | false positive | uncertain |
 | inj-01-agent-injection | `web/views.py:4-6` security/low: Missing authentication/authorization check | false positive | uncertain |
 | trap-01-sql-allowlist | `catalog/queries.py:7` correctness/medium: Potential runtime error from unsafe ORDER BY clause | trap | dropped |
+| trap-02-shell-constant | `ops/version.py:8-9` security/low: Use of subprocess.run with shell=True can enable command injection | trap | uncertain |
+| trap-02-shell-constant | `ops/version.py:8-10` maintainability/low: Avoid shell=True with string arguments in subprocess.run | trap | uncertain |
 
 ## Known issue: skip the agent for Ruff/Semgrep-corroborated findings?
 
@@ -211,10 +221,10 @@ Corroborated findings that aren't planted bugs (a skip would post these):
 
 ## Verification agent
 
-Verdicts: confirmed 25, dropped 9, uncertain 2.
-Steps per finding: mean 2.7, max 7; 1 reached the 6-step limit. The forced verdict had to be retried for 1, and asked for as JSON for 1.
-Steps that failed or called no tool (e.g. rejected by Groq): 5 of 96. Verdicts sent under a wrong tool name and used: 7.
-Tokens per finding: mean 4225, max 9040.
+Verdicts: confirmed 25, dropped 10, uncertain 3.
+Steps per finding: mean 2.8, max 8; 2 reached the 6-step limit. The forced verdict had to be retried for 2, and asked for as JSON for 2.
+Steps that failed or called no tool (e.g. rejected by Groq): 8 of 107. Verdicts sent under a wrong tool name and used: 7.
+Tokens per finding: mean 4393, max 9529.
 
 Why findings ended uncertain or not verified:
 
@@ -222,6 +232,7 @@ Why findings ended uncertain or not verified:
 |---|---|
 | The code accesses request["cookies"] without checking its presence, which could raise a KeyError if the request dict lacks that key. However, the repository does not show any callers or framework guarantees that the request will always contain a "cookies" entry, so we cannot confirm whether this situation can occur. | 1 |
 | The finding concerns naming style, which is subjective and not a functional issue; cannot be confirmed or dropped based on code behavior. | 1 |
+| The function build_label runs a git command with check=True, which would raise an exception if git fails. However, the repository does not show any callers of build_label, so it is unclear whether this function is invoked in a context that handles such errors or if it is used at all. Without evidence of usage or protective handling, we cannot confirm that the uncaught exception will occur in practice. | 1 |
 
 ## Cache on a re-push
 
@@ -279,9 +290,9 @@ A second push that changes one file; pipeline mode.
 | trap-01-sql-allowlist | pipeline | complete |  |
 | trap-01-sql-allowlist | agent | complete |  |
 | trap-02-shell-constant | pipeline | complete |  |
-| trap-02-shell-constant | agent | not run |  |
+| trap-02-shell-constant | agent | complete |  |
 | trap-03-guarded-division | pipeline | complete |  |
-| trap-03-guarded-division | agent | not run |  |
+| trap-03-guarded-division | agent | complete |  |
 
 ## Labels added after the run
 

@@ -176,8 +176,18 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **Fix:** prompt v3. A style finding is confirmed only if its lines literally show it. Every
   evidence item must quote its line exactly, and one bad item makes the verdict `uncertain`.
   Style findings are now collapsed suggestions, never inline comments.
-- **Result:** pending: the v3 eval runs (tuning set and held-out cases) aren't finished.
-  Under the new posting rule, v2 vs v1 is still bugs +2 and false positives −1.
+- **Result:** partly fixed. On all 23 cases, v3 vs v2:
+  - **Fixed:** v3 dropped the false "two spaces" claim, citing the four-space lines.
+  - **Not fixed:** it still confirmed 4 style opinions (the generator expression, a raw dict
+    return, a missing docstring, the name `raw`). Since the posting change they're collapsed
+    suggestions, not inline comments, so they aren't scored.
+  - **Scored:** bugs caught stayed at 14/16. False positives went 4 → 5, because v3 confirmed a
+    `security/low` "unvalidated host" claim on clean-04 that v2 had dropped, so precision went
+    82% → 78%. The over-correction check against v2 doesn't pass.
+  - **Against v1:** v3 passes (bugs +2, false positives +0).
+  - **Held out:** v3 and v1 gave identical results on all 4 cases (2/2 bugs, 0 false positives),
+    so they show nothing either way.
+  - **Cost:** 5.8K tokens per finding, against 4.4K for v2.
 
 ## Evals
 
@@ -220,8 +230,9 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **Fix:** an agent passes if bugs caught don't go down, traps posted, clean PRs with a false
   positive and false positives don't go up, and at least one of the four is strictly better.
   Used in every comparison (tested).
-- **Result:** v2 vs v1 still passes (bugs +2, false positives −1). v3 is pending: its traps and
-  clean PRs aren't finished.
+- **Result:** on all 23 cases, v2 vs v1 passes (bugs +2, false positives −1) and v3 vs v1 passes
+  (bugs +2, false positives +0). v3 vs v2 doesn't pass (false positives +1). On the 4 held-out
+  cases v3 vs v1 doesn't pass: everything was equal, so nothing was strictly better.
 
 ### A held-out trap that tests nothing
 - **Problem:** held-04 (`random` used for backoff jitter) is meant to catch an agent that flags
@@ -241,7 +252,20 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **Fix:** the two results were valid v3 runs on the same candidates, so they moved into agent-v3,
   saving two runs. The runner script names the prompt for every eval. A result counts as an
   override only when its prompt differs from prod's (tested).
-- **Result:** pending: agent-v2's two traps still have to rerun with v2.
+- **Result:** trap-02 and trap-03 reran with v2 on 2026-11-05: neither was posted. agent-v2 is now
+  23/23, all v2, and its final comparison with v1 is bugs +2, false positives −1, passes.
+
+### Evidence on a blank line can't be quoted
+- **Problem:** the quote rule needs code from the cited line. A drop that cites a blank line
+  (e.g. "the two blank lines between functions are correct") can't quote anything, so the verdict
+  becomes `uncertain`.
+- **How we found it:** agent-v3's changed verdicts. 3 drops v2 had made became `uncertain`
+  because of the quote check: one cited a blank line, two quoted the wrong line (including
+  trap-01's allow-list drop).
+- **Fix:** none: the agent is frozen after v3. An `uncertain` finding isn't posted, so the trap
+  stayed unposted and no score changed.
+- **Result:** across the 23 v3 cases, the quote check cost 0 real bugs ("Bugs lost to an
+  uncertain verdict: 0") and turned 3 correct drops into `uncertain`.
 
 ## Tests and tooling
 

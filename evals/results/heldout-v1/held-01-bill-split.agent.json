@@ -1,0 +1,215 @@
+{
+ "case": "held-01-bill-split",
+ "mode": "agent",
+ "agent_prompt_version": "v1",
+ "agent_prompt_override": true,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "f620bb0e297540929dd59795c9d2787f901142f5",
+ "started_at": "2026-11-05T15:52:09.948306+00:00",
+ "wall_seconds": 14.0,
+ "run": {
+  "id": 106,
+  "head_sha": "f620bb0e297540929dd59795c9d2787f901142f5",
+  "status": "completed",
+  "started_at": "2026-11-05 15:52:10.050614+00:00",
+  "finished_at": "2026-11-05 15:52:23.912896+00:00",
+  "tokens_in": 5890,
+  "tokens_out": 402,
+  "cost_usd": "0.001124700",
+  "llm_calls": 4,
+  "cached_calls": 3,
+  "tokens_saved": 4008,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1313,
+   "tokens_out": 40,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.86
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1398,
+   "tokens_out": 47,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.51
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1555,
+   "tokens_out": 31,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.89
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1624,
+   "tokens_out": 284,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.01
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 275,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "billing/split.py",
+   "line_start": 9,
+   "line_end": 10,
+   "category": "bug",
+   "severity": "high",
+   "title": "Share distribution may not sum to total amount",
+   "explanation": "The function uses integer division to compute each person's share, which discards any remainder cents. The returned list of shares can sum to less than the original total, violating the documented guarantee that shares must add up to the total.",
+   "suggested_fix": "Compute the base share with integer division, then distribute the remainder cents one by one (e.g., add 1 cent to the first `remainder` shares).",
+   "verdict": "confirmed",
+   "verdict_reason": "The function claims shares must sum to the total, but integer division loses any remainder cents, so the returned list can sum to less than the total.",
+   "evidence": [
+    {
+     "why": "Docstring promises shares sum to total",
+     "line": 5,
+     "path": "billing/split.py",
+     "quote": "\"\"\"Each person's share in cents. The shares must add up to the total.\"\"\""
+    },
+    {
+     "why": "Uses integer division, discarding remainder",
+     "line": 9,
+     "path": "billing/split.py",
+     "quote": "share = cents // people"
+    },
+    {
+     "why": "Returns equal shares, cannot include remainder",
+     "line": 10,
+     "path": "billing/split.py",
+     "quote": "return [share] * people"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def to_cents"
+     },
+     "result_chars": 86,
+     "result_summary": "Lines containing 'def to_cents':\nbilling/money.py:1: def to_cents(amount: str) -> int:",
+     "tokens_in": 1313,
+     "tokens_out": 40,
+     "latency_ms": 1875
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "billing/money.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 225,
+     "result_summary": "billing/money.py, lines 1-4 of 4:\n    1  def to_cents(amount: str) -> int:\n    2      \"\"\"'12.34' -> 1234.\"\"\"\n    3      whole, _, cents = amount.partition(\".\")\n    4      return int(whole) * 100 + int(cents.ljust(2, \"0\")[:2])",
+     "tokens_in": 1398,
+     "tokens_out": 47,
+     "latency_ms": 515
+    },
+    {
+     "step_no": 3,
+     "tool": "find_callers",
+     "args_json": {
+      "symbol": "split_bill"
+     },
+     "result_chars": 33,
+     "result_summary": "Uses of 'split_bill': no matches.",
+     "tokens_in": 1555,
+     "tokens_out": 31,
+     "latency_ms": 891
+    },
+    {
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function claims shares must sum to the total, but integer division loses any remainder cents, so the returned list can sum to less than the total.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Docstring promises shares sum to total",
+        "line": 5,
+        "path": "billing/split.py",
+        "quote": "\"\"\"Each person's share in cents. The shares must add up to the total.\"\"\""
+       },
+       {
+        "why": "Uses integer division, discarding remainder",
+        "line": 9,
+        "path": "billing/split.py",
+        "quote": "share = cents // people"
+       },
+       {
+        "why": "Returns equal shares, cannot include remainder",
+        "line": 10,
+        "path": "billing/split.py",
+        "quote": "return [share] * people"
+       }
+      ]
+     },
+     "result_chars": 161,
+     "result_summary": "confirmed: The function claims shares must sum to the total, but integer division loses any remainder cents, so the returned list can sum to less than the total.",
+     "tokens_in": 1624,
+     "tokens_out": 284,
+     "latency_ms": 1015
+    }
+   ]
+  },
+  {
+   "id": 276,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "billing/split.py",
+   "line_start": 4,
+   "line_end": 10,
+   "category": "readability",
+   "severity": "high",
+   "title": "Function does not guarantee shares add up to total",
+   "explanation": "The docstring states that the returned shares must sum to the total amount, but the implementation simply repeats the floor division result, ignoring any remainder. This can mislead readers into believing the function fulfills its contract.",
+   "suggested_fix": "Distribute the remainder among the first few people: \n```\nremainder = cents % people\nshares = [share + (i < remainder) for i in range(people)]\nreturn shares\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 275,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:106 -->\n### Automated review of `f620bb0`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v1): 1 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0011 at list prices (free tier; agent $0.0011); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "billing/split.py",
+    "line": 10,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 bug \u00b7 Share distribution may not sum to total amount\n\nThe function uses integer division to compute each person's share, which discards any remainder cents. The returned list of shares can sum to less than the original total, violating the documented guarantee that shares must add up to the total.\n\n**Suggested fix:** Compute the base share with integer division, then distribute the remainder cents one by one (e.g., add 1 cent to the first `remainder` shares).\n\n_Checked against `billing/split.py:5`, `billing/split.py:9`, `billing/split.py:10`_",
+    "start_line": 9,
+    "start_side": "RIGHT"
+   }
+  ]
+ }
+}

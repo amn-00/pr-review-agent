@@ -1,0 +1,180 @@
+{
+ "case": "held-02-reset-token",
+ "mode": "agent",
+ "agent_prompt_version": "v3",
+ "agent_prompt_override": false,
+ "status": "complete",
+ "problems": [],
+ "notes": [],
+ "head_sha": "26baade70fd7f7d2126bb2d7072624c5964f258d",
+ "started_at": "2026-11-05T15:49:21.811833+00:00",
+ "wall_seconds": 12.4,
+ "run": {
+  "id": 104,
+  "head_sha": "26baade70fd7f7d2126bb2d7072624c5964f258d",
+  "status": "completed",
+  "started_at": "2026-11-05 15:49:21.871222+00:00",
+  "finished_at": "2026-11-05 15:49:34.179539+00:00",
+  "tokens_in": 6050,
+  "tokens_out": 344,
+  "cost_usd": "0.001113900",
+  "llm_calls": 3,
+  "cached_calls": 3,
+  "tokens_saved": 3953,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true
+ },
+ "calls": [
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1895,
+   "tokens_out": 54,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.8
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 1979,
+   "tokens_out": 74,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 0.67
+  },
+  {
+   "kind": "agent",
+   "model": "openai/gpt-oss-120b",
+   "tokens_in": 2176,
+   "tokens_out": 216,
+   "waited_s": 0.0,
+   "error": null,
+   "latency_s": 1.44
+  }
+ ],
+ "earlier_calls": [],
+ "tool_findings": [],
+ "findings": [
+  {
+   "id": 271,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "accounts/reset.py",
+   "line_start": 8,
+   "line_end": 8,
+   "category": "security",
+   "severity": "high",
+   "title": "Insecure random number generator for password reset token",
+   "explanation": "The code uses the `random` module to generate a password reset token, which is not cryptographically secure and could be predicted by an attacker, allowing unauthorized password resets.",
+   "suggested_fix": "Replace `random.choice` with `secrets.choice` from the `secrets` module, e.g., `token = \"\".join(secrets.choice(\"0123456789abcdef\") for _ in range(32))`.",
+   "verdict": "confirmed",
+   "verdict_reason": "The function generates a password reset token using the standard random module, which is not suitable for security\u2011sensitive token generation.",
+   "evidence": [
+    {
+     "why": "Imports the non\u2011cryptographic random module",
+     "line": 1,
+     "path": "accounts/reset.py",
+     "quote": "import random"
+    },
+    {
+     "why": "Uses random.choice to build token, which is not cryptographically secure",
+     "line": 8,
+     "path": "accounts/reset.py",
+     "quote": "token = \"\".join(random.choice(\"0123456789abcdef\") for _ in range(32))"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "start_password_reset"
+     },
+     "result_chars": 106,
+     "result_summary": "Lines containing 'start_password_reset':\naccounts/reset.py:6: def start_password_reset(email: str) -> str:",
+     "tokens_in": 1895,
+     "tokens_out": 54,
+     "latency_ms": 812
+    },
+    {
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "accounts/reset.py",
+      "line_end": 12,
+      "line_start": 1
+     },
+     "result_chars": 419,
+     "result_summary": "accounts/reset.py, lines 1-10 of 10:\n    1  import random\n    2  \n    3  from accounts.store import save_reset_token\n    4  \n    5  \n    6  def start_password_reset(email: str) -> str:\n    7      \"\"\"Create the one-time code we email to a user who forgot their password.\"\"\"\n    8      token = \"\".join(",
+     "tokens_in": 1979,
+     "tokens_out": 74,
+     "latency_ms": 672
+    },
+    {
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The function generates a password reset token using the standard random module, which is not suitable for security\u2011sensitive token generation.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Imports the non\u2011cryptographic random module",
+        "line": 1,
+        "path": "accounts/reset.py",
+        "quote": "import random"
+       },
+       {
+        "why": "Uses random.choice to build token, which is not cryptographically secure",
+        "line": 8,
+        "path": "accounts/reset.py",
+        "quote": "token = \"\".join(random.choice(\"0123456789abcdef\") for _ in range(32))"
+       }
+      ]
+     },
+     "result_chars": 153,
+     "result_summary": "confirmed: The function generates a password reset token using the standard random module, which is not suitable for security\u2011sensitive token generation.",
+     "tokens_in": 2176,
+     "tokens_out": 216,
+     "latency_ms": 1437
+    }
+   ]
+  },
+  {
+   "id": 272,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "accounts/reset.py",
+   "line_start": 1,
+   "line_end": 9,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Use a cryptographically secure random generator",
+   "explanation": "The code uses random.choice from the standard random module to generate a password\u2011reset token. This is not cryptographically secure and is not the idiomatic way to generate such tokens in Python. The secrets module provides a secure alternative.",
+   "suggested_fix": "Replace the random token generation with secrets.token_hex(16) or use secrets.choice over a secure character set.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 271,
+   "agent_steps": []
+  }
+ ],
+ "review": {
+  "body": "<!-- pr-review-agent run:104 -->\n### Automated review of `26baade`\nFound 1 confirmed issue(s): 1 high.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 1 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0011 at list prices (free tier; agent $0.0011); 3 of 3 lane call(s) answered from cache.",
+  "comments": [
+   {
+    "path": "accounts/reset.py",
+    "line": 8,
+    "side": "RIGHT",
+    "body": "**high** \u00b7 security \u00b7 Insecure random number generator for password reset token\n\nThe code uses the `random` module to generate a password reset token, which is not cryptographically secure and could be predicted by an attacker, allowing unauthorized password resets.\n\n**Suggested fix:** Replace `random.choice` with `secrets.choice` from the `secrets` module, e.g., `token = \"\".join(secrets.choice(\"0123456789abcdef\") for _ in range(32))`.\n\n_Checked against `accounts/reset.py:1`, `accounts/reset.py:8`_"
+   }
+  ]
+ }
+}
