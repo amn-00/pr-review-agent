@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 from arq import create_pool
 from arq.worker import Worker, create_worker
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 
 from app.api.health import router as health_router
 from app.api.webhook import router as webhook_router
@@ -18,6 +19,9 @@ from app.queue import arq_redis_settings
 from app.worker import WorkerSettings
 
 logger = logging.getLogger(__name__)
+
+# Where someone who opens the service's URL in a browser lands. The service has no pages.
+REPO_URL = "https://github.com/amn-00/pr-review-agent"
 
 
 def start_worker() -> tuple[Worker, asyncio.Task]:
@@ -79,6 +83,12 @@ def create_app() -> FastAPI:
     app = FastAPI(title="PR Review Agent", lifespan=lifespan)
     app.include_router(health_router)
     app.include_router(webhook_router)
+
+    @app.get("/", include_in_schema=False)
+    async def root() -> RedirectResponse:
+        # 307, not 301: browsers don't cache it, so the target can change later.
+        return RedirectResponse(REPO_URL)
+
     return app
 
 

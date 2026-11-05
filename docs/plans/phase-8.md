@@ -95,6 +95,8 @@ never passes its health check, and Render keeps the old deploy serving. This rep
 one-shot `migrate` service only in prod.
 
 ### `render.yaml` (Blueprint)
+*(Not built: the service was set up by hand in the dashboards, with the same settings. The
+steps are in `docs/deploy.md`, and the reason is in `docs/decisions.md`, Phase 8c.)*
 - **Web service:**
   - `runtime: docker`, `plan: free`, `healthCheckPath: /health`;
   - `dockerCommand` as above, `PORT=8000`;

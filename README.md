@@ -9,6 +9,9 @@ a tool-using agent checks each one against the repo before it's posted.**
 Render deploy. -->
 *Demo GIF: TBD*
 
+**See a real review:** [pr-agent-playground#6](https://github.com/amn-00/pr-agent-playground/pull/6),
+posted by the deployed bot 2½ minutes after the PR was opened.
+
 - **0.48 → 0.22 false positives per PR** with the agent, still catching **14 of 16** planted
   bugs (a small synthetic benchmark; [limits below](#eval-results)).
 - **0 duplicate reviews** across 1,850 load-test webhooks and every failure test: killed workers,
@@ -298,17 +301,17 @@ your Groq quota).
 
 ### Deploy to Render (free tier)
 
-<!-- TBD: written from the plan in docs/plans/phase-8.md, and not yet verified. Replace with the
-real steps and link docs/deploy.md once Phase 8b has run. -->
+The full steps are in [docs/deploy.md](docs/deploy.md). In short:
+1. **Neon Postgres:** use the direct (not `-pooler`) connection string, rewritten to
+   `postgresql+asyncpg://…?ssl=verify-full`.
+2. **Render Key Value:** Free, with `noeviction`, so queued jobs are never silently evicted.
+3. **A Render free web service from this repo's Dockerfile:**
+   - `RUN_WORKER_IN_API=true` runs the worker in the API process.
+   - The start command migrates, then `exec`s uvicorn.
+4. **The GitHub App's webhook URL:** `https://<service>.onrender.com/webhook`.
 
-1. Create a Neon Postgres project, and copy its direct (not `-pooler`) connection string.
-2. Create a Render Blueprint from this repo. `render.yaml` defines the web service and a Key
-   Value instance.
-3. In Render's dashboard, enter `DATABASE_URL`, the GitHub App values and `GROQ_API_KEY`.
-   Migrations run when the service starts.
-4. Point the GitHub App's webhook URL at `https://<your-service>.onrender.com/webhook`.
-
-Live at: TBD
+The service has no pages: opening its URL redirects here. To see it working, open
+[pr-agent-playground#6](https://github.com/amn-00/pr-agent-playground/pull/6).
 
 ## Known limits
 

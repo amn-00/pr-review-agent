@@ -1475,3 +1475,50 @@ and in-flight runs would stay `running` until the reconciler (the 15-minute path
 
 **The API now imports `app.worker`.** The API process loads the pipeline and agent modules
 even with the setting off. That's import time and a few MB, measured inside the 73 MB above.
+
+## Phase 8c — The deploy on Render
+
+The steps are in `docs/deploy.md`.
+
+**Set up by hand in the dashboards, not with a `render.yaml` Blueprint (a change from the
+plan).** It's one web service and one Key Value, set up once. The steps are written down
+instead, with what each screen should show. A Blueprint can come later if the setup has to be
+repeated.
+
+**Neon: the direct endpoint, `ssl=verify-full`, and `PGSSLROOTCERT`.**
+- **No pooler:** one long-lived process with SQLAlchemy's small pool doesn't need Neon's
+  PgBouncer, and migrations should use a direct connection anyway.
+- **The URL:** Neon's `sslmode` and `channel_binding` parameters crash asyncpg (see the
+  engineering log).
+- **Verified TLS:** `verify-full` checks the server's certificate and hostname. asyncpg doesn't
+  fall back to the system's CA store, so `PGSSLROOTCERT` points at the image's CA bundle. That's
+  an env var, so the code doesn't change.
+
+**Key Value: Free, with `noeviction`.** The other policies silently delete keys under memory
+pressure. `volatile-ttl`, which Render's form recommends for queues, deletes keys with an expiry
+first, and arq gives queued jobs (1 day) and its in-progress keys (the job timeout) an expiry.
+With `noeviction`, a full Redis refuses writes: the webhook answers 503, and the reconciler
+recovers the PR. The free instance has no persistence, which was accepted before Phase 0.
+
+**The health check is `/health`.** It fails only when the in-process worker has stopped (Phase
+8b). `/health/ready` would make Render restart a healthy process whenever Neon is slow to wake.
+
+**The Docker Command has no quotes.** Render keeps quote characters literally (see the
+engineering log). The command is
+`sh -c alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+
+**`/` redirects (307) to the GitHub repo.** The service has no pages, and a bare FastAPI "Not
+Found" looks like a broken deploy to anyone who opens the link. It's a 307, so browsers don't
+cache it.
+
+**The first production review.** On
+[pr-agent-playground#6](https://github.com/amn-00/pr-agent-playground/pull/6) (a division by
+zero and its caller):
+- **Timing:** the webhook arrived 3 s after the PR was opened, and the review was posted after
+  2 min 37 s.
+- **The verdicts:** 2 confirmed, 1 dropped, 0 uncertain.
+- **Cost:** $0.0042 at list prices, of which the agent $0.0035.
+
+The same root cause got two comments, at the division and at the call site. Their lines don't
+overlap, so the cross-lane dedupe keeps both. The eval counts either place as the catch
+(`also_at`).

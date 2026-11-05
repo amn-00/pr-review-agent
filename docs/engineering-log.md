@@ -440,3 +440,31 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **Result:** the 4 new tests pass on Windows, including a shutdown with a job in flight: the run
   ends `queued`, and the next start posts the review once. In the Linux container, `docker stop`
   shut down cleanly in 2 s, with exit code 0.
+
+### Render's Docker Command keeps quotes literally
+- **Problem:** the first deploy built fine, and then the container exited at once with status
+  127: `sh: 1: alembic upgrade head && exec uvicorn … --port $PORT: not found`. The Docker
+  Command was `sh -c '…'`. Render passes everything after `sh -c` to `sh` as one argument
+  without removing the quotes, so `sh` read the whole quoted string as one program name. `&&`
+  and `$PORT` were never interpreted.
+- **How we found it:** the first deploy on Render, 2026-11-05 ("Deploy failed" after 56 s). The
+  local rehearsal didn't catch it, because `docker run` gets its arguments from a real shell.
+- **Fix:** the same command without quotes:
+  `sh -c alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT`.
+  This is the form Render support suggests. `docs/deploy.md` says why.
+- **Result:** the second deploy ran all 8 migrations and went live. `/health` 200, and
+  `/health/ready` `{"redis":"ok","postgres":"ok"}`.
+
+### Neon's connection string crashes SQLAlchemy's asyncpg driver
+- **Problem:** Neon's URLs end in `?sslmode=require&channel_binding=require`. SQLAlchemy passes
+  URL parameters to `asyncpg.connect()` as keyword arguments, and asyncpg has neither, so the
+  app would fail at startup with `TypeError: unexpected keyword argument 'sslmode'`.
+- **How we found it:** before the deploy, connecting with each URL form against SQLAlchemy
+  2.1.6 and asyncpg 0.32. `?ssl=require` was accepted.
+- **Fix:** the URL ends in `?ssl=verify-full`, and the scheme is `postgresql+asyncpg://`.
+  `verify-full` checks the certificate and hostname. asyncpg reads its CA file from
+  `PGSSLROOTCERT`, set to the image's bundle (`/etc/ssl/certs/ca-certificates.crt`, 148
+  certificates). `require` would encrypt without checking who answers.
+- **Result:** `alembic current` against Neon from the dev machine connected over verified TLS.
+  On Render, `/health/ready` reports `"postgres": "ok"`, and the first review (PR #6) ran
+  against Neon.

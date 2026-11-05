@@ -23,6 +23,15 @@ def test_health_rejects_wrong_method():
     assert response.status_code == 405
 
 
+def test_root_redirects_to_the_repo():
+    client = TestClient(create_app())
+
+    response = client.get("/", follow_redirects=False)
+
+    assert response.status_code == 307
+    assert response.headers["location"] == "https://github.com/amn-00/pr-review-agent"
+
+
 def test_unknown_route_returns_404():
     client = TestClient(create_app())
 
