@@ -9,13 +9,13 @@ a tool-using agent checks each one against the repo before it's posted.**
 Render deploy. -->
 *Demo GIF: TBD*
 
-- **TBD → TBD false positives per PR** with the agent, while catching **TBD of TBD** planted
-  bugs (23-case benchmark).
+- **0.48 → 0.22 false positives per PR** with the agent, still catching **14 of 16** planted
+  bugs (a small synthetic benchmark; [limits below](#eval-results)).
 - **0 duplicate reviews** across 1,850 load-test webhooks and every failure test: killed workers,
   a Redis restart, GitHub outages and Groq 429 storms.
 - **20 of 20 reviews recovered** after a 3-minute GitHub outage, up from 4 of 20 before the fix.
-- **$0 a month:** one 512 MB Render instance and free tiers only. **TBD** per PR at Groq's list
-  prices.
+- **$0 a month:** one 512 MB Render instance and free tiers only. **$0.0027 per PR** at Groq's
+  list prices.
 
 Python 3.12, FastAPI, arq on Redis, PostgreSQL and Groq. The agent loop is hand-written, with no
 agent framework.
@@ -143,9 +143,9 @@ most severe first.
   - **Style findings** (readability, idioms): collapsed suggestions, never inline comments.
 
 **How the evals shaped the agent:**
-- **v1 dropped real bugs.** In the baseline eval it dropped bugs, including a SQL injection and a
-  path traversal, because `find_callers` found no callers. It treated "I found nothing" as proof
-  that the code was unreachable.
+- **v1 lost real bugs.** In the baseline eval it dropped a path traversal and doubted a SQL
+  injection, because `find_callers` found no callers. It treated "I found nothing" as proof that
+  the code was unreachable.
 - **v2 changed the reachability rule.** Text search can't see framework wiring, so entry points
   count as reachable, and a drop must cite the line that prevents the problem.
 - **v2 over-corrected on style.** It confirmed opinions ("unnecessary generator expression") and
@@ -164,11 +164,8 @@ The full list of problems found and fixed is in
 
 ## Eval results
 
-<!-- TBD: fill in from evals/results/agent-v3/report.md and evals/results/heldout-v3/report.md
-once the final runs finish. -->
-
 **The dataset:**
-- **23 small Python PRs:** 14 with planted bugs (**TBD** bugs in total), 5 clean PRs, 3
+- **23 small Python PRs:** 14 with planted bugs (16 bugs in total), 5 clean PRs, 3
   false-positive traps (code that looks wrong but is guarded elsewhere), and 1 prompt injection
   aimed at the agent.
 - **4 held-out cases,** written after the agent was frozen and never used to tune it.
@@ -181,30 +178,55 @@ once the final runs finish. -->
 - **Scoring:** by file, line overlap and category, checked by hand, with no LLM judge. Inline
   comments are scored; collapsed suggestions are listed separately.
 
-| Metric (23 cases) | Pipeline only | Pipeline + agent v3 |
-|---|---|---|
-| Bugs caught | TBD | TBD |
-| Traps posted | TBD | TBD |
-| Clean PRs with a false positive | TBD | TBD |
-| False positives per PR | TBD | TBD |
-| Precision (inline comments) | TBD | TBD |
-| Cost per PR (Groq list prices) | TBD | TBD |
-| Latency per PR (mostly free-tier rate-limit waits) | TBD | TBD |
-
-| Held-out (4 cases) | Pipeline only | Agent v1 | Agent v3 |
+| Metric (23 cases) | Pipeline only | + agent v1 (first version) | + agent v3 (shipped) |
 |---|---|---|---|
-| Bugs caught | TBD | TBD | TBD |
-| False positives | TBD | TBD | TBD |
+| Bugs caught | 14/16 (88%) | 12/16 (75%) | 14/16 (88%) |
+| Traps posted | 3/3 | 0/3 | 0/3 |
+| Clean PRs with a false positive | 1/5 | 1/5 | 1/5 |
+| False positives | 11 (0.48 per PR) | 5 (0.22 per PR) | 5 (0.22 per PR) |
+| Precision (inline comments) | 62% | 74% | 78% |
+| Cost per PR (Groq list prices) | $0.0010 | $0.0024 | $0.0027 |
+| Latency per PR (average, max) | 6 s, 6 s | 56 s, 129 s | 52 s, 181 s |
 
-**Read these numbers with care:**
-- **It's a synthetic benchmark.** The cases are small, Python only, and written by the person
-  who built the reviewer. It shows how the parts compare, not how the reviewer does on real-world
-  PRs.
-- **v2 and v3 were tuned on these 23 cases,** so their scores here are optimistic. The held-out
-  set is the fairer check, but it's tiny, and the same person wrote it.
-- **There's one sample per case.** A difference of 1–2 findings isn't meaningful.
+Most of the agent's latency is waiting for Groq's free-tier per-minute token limit: 40 s per PR
+for v3, summed over parallel calls.
 
-Full reports: [evals/results/](evals/results/).
+**What it shows:**
+- **The agent removes false positives without losing bugs.** v3 posted none of the 3 traps,
+  and half as many false positives as the pipeline alone, while catching the same 14 bugs.
+- **v3's gain over v1 is the bugs it keeps, not fewer false positives.** Both have 5 false
+  positives. v1 dropped 2 real bugs that v3 confirms.
+- **Where it misses:**
+  - **bug-13:** no lane flagged a token compared with `!=` instead of `hmac.compare_digest`.
+  - **bug-08:** a second bug on the same line as the SQL injection was merged into it by the
+    cross-lane dedupe, which keeps only the most severe finding on overlapping lines.
+
+  The agent can only judge what the lanes report.
+
+| Held-out (4 cases) | Pipeline only | + agent v1 | + agent v3 |
+|---|---|---|---|
+| Bugs caught | 2/2 | 2/2 | 2/2 |
+| False positives | 0 | 0 | 0 |
+| Traps posted | 0/1 | 0/1 | 0/1 |
+
+**The limits, plainly:**
+- **It's a synthetic benchmark.** 23 small synthetic Python cases: benchmark designed and
+  reviewed by me (bug types, traps, clean PRs, prompt injection, held-out split), cases generated
+  with an LLM. It shows how the parts compare with each other, not how the reviewer does on
+  real-world PRs.
+- **v2 and v3 were tuned on these same 23 cases.** Each prompt was written after reading the
+  previous run's results, so v3's scores here are optimistic.
+- **The held-out cases can't show what the agent adds.** The pipeline alone already caught both
+  bugs with no false positives. No lane reported anything on the one trap, so the agent had
+  nothing to drop. The held-out set shows v3 didn't break anything on unseen cases, and nothing
+  more.
+- **There's one sample per case and mode.** Run-to-run variance wasn't measured. A difference of
+  one or two findings between columns is within noise.
+- **Scoring is strict.** A finding that matches no label counts as a false positive, even when
+  it's arguable, like an unhandled `int()` on an environment variable.
+
+Full reports: [evals/results/agent-v3/report-vs-baseline.md](evals/results/agent-v3/report-vs-baseline.md)
+and [evals/results/heldout-v3/report.md](evals/results/heldout-v3/report.md).
 
 ## Load and failure tests
 
@@ -235,7 +257,7 @@ redeliveries for the same commit:
 | GitHub stores the review, then returns 502 | 10 reviews for 10 PRs. |
 | GitHub down for 60 s and 180 s | **Before the fix:** 9 of 20 and 16 of 20 runs failed for good. **After:** the reconciler retries transient failures, and 20 of 20 were reviewed both times. |
 | GitHub rate limit (200 requests per 300 s) | 0 rate-limit errors and 0 failures. Jobs waited for the window to reset. |
-| Groq answers 429 to 30% of calls, and a 120 s 429 storm | **Before the fix:** 2 of 30 and 2 of 10 reviews were posted without their bug. **After:** TBD <!-- TBD: Q1 and Q2 re-runs after Phase 6c fix 3 --> |
+| Groq answers 429 to 30% of calls, and a 120 s 429 storm | **Before the fix:** 2 of 30 and 2 of 10 reviews were posted without their bug. **After:** 429s are waited out until the deadline, and 0 of 30 and 0 of 10 lacked their bug. Every lane call succeeded. |
 | One installation's 100-PR burst, then another installation's single PR | The second PR waited behind 88 reviews (67 s, against 1.8 s alone). A known limit (below). |
 
 ## Setup
@@ -291,8 +313,8 @@ Live at: TBD
 ## Known limits
 
 - **Throughput is set by Groq's free tier:** 8K tokens a minute, and about 5 agent-checked PRs a
-  day under the daily budgets. A review takes TBD on the free tier, mostly waiting for the
-  per-minute limit.
+  day under the daily budgets. In the eval, a review took 52 s on average (181 s at most), mostly
+  waiting for the per-minute limit.
 - **Cold starts.** Render's free instance sleeps after 15 minutes without traffic, and takes about
   a minute to wake. There's no keep-alive ping, by choice. The webhook that wakes the service may
   time out on GitHub's side. The reconciler's run at startup picks that PR up, so the first review
@@ -312,10 +334,11 @@ Live at: TBD
   prompt says so, and it doesn't treat "no callers found" as proof.
 - **Semgrep is off in prod.** One scan peaked at 143 MB, which doesn't fit next to the app in
   512 MB. It's on for evals.
+- **A lane call Groq answers with prose instead of JSON isn't retried on the spot.** The job
+  then posts nothing, and the reconciler retries the run 5 or more minutes later, paying only for
+  the failed call. If the last automatic retry still fails, the review is posted and marked
+  incomplete. This happened on 1 of 115 lane calls in the baseline eval.
 - **No dashboard.** Runs, findings and agent steps are in Postgres.
-
-<!-- TBD: add "A lane call that gets Groq's output_parse_failed isn't retried" here if it's
-still open after the evals (docs/engineering-log.md). -->
 
 ## Repo map
 
