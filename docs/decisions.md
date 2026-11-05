@@ -927,7 +927,9 @@ posted, with "1 lane call(s) failed" in its summary.
 - **Frequency:** 1 of 75 lane calls on day 1.
 - **To consider after the baseline:** retry a lane call once on `ToolCallFailed` (an unusable
   generation, not a bad request), within the existing deadline and budget checks. Other
-  `LLMError`s stay as they are.
+  `LLMError`s stay as they are. *(Not built. Phase 6c fix 3(b) covers it instead: such a run
+  posts nothing and the reconciler retries it. The README lists the missing immediate retry as
+  a known limit.)*
 
 ### Baseline results (committed in `evals/results/baseline/`)
 

@@ -197,10 +197,13 @@ we changed, and what the numbers were before and after. Details and reasoning ar
   still posted.
 - **How we found it:** baseline day 1, trap-02. The correctness lane's call failed; 1 of 115 lane
   calls in the baseline.
-- **Fix:** pending, decided after the evals: retry a lane call once on `ToolCallFailed`, inside the
-  existing deadline and budget checks. The eval runner already reruns such runs and reuses the
-  lane calls that worked, so the eval numbers aren't affected.
-- **Result:** pending.
+- **Fix:** handled by Phase 6c fix 3(b), not by an immediate retry. A run with a failed lane call
+  now posts nothing, and fails as `transient`. The reconciler retries it after 5 minutes or
+  more, and only the failed call is paid for again, since the others come from the lane cache.
+  The last automatic retry posts the review, marked incomplete. The immediate retry on
+  `ToolCallFailed` wasn't built. It's listed as a known limit in the README.
+- **Result:** no partial review is posted silently any more. Covered by fix 3(b)'s unit tests.
+  The eval numbers weren't affected: the eval runner already reran such runs.
 
 ### A correct catch scored as a miss
 - **Problem:** in bug-01, the lanes reported the division by zero both at the division and at
