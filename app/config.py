@@ -47,6 +47,10 @@ class Settings(DatabaseSettings):
     # pipeline only: every finding that passes aggregation is posted, as before Phase 4.
     agent_enabled: bool = True
 
+    # Run the arq worker inside the API process. Render's free tier has no background workers,
+    # so prod runs one process. Locally, docker-compose runs the worker as its own container.
+    run_worker_in_api: bool = False
+
     def github_private_key_pem(self) -> str:
         return self.github_app_private_key.get_secret_value().replace("\\n", "\n")
 

@@ -308,6 +308,16 @@ we changed, and what the numbers were before and after. Details and reasoning ar
     already read them.
   - **Result:** 28 load-test tests 5 runs in a row, and the full suite (410), all pass.
 
+### A broken shutdown made its test hang instead of fail
+- **Problem:** the test for "a shutdown hands the in-flight run back" had no time limit. If the
+  shutdown didn't cancel the job, it waited forever on the fake Groq call the test holds open.
+- **How we found it:** breaking the shutdown on purpose (cancelling only arq's poll loop, not
+  the jobs) to check that the new Phase 8b tests fail. The run hung until it was stopped by
+  hand after 5 minutes.
+- **Fix:** the test runs its whole lifespan, shutdown included, under a 15 s timeout.
+- **Result:** the same mutation now fails the test with `TimeoutError` after 15 s. Breaking the
+  health check fails its own test too. The full suite (446) passes.
+
 ## Load and failure tests (Phase 6)
 
 ### Enqueue latency over 200 ms in bursts
@@ -414,3 +424,19 @@ we changed, and what the numbers were before and after. Details and reasoning ar
     their bug (before: 2). Review p95 was 129 s, which is the storm waited out.
   - **Both:** every run completed and there were 0 duplicates. Part (a) was enough here: no call
     failed, so part (b) is covered by its unit tests only.
+
+## Deploy (Phase 8)
+
+### arq's own shutdown doesn't work on Windows once its signal handlers are off
+- **Problem:** the worker inside the API process must leave SIGTERM to uvicorn
+  (`handle_signals=False`). In that mode, arq's `Worker.close()` calls
+  `handle_sig(signal.SIGUSR1)`, and Windows has no `SIGUSR1`. Prod runs on Linux, but the tests
+  run on Windows locally, so every lifespan shutdown in the tests would have failed.
+- **How we found it:** reading arq 0.28's `Worker.close()` while planning Phase 8. Noted in the
+  plan as a thing to check, and confirmed in the source before writing the shutdown.
+- **Fix:** `stop_worker` in `app/main.py` does `close()`'s steps itself: `handle_sig(SIGTERM)`
+  (which cancels the jobs, so they're re-queued), wait for the job tasks, `on_shutdown`, close
+  the pool.
+- **Result:** the 4 new tests pass on Windows, including a shutdown with a job in flight: the run
+  ends `queued`, and the next start posts the review once. In the Linux container, `docker stop`
+  shut down cleanly in 2 s, with exit code 0.

@@ -1430,3 +1430,48 @@ the retries are used up.
   - the earlier retry tests still pass.
 
   Each new test fails when its change is reverted.
+
+## Phase 8b — The worker inside the API process
+
+The plan is in `docs/plans/phase-8.md`.
+
+**`RUN_WORKER_IN_API`, off by default.** On, the API's lifespan runs the prod `WorkerSettings`
+as an arq `Worker` task in the same process. Locally, docker-compose and the load-test stack
+keep the worker as its own container, so nothing changes there. Rejected: a second entrypoint
+module, which would be one more way to start the app to explain.
+
+**`handle_signals=False`: uvicorn owns SIGTERM.** On a Render deploy or spin-down, uvicorn
+gets SIGTERM and runs the lifespan's shutdown, which stops the worker the way arq's own handler
+would (`handle_sig(SIGTERM)`). Running jobs are cancelled, Phase 6c fix 1 hands their runs back
+as `queued`, and arq puts the jobs back in Redis for the next start. If arq also installed a
+handler, it would replace uvicorn's, and the API wouldn't shut down.
+
+**Not `Worker.close()`.** With `handle_signals=False`, `close()` calls
+`handle_sig(signal.SIGUSR1)`, and Windows has no `SIGUSR1`. So `stop_worker` does `close()`'s
+steps itself: cancel, wait for the job tasks, `on_shutdown`, close the pool. It skips deleting
+arq's health-check key, which expires by itself.
+
+**A crashed worker makes `/health` answer 503 (a change from the plan).** The plan said the
+process would exit. From inside uvicorn that means sending ourselves SIGTERM, which on Windows
+kills the process outright (pytest included), and it isn't clear that Render restarts a clean
+exit. A failing health check is testable everywhere, and Render restarts on it. The crash is
+logged, and `on_shutdown` is skipped, since startup may not have finished. A crash is rare:
+in R1, losing Redis didn't stop the worker.
+
+**The start command runs the migrations, then `exec`s uvicorn.**
+`sh -c 'alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port $PORT'`. One
+instance, so nothing races to migrate. If a migration fails, the new instance never passes
+its health check, and the old deploy keeps serving. `exec` makes uvicorn PID 1. Without it,
+`sh` would get SIGTERM, and it doesn't pass signals on, so the stop would end in a SIGKILL
+and in-flight runs would stay `running` until the reconciler (the 15-minute path).
+
+**The local rehearsal (the prod image, dummy credentials, nothing external called).**
+- **Startup:** the start command migrated an empty database to head, and uvicorn ran as PID 1.
+  The worker started inside the process with `review_pr` and the reconciler cron.
+- **A signed webhook:** 202, and the in-process worker picked up the job 0.06 s later.
+- **Memory:** 73 MB for the whole process, against about 137 MB for the API and worker as
+  separate processes.
+- **`docker stop`:** a clean shutdown in 2 s, with exit code 0.
+
+**The API now imports `app.worker`.** The API process loads the pipeline and agent modules
+even with the setting off. That's import time and a few MB, measured inside the 73 MB above.

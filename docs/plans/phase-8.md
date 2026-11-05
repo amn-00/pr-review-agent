@@ -82,8 +82,10 @@ gap. `grep TBD README.md` must return nothing before Phase 8 is done.
     can see it.
   - **Timing:** Render waits 30 s by default before SIGKILL. That's plenty: K2-fixed released the
     runs right after the stop.
-- **If the worker task crashes:** log it and exit the process, so Render restarts the service.
-  Rejected: an API that keeps answering webhooks while nothing processes them.
+- **If the worker task crashes:** log it, and `/health` answers 503, so Render restarts the
+  service. Rejected: an API that keeps answering webhooks while nothing processes them.
+  *(Changed while building: the plan said the process exits. See Phase 8b in
+  `docs/decisions.md`.)*
 
 ### Migrations: in the start command
 `sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"`. As far as I
@@ -133,7 +135,7 @@ Step by step:
 - **Setting off:** no worker starts.
 - **Shutdown with a job in flight:** the run ends `queued` and the job is back in arq's queue.
   This is the Render deploy and spin-down path.
-- **The worker task crashes:** it's logged and the process is told to exit.
+- **The worker task crashes:** it's logged, and `/health` answers 503.
 
 ### Checks on the deployed service (results go into the README and the engineering log)
 - **A test PR:** reviewed once, inline comments posted. Record wall time and Groq waits.

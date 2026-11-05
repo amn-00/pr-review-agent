@@ -12,9 +12,17 @@ READY_CHECK_TIMEOUT_SECONDS = 2
 
 
 @router.get("/health")
-async def health() -> dict[str, str]:
-    """Liveness check: the process is up and serving requests. Checks no dependencies."""
-    return {"status": "ok"}
+async def health(request: Request) -> JSONResponse:
+    """Liveness check: the process is up and serving requests. Checks no dependencies.
+
+    With the worker in this process, a stopped worker means the process isn't alive in any useful
+    sense: webhooks would be queued and never reviewed. So that's a 503, and the platform
+    restarts the process.
+    """
+    worker_task = getattr(request.app.state, "worker_task", None)
+    if worker_task is not None and worker_task.done():
+        return JSONResponse({"status": "worker stopped"}, status_code=503)
+    return JSONResponse({"status": "ok"})
 
 
 @router.get("/health/ready")
