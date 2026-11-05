@@ -5,9 +5,7 @@
 **A GitHub App that reviews pull requests: a parallel LLM pipeline finds candidate issues, and
 a tool-using agent checks each one against the repo before it's posted.**
 
-<!-- TBD: replace this line with the demo GIF (a PR getting its review), recorded after the
-Render deploy. -->
-*Demo GIF: TBD*
+<!-- TBD: add the demo GIF here (a PR getting its review), as docs/demo.gif. -->
 
 **See a real review:** [pr-agent-playground#6](https://github.com/amn-00/pr-agent-playground/pull/6),
 posted by the deployed bot 2½ minutes after the PR was opened.
