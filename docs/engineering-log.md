@@ -354,6 +354,21 @@ we changed, and what the numbers were before and after. Details and reasoning ar
   reviewed 26.6 s after the stop instead of 1,035 s. That's about one slow fake review. 10 reviews,
   0 duplicates.
 
+### The reconciler could lose count of its retries
+- **Problem:** fix 2 counted an automatic retry after enqueueing its job, and only while the run
+  was still `failed`. arq can start the job at once. If the job claimed the run first, the run was
+  `running`, the count didn't happen, and the retry limit could be passed. The job also couldn't
+  rely on the count to know whether it was on its last retry.
+- **How we found it:** reading the code while adding "post the partial review on the last
+  retry", which depends on the count being right when the job starts. No test had caught it: in
+  the G2 re-runs the count was always written in time.
+- **Fix:** take the retry before enqueueing, with the same one-statement conditional `UPDATE`. If
+  arq refuses the job (the last retry's job is still queued), give the retry back.
+- **Result:** a new test sees the count already at 1 when the job is enqueued, and fails with the
+  old order. The earlier retry tests (a queued retry isn't used up; two cycles at once count one
+  retry) still pass. No load test needed to run again: the fix only changes when the count is
+  written.
+
 ### A one-minute GitHub outage lost 45% of reviews
 - **Problem:** any GitHub 5xx restarts the whole job, and the 5 tries with backoff (5, 10, 20,
   40 s, jittered) are used up within about a minute. The run ends `failed`, and the reconciler
@@ -382,6 +397,20 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **How we found it:** Phase 6 Q2, every Groq call answered 429 for 120 s: 2 of 10 reviews were
   posted without their bug. Q1 (30% random 429s): 4 of 90 lane calls failed, and 2 of 30 reviews
   lost their bug.
-- **Fix:** pending, planned in `docs/plans/phase-6c.md`. 429s stop using up the 3 attempts and
-  wait until the deadline, and a run where no lane produced anything retries instead of posting.
-- **Result:** pending; Q1 and Q2 run again after the fix.
+- **Fix:** two parts.
+  - **(a) Wait out the storm:** a 429 no longer uses up one of the 3 attempts, which stay for
+    5xx and connection errors. The call waits as long as Groq asks (at least 1 s) and tries
+    again, until a wait would pass the deadline.
+  - **(b) No partial reviews:** if any lane call still fails after its retries, the job posts
+    nothing, and the run fails as `transient` for the reconciler to retry. The lane cache makes
+    the retry cheap: only the failed calls are paid for again (tested). A budget or deadline skip
+    still posts, listing what wasn't reviewed. On the last automatic retry the partial review is
+    posted after all, with "N lane call(s) failed after every retry: **this review is
+    incomplete**", so a call that always fails can't leave a PR with no review (tested).
+- **Result:** Q1 and Q2 again:
+  - **Q1 (30% random 429s):** 90 of 90 lane calls succeeded (before: 86), and 0 of 30 reviews
+    lacked their bug (before: 2). Review p95 fell from 65 s to 53 s.
+  - **Q2 (120 s storm):** 30 of 30 lane calls succeeded (before: 24), and 0 of 10 reviews lacked
+    their bug (before: 2). Review p95 was 129 s, which is the storm waited out.
+  - **Both:** every run completed and there were 0 duplicates. Part (a) was enough here: no call
+    failed, so part (b) is covered by its unit tests only.

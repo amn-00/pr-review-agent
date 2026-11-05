@@ -1,5 +1,6 @@
 import asyncio
 from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import httpx
 import pytest
@@ -189,6 +190,22 @@ async def test_transient_failure_is_retried_and_the_retry_counted(ctx, github_ap
 
     assert await reconcile(ctx) == 1
     assert (await get_run(ctx)).auto_retries == 1
+
+
+async def test_the_retry_is_counted_before_its_job_is_enqueued(ctx, github_api, arq_redis):
+    # The job reads the count to know whether it's the last automatic retry, and it can start
+    # as soon as it's enqueued.
+    mock_github(github_api)
+    await create_transient_failure(ctx, failed_ago=timedelta(hours=1))
+    count_at_enqueue = []
+
+    async def enqueue_job(*args, **kwargs):
+        count_at_enqueue.append((await get_run(ctx)).auto_retries)
+        return await arq_redis.enqueue_job(*args, **kwargs)
+
+    await reconcile({**ctx, "redis": SimpleNamespace(enqueue_job=enqueue_job)})
+
+    assert count_at_enqueue == [1]
 
 
 async def test_retry_whose_job_is_still_queued_isnt_used_up(ctx, github_api, arq_redis):

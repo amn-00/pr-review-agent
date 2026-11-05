@@ -120,7 +120,12 @@ def summary(
             + ", ".join(f"`{safe(path)}`" for path in sorted(set(paths)))
         )
     if lanes.failed_calls:
-        not_reviewed.append(f"- {lanes.failed_calls} lane call(s) failed")
+        # Only reached on the last automatic retry (app/worker.py); otherwise the run fails and
+        # is retried instead of posting a partial review.
+        not_reviewed.append(
+            f"- {lanes.failed_calls} lane call(s) failed after every retry: "
+            "**this review is incomplete**"
+        )
     if not_reviewed:
         lines += ["", "<details><summary>Not fully reviewed</summary>", "", *not_reviewed]
         lines += ["", "</details>"]

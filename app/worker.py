@@ -33,7 +33,12 @@ from app.pipeline.lanes import SUGGESTION_CATEGORIES, lane_models
 from app.pipeline.orchestrator import nothing_reviewed_for_daily_budget, run_lanes
 from app.pipeline.review import inline_comment, summary
 from app.queue import JOB_TIMEOUT_SECONDS, REVIEW_PR_JOB, arq_redis_settings
-from app.reconciler import RECONCILE_EVERY_MINUTES, RECONCILE_TIMEOUT_SECONDS, reconcile
+from app.reconciler import (
+    MAX_AUTO_RETRIES,
+    RECONCILE_EVERY_MINUTES,
+    RECONCILE_TIMEOUT_SECONDS,
+    reconcile,
+)
 from app.static.collect import attach_hints, collect_tool_findings
 
 logger = logging.getLogger(__name__)
@@ -55,6 +60,10 @@ BACKOFF_BASE_SECONDS = 5
 BACKOFF_MAX_SECONDS = 300
 # A cancellation this close to the job timeout is the timeout, not a shutdown.
 TIMEOUT_MARGIN_SECONDS = 10
+
+
+class LaneCallsFailed(Exception):
+    """A lane call failed after its own retries, so the review would be partial."""
 
 
 def run_marker(run_id: int) -> str:
@@ -97,7 +106,9 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
     started = time.monotonic()
 
     try:
-        status, review_id = await _review(ctx, payload, run.id, started)
+        # No automatic retries left: post what the lanes found, even if a call failed.
+        last_retry = run.auto_retries >= MAX_AUTO_RETRIES
+        status, review_id = await _review(ctx, payload, run.id, started, last_retry)
     except RetryableError as exc:
         if job_try >= JOB_MAX_TRIES:
             error = f"gave up after {job_try} tries: {exc}"
@@ -116,6 +127,12 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
         async with sessionmaker() as session:
             await release_run(session, run.id)
         raise Retry(defer=delay) from exc
+    except LaneCallsFailed as exc:
+        logger.error("%s; not posting a partial review", exc)
+        await _finish(
+            ctx, run.id, RunStatus.FAILED, error=str(exc), failure_kind=FailureKind.TRANSIENT
+        )
+        return RunStatus.FAILED
     except NonRetryableError as exc:
         logger.error("permanent error, not retrying: %s", exc)
         await _finish(
@@ -147,7 +164,7 @@ async def review_pr(ctx: dict, event: dict, delivery_id: str) -> str:
 
 
 async def _review(
-    ctx: dict, payload: PullRequestPayload, run_id: int, started: float
+    ctx: dict, payload: PullRequestPayload, run_id: int, started: float, last_retry: bool
 ) -> tuple[RunStatus, int | None]:
     github: GitHubClient = ctx["github"]
     installation_id = payload.installation.id
@@ -185,6 +202,12 @@ async def _review(
             "daily token budget used up; reviewing after it resets at midnight UTC",
             retry_after=seconds_until_utc_midnight() + DAILY_RESET_MARGIN_SECONDS,
         )
+    if lanes.failed_calls and not last_retry:
+        # Fail it as transient instead of posting a partial review: the reconciler retries it,
+        # and the lane cache means only the failed calls are paid for again. On the last
+        # automatic retry the partial review is posted, and its summary says it's incomplete.
+        # Budget and deadline skips aren't failures: those always post, listed as not reviewed.
+        raise LaneCallsFailed(f"{lanes.failed_calls} lane call(s) failed after their retries")
     candidates = aggregate(lanes.candidates, hunks_by_file)
     # Saved before the agent runs: its steps and verdicts are stored per finding as they happen.
     async with ctx["sessionmaker"]() as session:

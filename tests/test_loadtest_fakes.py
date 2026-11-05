@@ -13,7 +13,7 @@ import pytest
 from app.github.diff import parse_patch
 from app.github.http import RetryableError
 from app.github.webhooks import PullRequestPayload
-from app.llm.groq import LLMError
+from app.llm.groq import DeadlineExceeded
 from app.pipeline.chunking import build_chunks
 from app.pipeline.lanes import run_lane
 from loadtest.fakes import create_app, pr_files
@@ -176,15 +176,16 @@ async def test_rate_limit_headers_make_the_client_defer(admin, clients):
     assert exc.value.retry_after > 3000  # until the hourly window resets
 
 
-async def test_groq_429s_are_retried_then_the_call_fails(admin, clients):
+async def test_groq_429s_are_waited_out_until_the_deadline(admin, clients):
     _, groq = clients
     await set_config(admin, groq_fault={"status": 429, "rate": 1.0, "retry_after": 0.01})
     messages = [{"role": "system", "content": "s"}, {"role": "user", "content": "u"}]
     schema = {"name": "correctness_findings"}
 
-    with pytest.raises(LLMError):
+    # Each 429 waits at least 1 s, and a wait that would pass the deadline ends the call.
+    with pytest.raises(DeadlineExceeded):
         await groq.complete_json(
-            "m", messages, "correctness_findings", schema, time.monotonic() + 30
+            "m", messages, "correctness_findings", schema, time.monotonic() + 2.5
         )
 
     assert (await records(admin))["groq_calls"] == {"lane 429": 3}

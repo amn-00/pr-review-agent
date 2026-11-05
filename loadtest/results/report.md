@@ -24,6 +24,7 @@ latency goes through Docker's port mapping. Each run is one sample.
 | G1-2pct | 1 | True | 30 | 0 | 0 | 0 | 0 | – |
 | G2-180s-fixed | 1 | True | 20 | 0 | 0 | 0 | 0 | – |
 | G2-180s | 1 | True | 4 | 0 | 16 | 16 | 0 | – |
+| G2-60s-final | 1 | True | 20 | 0 | 0 | 0 | 0 | – |
 | G2-60s-fixed | 1 | True | 20 | 0 | 0 | 0 | 0 | – |
 | G2-60s | 1 | True | 11 | 0 | 9 | 9 | 0 | – |
 | G3 | 1 | True | 10 | 0 | 0 | 0 | 0 | – |
@@ -34,7 +35,9 @@ latency goes through Docker's port mapping. Each run is one sample.
 | K2 | 1 | True | 10 | 0 | 0 | 0 | 0 | 1035.2 |
 | K3 | 1 | True | 1 | 0 | 0 | 0 | 0 | 907.9 |
 | N1 | 1 | True | 102 | 0 | 0 | 0 | 0 | – |
+| Q1-fixed | 1 | True | 30 | 0 | 0 | 0 | 0 | – |
 | Q1 | 1 | True | 30 | 0 | 0 | 0 | 2 | – |
+| Q2-fixed | 1 | True | 10 | 0 | 0 | 0 | 0 | – |
 | Q2 | 1 | True | 10 | 0 | 0 | 0 | 2 | – |
 | Q3-1w | 1 | True | 10 | 0 | 0 | 0 | 0 | – |
 | Q3-2w | 2 | True | 10 | 0 | 0 | 0 | 0 | – |
@@ -605,6 +608,77 @@ latency goes through Docker's port mapping. Each run is one sample.
     "postgres-1": 45.0,
     "redis-1": 4.1,
     "fakes-1": 39.6
+  }
+}
+```
+
+### G2-60s-final
+
+- Config: `{"scenario": "failure", "test": "G2", "prs": null, "fault_rate": null, "outage_s": 60.0}`
+- Environment: `{"platform": "Windows-11-10.0.26300-SP0", "cpus": 16, "workers": 1}`, git `08d73c5`
+- Settled before the timeout: True
+- Expected: Likely gap: the 5 tries are used up in ~40–75 s, so jobs caught in a 180 s outage end `failed`, and the reconciler doesn't retry failed runs.
+
+- +0 s: fakes config: {"groq_latency": 2.0, "agent_latency": 2.0, "github_fault": {"status": 503, "rate": 1.0, "start": 1793896826.8380384, "end": 1793896886.8380384}}
+- +0 s: GitHub answers 503 to everything from +10 s, for 60 s
+- +1 s: sent 20 webhooks: {202: 20}
+- +608 s: done: every run completed or out of retries
+
+```json
+{
+  "run_statuses": {
+    "completed": 20
+  },
+  "failure_errors": {}
+}
+```
+
+```json
+{
+  "webhooks": 20,
+  "enqueue_latency_ms": {
+    "p50": 193.1,
+    "p95": 273.3,
+    "max": 281.5
+  },
+  "review_time_s": {
+    "p50": 90.26,
+    "p95": 605.37,
+    "max": 605.46
+  },
+  "queue_wait_s": {
+    "p50": 81.73,
+    "p95": 600.93,
+    "max": 600.97
+  },
+  "work_time_s": {
+    "p50": 4.36,
+    "p95": 585.18,
+    "max": 590.0
+  },
+  "webhooks_per_s": 63.1,
+  "reviews_per_min": 2.0,
+  "reviews": 20,
+  "duplicates": 0,
+  "lost": 0,
+  "stale_posts": 0,
+  "reviews_without_comment": 0,
+  "unexpected_statuses": {},
+  "github_requests_per_review": 13.8,
+  "agent_calls_per_review": 1.1,
+  "github_errors": {
+    "503": 82
+  },
+  "groq_calls": {
+    "lane 200": 60,
+    "agent 200": 22
+  },
+  "memory_peak_mib": {
+    "worker-1": 67.4,
+    "api-1": 66.7,
+    "postgres-1": 54.2,
+    "redis-1": 7.3,
+    "fakes-1": 39.8
   }
 }
 ```
@@ -1360,6 +1434,76 @@ latency goes through Docker's port mapping. Each run is one sample.
 }
 ```
 
+### Q1-fixed
+
+- Config: `{"scenario": "failure", "test": "Q1", "prs": null, "fault_rate": null, "outage_s": null}`
+- Environment: `{"platform": "Windows-11-10.0.26300-SP0", "cpus": 16, "workers": 1}`, git `08d73c5`
+- Settled before the timeout: True
+- Expected: Every review posted with its comment: since Phase 6c fix 3, 429s are waited out until the deadline instead of failing the call after 3 tries.
+
+- +0 s: fakes config: {"groq_latency": 0.5, "agent_latency": 0.5, "groq_fault": {"status": 429, "rate": 0.3, "retry_after": 2}}
+- +1 s: sent 30 webhooks: {202: 30}
+- +57 s: done: every run completed or failed
+
+```json
+{
+  "run_statuses": {
+    "completed": 30
+  },
+  "failure_errors": {}
+}
+```
+
+```json
+{
+  "webhooks": 30,
+  "enqueue_latency_ms": {
+    "p50": 283.9,
+    "p95": 356.4,
+    "max": 383.4
+  },
+  "review_time_s": {
+    "p50": 31.17,
+    "p95": 53.22,
+    "max": 54.72
+  },
+  "queue_wait_s": {
+    "p50": 27.22,
+    "p95": 47.44,
+    "max": 49.97
+  },
+  "work_time_s": {
+    "p50": 3.26,
+    "p95": 7.38,
+    "max": 7.4
+  },
+  "webhooks_per_s": 41.0,
+  "reviews_per_min": 32.5,
+  "reviews": 30,
+  "duplicates": 0,
+  "lost": 0,
+  "stale_posts": 0,
+  "reviews_without_comment": 0,
+  "unexpected_statuses": {},
+  "github_requests_per_review": 7.2,
+  "agent_calls_per_review": 1.0,
+  "github_errors": {},
+  "groq_calls": {
+    "lane 429": 29,
+    "lane 200": 90,
+    "agent 429": 8,
+    "agent 200": 30
+  },
+  "memory_peak_mib": {
+    "worker-1": 67.2,
+    "api-1": 66.7,
+    "postgres-1": 53.4,
+    "redis-1": 4.5,
+    "fakes-1": 40.0
+  }
+}
+```
+
 ### Q1
 
 - Config: `{"scenario": "failure", "test": "Q1", "prs": null, "fault_rate": null, "outage_s": null}`
@@ -1426,6 +1570,76 @@ latency goes through Docker's port mapping. Each run is one sample.
     "postgres-1": 49.8,
     "redis-1": 4.0,
     "fakes-1": 39.8
+  }
+}
+```
+
+### Q2-fixed
+
+- Config: `{"scenario": "failure", "test": "Q2", "prs": null, "fault_rate": null, "outage_s": null}`
+- Environment: `{"platform": "Windows-11-10.0.26300-SP0", "cpus": 16, "workers": 1}`, git `08d73c5`
+- Settled before the timeout: True
+- Expected: Lane calls wait out the 120 s storm (fix 3), so all 10 reviews post with their comment. A call that still fails makes its run fail as transient, for the reconciler to retry.
+
+- +0 s: fakes config: {"groq_latency": 0.5, "agent_latency": 0.5, "groq_fault": {"status": 429, "rate": 1.0, "retry_after": 30, "start": 1793895856.18228, "end": 1793895976.18228}}
+- +0 s: every Groq call gets 429 for the next 120 s
+- +0 s: sent 10 webhooks: {202: 10}
+- +132 s: done: every run completed or failed
+
+```json
+{
+  "run_statuses": {
+    "completed": 10
+  },
+  "failure_errors": {}
+}
+```
+
+```json
+{
+  "webhooks": 10,
+  "enqueue_latency_ms": {
+    "p50": 110.2,
+    "p95": 142.1,
+    "max": 142.1
+  },
+  "review_time_s": {
+    "p50": 125.7,
+    "p95": 129.37,
+    "max": 129.37
+  },
+  "queue_wait_s": {
+    "p50": 124.34,
+    "p95": 127.9,
+    "max": 127.9
+  },
+  "work_time_s": {
+    "p50": 1.36,
+    "p95": 121.58,
+    "max": 121.58
+  },
+  "webhooks_per_s": 66.9,
+  "reviews_per_min": 4.6,
+  "reviews": 10,
+  "duplicates": 0,
+  "lost": 0,
+  "stale_posts": 0,
+  "reviews_without_comment": 0,
+  "unexpected_statuses": {},
+  "github_requests_per_review": 8.9,
+  "agent_calls_per_review": 1.0,
+  "github_errors": {},
+  "groq_calls": {
+    "lane 429": 24,
+    "lane 200": 30,
+    "agent 200": 10
+  },
+  "memory_peak_mib": {
+    "worker-1": 66.7,
+    "api-1": 66.6,
+    "postgres-1": 48.6,
+    "redis-1": 4.3,
+    "fakes-1": 39.5
   }
 }
 ```

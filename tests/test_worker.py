@@ -10,9 +10,11 @@ from sqlalchemy import select, update
 from app.db.models import BudgetPurpose, FailureKind, Finding, ReviewRun, RunStatus
 from app.db.queries import add_daily_tokens, get_or_create_run
 from app.github.webhooks import PullRequestPayload
+from app.llm.groq import LLMError
 from app.pipeline.lanes import LANES, system_prompt
 from app.pipeline.orchestrator import PIPELINE_DAILY_TOKEN_BUDGET, utc_today
 from app.queue import REVIEW_PR_JOB
+from app.reconciler import MAX_AUTO_RETRIES
 from app.worker import (
     AGENT_DEADLINE_SECONDS,
     BACKOFF_MAX_SECONDS,
@@ -377,6 +379,82 @@ async def test_fresh_running_run_is_left_alone(ctx, github_api):
 
     assert result == RunStatus.RUNNING
     assert github_api.calls.call_count == 0
+
+
+def fail_one_lane(groq, lane: str) -> None:
+    """That lane's calls fail after their retries; the other lanes answer as usual."""
+    answer = groq.complete_json
+
+    async def complete_json(model, messages, schema_name, schema, deadline):
+        if schema_name == f"{lane}_findings":
+            raise LLMError("Groq call failed after 3 attempts")
+        return await answer(model, messages, schema_name, schema, deadline)
+
+    groq.complete_json = complete_json
+
+
+async def test_a_failed_lane_call_posts_nothing_and_fails_as_transient(ctx, github_api):
+    post = mock_github_pr(github_api)
+    ctx["groq"].findings_by_lane = {"correctness": [lane_finding()]}
+    fail_one_lane(ctx["groq"], "security")
+
+    result = await review_pr(ctx, pr_payload(), "delivery-1")
+
+    run = await get_run(ctx["sessionmaker"])
+    assert result == RunStatus.FAILED
+    assert run.failure_kind == FailureKind.TRANSIENT  # the reconciler retries it
+    assert "1 lane call(s) failed" in run.error
+    assert post.call_count == 0  # no partial review
+
+
+async def test_on_the_last_automatic_retry_a_failed_lane_call_posts_a_partial_review(
+    ctx, github_api
+):
+    post = mock_github_pr(github_api)
+    await create_run(ctx)
+    await set_run(
+        ctx["sessionmaker"],
+        status=RunStatus.FAILED,
+        failure_kind=FailureKind.TRANSIENT,
+        auto_retries=MAX_AUTO_RETRIES,  # the reconciler counted its last retry
+    )
+    ctx["groq"].findings_by_lane = {"correctness": [lane_finding()]}
+    fail_one_lane(ctx["groq"], "security")
+
+    result = await review_pr(ctx, pr_payload(), "reconciler")
+
+    assert result == RunStatus.COMPLETED
+    review = posted_review(post)
+    warning = "1 lane call(s) failed after every retry: **this review is incomplete**"
+    assert warning in review["body"]
+    assert len(review["comments"]) == 1  # what the other lanes found is still posted
+
+
+async def test_the_retry_pays_only_for_the_failed_lane_call_and_posts(ctx, github_api):
+    post = mock_github_pr(github_api)
+    groq = ctx["groq"]
+    answer = groq.complete_json
+    fail_one_lane(groq, "security")
+    await review_pr(ctx, pr_payload(), "delivery-1")
+    calls_before = len(groq.calls)
+
+    groq.complete_json = answer  # Groq is fine again when the reconciler retries
+    result = await review_pr(ctx, pr_payload(), "reconciler")
+
+    assert result == RunStatus.COMPLETED
+    assert [c["schema_name"] for c in groq.calls[calls_before:]] == ["security_findings"]
+    assert post.call_count == 1
+
+
+async def test_a_lane_call_skipped_for_the_budget_still_posts(ctx, github_api, monkeypatch):
+    # A skip isn't a failure: the review posts, listing what wasn't reviewed.
+    post = mock_github_pr(github_api)
+    monkeypatch.setattr("app.pipeline.orchestrator.PR_TOKEN_BUDGET", 1)
+
+    result = await review_pr(ctx, pr_payload(), "delivery-1")
+
+    assert result == RunStatus.COMPLETED
+    assert "not run (PR token budget)" in posted_review(post)["body"]
 
 
 def block_in_the_lanes(groq) -> asyncio.Event:

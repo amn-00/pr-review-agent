@@ -10,7 +10,7 @@ import logging
 from datetime import UTC, datetime, timedelta
 
 from app.db.models import FailureKind, ReviewRun, RunStatus
-from app.db.queries import find_run, take_auto_retry
+from app.db.queries import find_run, give_back_auto_retry, take_auto_retry
 from app.github.client import GitHubClient
 from app.github.http import NonRetryableError, RetryableError
 from app.github.webhooks import PullRequestPayload
@@ -87,6 +87,14 @@ async def _reconcile_installation(ctx: dict, installation_id: int, now: datetime
                 run = await find_run(session, repo["id"], pull["number"], pull["head"]["sha"])
             if not should_enqueue(run, now):
                 continue
+            auto_retry = run is not None and run.status == RunStatus.FAILED
+            if auto_retry:
+                # Counted before the job is enqueued, so the job already sees the count and
+                # knows when it's the last automatic retry. One statement: two cycles can't
+                # both take the same retry.
+                async with ctx["sessionmaker"]() as session:
+                    if not await take_auto_retry(session, run.id, run.auto_retries):
+                        continue
             # The same shape the webhook enqueues; pydantic keeps only the fields we use.
             payload = PullRequestPayload.model_validate(
                 {
@@ -102,13 +110,12 @@ async def _reconcile_installation(ctx: dict, installation_id: int, now: datetime
                 RECONCILER_DELIVERY_ID,
                 _job_id=review_job_id(repo["full_name"], pull["number"], pull["head"]["sha"]),
             )
+            if job is None and auto_retry:
+                # The last retry's job is still queued: this cycle didn't retry anything.
+                async with ctx["sessionmaker"]() as session:
+                    await give_back_auto_retry(session, run.id)
             if job is not None:
                 enqueued += 1
-                if run and run.status == RunStatus.FAILED:
-                    # Counted only once arq accepted the job: a retry whose job is still queued
-                    # from the last cycle isn't used up, and arq's job ID lets only one cycle in.
-                    async with ctx["sessionmaker"]() as session:
-                        await take_auto_retry(session, run.id, run.auto_retries)
                 logger.info(
                     "enqueued a review the webhook path missed",
                     extra={
@@ -117,9 +124,7 @@ async def _reconcile_installation(ctx: dict, installation_id: int, now: datetime
                             "pr": pull["number"],
                             "sha": pull["head"]["sha"],
                             "run_status": run.status if run else None,
-                            "auto_retry": run.auto_retries + 1
-                            if run and run.status == RunStatus.FAILED
-                            else None,
+                            "auto_retry": run.auto_retries + 1 if auto_retry else None,
                         }
                     },
                 )

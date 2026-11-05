@@ -1325,7 +1325,9 @@ On SIGTERM arq cancels running jobs and queues them to run again at once. `revie
   failed at least 5, 10 or 20 minutes ago (doubling per retry). In G2 every job gave up within
   about 1.5 minutes of the outage starting, and the reconciler runs every 5 minutes. So the first
   retry lands after any outage shorter than ~5 minutes, and three retries cover about 40.
-- **Counted after arq accepts the job (a change from the plan).** Counting before enqueueing would
+- **Counted after arq accepts the job (a change from the plan).** *(Superseded: counted before
+  enqueueing again, with a give-back; see "The last automatic retry posts the partial review".)*
+  Counting before enqueueing would
   use up a retry whenever the previous retry's job was still queued. arq's job ID lets only one
   cycle in, and the count is a single conditional `UPDATE`.
 - **Tested:**
@@ -1370,3 +1372,61 @@ What we'd build at multi-tenant scale, in this order:
 
 The budget share comes first because it's the limit that binds with real Groq. The semaphore
 alone would only reorder a queue that's waiting on the same exhausted budget.
+
+**Fix 3: lane calls wait out 429s; a failed lane call fails the run as transient.**
+Built after the eval session, because it changes how real Groq 429s are handled.
+- **(a) `GroqClient`:** a 429 no longer uses up one of the 3 attempts, which stay for 5xx and
+  connection errors. The call waits `retry-after` (at least 1 s, so `retry-after: 0` can't spin)
+  and tries again, until a wait would pass the deadline (`DeadlineExceeded`, as before). This
+  covers lanes and the agent alike.
+- **(b) `review_pr`:** if any lane call failed after its retries, nothing is posted, and the run
+  fails as `transient`, so fix 2's reconciler retries it.
+  - **Why failed calls, not findings:** decided at approval. A clean PR rightly has no findings.
+  - **What still posts:** budget and deadline skips, listed under "Not fully reviewed".
+  - **Why the retry is cheap:** the lane cache. Tested: the retry makes exactly the one call that
+    had failed.
+- **The trade-off:** a lane call that fails the same way every time fails all its attempts. After
+  the reconciler's 3 retries the PR has no review, where before it got a partial one. Q1 and Q2
+  don't trigger it; Phase 5's `output_parse_failed` (1 in 75 lane calls) is a one-off, which a
+  retry fixes. *(Resolved: the last automatic retry posts the partial review; see below.)*
+- **Unreachable now:** the summary's "lane call(s) failed" line can't be reached from the job any
+  more. It stays in the formatter, which has its own test. *(Reachable again on the last
+  automatic retry; see below.)*
+- **Tests that changed with the behaviour:**
+  - The eval runner's failed-call test: the run is still incomplete, now because the run failed.
+  - The fakes' 429 test: the call now ends at the deadline.
+- **Tested:** breaking either part (429s using up attempts again, or the failed-call check
+  removed) fails the new tests.
+- **Q1 and Q2 again:**
+  - **Q1:** 90 of 90 lane calls succeeded (before: 86), and 0 of 30 reviews lacked their bug
+    (before: 2).
+  - **Q2:** 30 of 30 lane calls (before: 24), and 0 of 10 reviews without their bug (before: 2).
+  - **Both:** no run failed, so part (b) didn't trigger in either.
+
+**The last automatic retry posts the partial review (decided 2026-11-05).**
+This closes fix 3's trade-off. A PR whose lane call fails every time still gets a review, once
+the retries are used up.
+- **The rule:** when the run has used all its automatic retries (`auto_retries` = 3), a failed
+  lane call no longer fails the run. The job posts what the lanes found, and the run completes.
+  Before that, a failed lane call still fails the run as `transient`, as in fix 3.
+- **The warning:** the summary's existing "lane call(s) failed" line, the only place this case
+  reaches, now reads "N lane call(s) failed after every retry: **this review is incomplete**". It's
+  under "Not fully reviewed". The eval runner's pattern and the formatter's test still match it.
+  The line is reachable again, so the "unreachable now" note above no longer applies.
+- **The count is taken before enqueueing again.** The job reads `auto_retries` to tell whether
+  it's the last retry, and arq can start the job as soon as it's enqueued. Counting afterwards
+  had two problems:
+  - the job could start before the count was written;
+  - the count's `status = 'failed'` condition would then miss, so the retry wasn't counted at
+    all.
+
+  So the reconciler takes the retry, with the same conditional `UPDATE`, before enqueueing. If
+  arq refuses the job (the last retry's job is still queued), `give_back_auto_retry` undoes the
+  count, so a queued retry still isn't used up. Two cycles at once still take one retry between
+  them.
+- **Tested:**
+  - the last retry posts the warning and the other lanes' comment;
+  - the count is already 1 when the job is enqueued;
+  - the earlier retry tests still pass.
+
+  Each new test fails when its change is reverted.

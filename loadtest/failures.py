@@ -471,12 +471,13 @@ TESTS = {
     ),
     "Q1": FailureTest(
         q1, 1,
-        "Every review posted. A call fails only after 3 straight 429s (~2.7% of calls).",
+        "Every review posted with its comment: since Phase 6c fix 3, 429s are waited out until "
+        "the deadline instead of failing the call after 3 tries.",
     ),
     "Q2": FailureTest(
         q2, 1,
-        "Reviews still post within the 300 s lane deadline, listing skipped chunks if it hits. "
-        "No run fails.",
+        "Lane calls wait out the 120 s storm (fix 3), so all 10 reviews post with their comment. "
+        "A call that still fails makes its run fail as transient, for the reconciler to retry.",
     ),
     "Q3": FailureTest(
         q3, 1,

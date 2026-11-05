@@ -99,6 +99,43 @@ async def test_429_past_the_deadline_gives_up_without_waiting(groq, groq_api, fa
     assert fake_time.slept == []
 
 
+async def test_a_429_storm_is_waited_out_past_max_attempts(groq, groq_api, fake_time):
+    # Phase 6 Q2: 429s with retry-after 30 for 120 s. Giving up after 3 tries lost the call.
+    storm = [httpx.Response(429, headers={"retry-after": "30"})] * 4
+    groq_api.mock(side_effect=[*storm, ok()])
+
+    await call(groq, fake_time, deadline_in=300)
+
+    assert fake_time.slept == [30.0] * 4
+    assert groq_api.call_count == 5
+
+
+async def test_a_429_storm_longer_than_the_deadline_ends_at_the_deadline(groq, groq_api, fake_time):
+    groq_api.mock(return_value=httpx.Response(429, headers={"retry-after": "30"}))
+
+    with pytest.raises(DeadlineExceeded):
+        await call(groq, fake_time, deadline_in=100)
+
+    assert fake_time.slept == [30.0] * 3  # a fourth wait would pass the deadline
+
+
+async def test_retry_after_zero_still_waits_a_second(groq, groq_api, fake_time):
+    groq_api.mock(side_effect=[httpx.Response(429, headers={"retry-after": "0"}), ok()])
+
+    await call(groq, fake_time)
+
+    assert fake_time.slept == [1.0]
+
+
+async def test_429s_dont_use_up_the_server_error_attempts(groq, groq_api, fake_time):
+    errors = [httpx.Response(503), httpx.Response(429, headers={"retry-after": "1"})] * 2
+    groq_api.mock(side_effect=[*errors, ok()])
+
+    await call(groq, fake_time)
+
+    assert groq_api.call_count == 5  # 2 server errors, 2 rate limits, then the answer
+
+
 async def test_server_errors_are_retried_with_backoff(groq, groq_api, fake_time):
     groq_api.mock(side_effect=[httpx.Response(503), httpx.Response(502), ok()])
 

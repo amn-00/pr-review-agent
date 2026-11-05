@@ -19,6 +19,8 @@ from app.github.http import NonRetryableError
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 MAX_ATTEMPTS = 3
+# The shortest wait after a 429, whatever retry-after says.
+MIN_RATE_LIMIT_WAIT = 1.0
 CALL_TIMEOUT_SECONDS = 60
 MAX_COMPLETION_TOKENS = 2048
 # Rough output size of one lane call (findings + "low" reasoning), for the pre-send check.
@@ -180,9 +182,14 @@ class GroqClient:
         self, model: str, body: dict, needed_tokens: int, deadline: float
     ) -> tuple[dict, float]:
         """Send one request, with rate limiting, retries and the deadline. Returns the JSON and
-        the seconds spent waiting."""
+        the seconds spent waiting.
+
+        5xx and connection errors get MAX_ATTEMPTS tries. A 429 doesn't use one up: the call
+        waits as long as Groq asks and tries again, until waiting would pass the deadline
+        (Phase 6 Q2: giving up after 3 tries left most of the lane deadline unused)."""
         waited = 0.0
-        for attempt in range(1, MAX_ATTEMPTS + 1):
+        attempt = 0  # failed tries that count: 5xx and connection errors
+        while True:
             waited += await self._wait_for_tokens(model, needed_tokens, deadline)
             timeout = min(CALL_TIMEOUT_SECONDS, deadline - self._clock())
             if timeout <= 0:
@@ -195,6 +202,7 @@ class GroqClient:
                     timeout=timeout,
                 )
             except httpx.TransportError as exc:  # timeouts, connection errors
+                attempt += 1
                 waited += await self._backoff(attempt, deadline, f"Groq request failed: {exc!r}")
                 continue
 
@@ -203,9 +211,11 @@ class GroqClient:
                 return response.json(), waited
             message = f"Groq {response.status_code}: {response.text[:300]}"
             if response.status_code == 429:
-                wait = float(response.headers.get("retry-after", 2**attempt))
-                waited += await self._wait(wait, deadline)
+                # At least 1 s, so a "retry-after: 0" can't spin until the deadline.
+                wait = max(float(response.headers.get("retry-after", 2)), MIN_RATE_LIMIT_WAIT)
+                waited += await self._wait(wait, deadline)  # DeadlineExceeded ends the loop
             elif response.status_code >= 500:
+                attempt += 1
                 waited += await self._backoff(attempt, deadline, message)
             elif response.status_code in (401, 403):
                 raise NonRetryableError(message)  # bad API key: every call would fail
@@ -213,7 +223,6 @@ class GroqClient:
                 raise ToolCallFailed(message, _failed_generation(response))
             else:
                 raise LLMError(message)  # e.g. 400 json_validate_failed
-        raise LLMError(f"Groq call failed after {MAX_ATTEMPTS} attempts")
 
     async def _wait_for_tokens(self, model: str, needed: int, deadline: float) -> float:
         remaining, reset_at = self._token_limits.get(model, (None, 0.0))

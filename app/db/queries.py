@@ -158,8 +158,8 @@ async def finish_run(
 
 
 async def take_auto_retry(session: AsyncSession, run_id: int, seen_retries: int) -> bool:
-    """Count one automatic retry of a failed run. False if it was already counted (the check
-    and the increment are one statement)."""
+    """Count one automatic retry of a failed run. False if another reconciler cycle already
+    took it: the check and the increment are one statement."""
     taken = await session.scalar(
         update(ReviewRun)
         .where(
@@ -172,6 +172,16 @@ async def take_auto_retry(session: AsyncSession, run_id: int, seen_retries: int)
     )
     await session.commit()
     return taken is not None
+
+
+async def give_back_auto_retry(session: AsyncSession, run_id: int) -> None:
+    """Undo take_auto_retry when no job was enqueued for it (the last one is still queued)."""
+    await session.execute(
+        update(ReviewRun)
+        .where(ReviewRun.id == run_id, ReviewRun.auto_retries > 0)
+        .values(auto_retries=ReviewRun.auto_retries - 1)
+    )
+    await session.commit()
 
 
 async def record_findings(
