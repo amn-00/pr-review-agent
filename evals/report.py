@@ -30,9 +30,10 @@ LIMITS = """\
 - This is a synthetic benchmark of {cases} small Python cases, written for this project. The
   bugs were planted by the same people who built the reviewer, so it shows how the parts
   behave relative to each other, not how well the reviewer does on real-world PRs.
-- One sample per case and mode. The lane cache makes both modes judge exactly the same
-  candidates, but the LLM's run-to-run variance is not measured: a rerun could differ.
-- With this few cases, a difference of 1–2 findings is not meaningful.
+- **One sample per case and mode, with no repeat runs.** The lane cache makes every agent judge
+  exactly the same candidates, but the LLM's run-to-run variance was not measured: a rerun could
+  differ. **A difference of one finding between two columns is within noise**; don't read it as
+  one agent being better than another. With this few cases, 2 findings isn't much more.
 - Latency is on Groq's free tier, where most of it is waiting for the per-minute token limit."""
 TUNED = """\
 - **Tuned on the test set.** Every agent prompt after v1 was written after reading earlier

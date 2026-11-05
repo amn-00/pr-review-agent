@@ -1,14 +1,15 @@
 # Eval report: agent-v2
 
-Generated 2026-11-05 15:55 UTC from `evals/results/agent-v2/`.
+Generated 2026-11-05 16:07 UTC from `evals/results/agent-v2/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 23 small Python cases, written for this project. The
   bugs were planted by the same people who built the reviewer, so it shows how the parts
   behave relative to each other, not how well the reviewer does on real-world PRs.
-- One sample per case and mode. The lane cache makes both modes judge exactly the same
-  candidates, but the LLM's run-to-run variance is not measured: a rerun could differ.
-- With this few cases, a difference of 1–2 findings is not meaningful.
+- **One sample per case and mode, with no repeat runs.** The lane cache makes every agent judge
+  exactly the same candidates, but the LLM's run-to-run variance was not measured: a rerun could
+  differ. **A difference of one finding between two columns is within noise**; don't read it as
+  one agent being better than another. With this few cases, 2 findings isn't much more.
 - Latency is on Groq's free tier, where most of it is waiting for the per-minute token limit.
 - **Tuned on the test set.** Every agent prompt after v1 was written after reading earlier
   results on these same cases, so its scores here are optimistic. Only cases it was never

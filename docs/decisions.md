@@ -1208,6 +1208,46 @@ candidates, so they were moved into agent-v3, and agent-v2's two traps run again
 eval now names its prompt explicitly. `agent_prompt_override` is set only when the version
 differs from prod's, so naming v3 explicitly doesn't add the "older prompt" warning.
 
+## Phase 5 — Outcome
+
+**Final results on the 23 tuning cases, inline comments only (2026-11-05).**
+
+| | Pipeline only | Agent v1 | Agent v2 | Agent v3 |
+|---|---|---|---|---|
+| Bugs caught | 14/16 | 12/16 | 14/16 | 14/16 |
+| False positives | 11 | 5 | 4 | 5 |
+| Precision | 62% | 74% | 82% | 78% |
+| Traps posted | 3/3 | 0/3 | 0/3 | 0/3 |
+| Tokens per finding | — | 5.1K | 4.4K | 5.8K |
+
+On the 4 held-out cases, v1 and v3 were identical (2/2 bugs, 0 false positives). The held-out
+trap (held-04) was never reported by a lane, so it tested nothing.
+
+**Shipped: agent v3.** `AGENT_PROMPT_VERSION = "v3"` was already the default.
+- **Against v1:** it passes the over-correction check (bugs +2, false positives ±0).
+- **Against v2:** it scores one false positive worse, which is within noise for one sample per
+  case.
+- **Why v3 over v2:** the evidence quote check caught invented evidence (v2's false "two spaces"
+  claim). It cost no real bugs, but turned 3 correct drops into `uncertain` and costs about 30%
+  more tokens per finding.
+
+**No noise rerun.** Run-to-run variance wasn't measured. Every report says so in its limits: one
+sample per case and mode, and a one-finding difference between two columns is within noise.
+
+**Where the reports are.**
+- `baseline/report.md`: pipeline only vs agent v1.
+- `agent-v2/report.md`: compared with the baseline.
+- `agent-v3/report-vs-baseline.md` and `agent-v3/report.md`: v3 compared with v1 and with v2.
+- `heldout-v3/report.md`: compared with heldout-v1.
+
+`evals.report` writes one `report.md` per eval, so the second agent-v3 comparison is kept as a
+copy. To rebuild it: `evals.report --name agent-v3 --compare baseline`, then copy `report.md` to
+`report-vs-baseline.md`, then rebuild `report.md` with `--compare agent-v2`.
+
+**Left open:** the lane retry on `output_parse_failed` (see the engineering log), and the
+dedupe-before-verification fix. With v3, 7 duplicates were never checked, 2 of them real bugs
+(8 and 2 with v1).
+
 ## Phase 6 — Measured results
 
 20 runs on 2026-11-04, each on a fresh load-test stack: fake Groq and GitHub, one machine, one

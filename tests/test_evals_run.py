@@ -85,6 +85,8 @@ async def test_a_case_runs_in_every_mode_and_scores(tmp_path, sessionmaker, groq
     report = render("t", [case], load_results(results))
     assert "| Bugs caught | 1/1 (100%) | 1/1 (100%) |" in report
     assert "synthetic benchmark" in report
+    assert "**One sample per case and mode, with no repeat runs.**" in report
+    assert "**A difference of one finding between two columns is within noise**" in report
 
 
 async def test_finished_runs_are_not_run_again_until_the_case_changes(tmp_path, sessionmaker, groq):
@@ -216,7 +218,8 @@ async def test_failed_lane_call_makes_the_run_incomplete(tmp_path, sessionmaker)
     result = await run_one(sessionmaker, recording, case, "pipeline", [])
 
     assert result["status"] == "incomplete"
-    assert result["problems"] == ["1 lane call(s) failed"]
+    # The job posts no partial review: the run fails as transient (Phase 6c fix 3).
+    assert result["problems"] == ["run failed: 1 lane call(s) failed after their retries"]
     [failed] = [c for c in result["calls"] if c["error"]]
     assert failed["kind"] == "security" and "500" in failed["error"]
 

@@ -1,14 +1,15 @@
 # Eval report: baseline
 
-Generated 2026-11-04 10:42 UTC from `evals/results/baseline/`.
+Generated 2026-11-05 16:07 UTC from `evals/results/baseline/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 23 small Python cases, written for this project. The
   bugs were planted by the same people who built the reviewer, so it shows how the parts
   behave relative to each other, not how well the reviewer does on real-world PRs.
-- One sample per case and mode. The lane cache makes both modes judge exactly the same
-  candidates, but the LLM's run-to-run variance is not measured: a rerun could differ.
-- With this few cases, a difference of 1–2 findings is not meaningful.
+- **One sample per case and mode, with no repeat runs.** The lane cache makes every agent judge
+  exactly the same candidates, but the LLM's run-to-run variance was not measured: a rerun could
+  differ. **A difference of one finding between two columns is within noise**; don't read it as
+  one agent being better than another. With this few cases, 2 findings isn't much more.
 - Latency is on Groq's free tier, where most of it is waiting for the per-minute token limit.
 
 ## Pipeline only vs pipeline + agent
