@@ -11,6 +11,7 @@ from evals.report import (
     fisher_one_sided,
     load_results,
     render,
+    render_repeats,
     score,
     sign_test,
     truth,
@@ -469,3 +470,77 @@ def test_confidence_section_compares_two_agents_with_a_sign_test():
 
     assert "Bugs caught by only this agent: 1; by only `baseline`: 0. **p = 1**" in text
     assert "False positives posted by only this agent: 0; by only `baseline`: 0." in text
+
+
+# --- repeats: the same agent run several times on the same candidates ---
+
+
+def agent_run(case: Case, bug: str, trap: str, other: str = "dropped") -> dict:
+    """One agent run on three candidates: the bug (line 10), the trap (20) and a plain false
+    positive (35), with the given verdicts. Only confirmed findings are posted."""
+    verdicts = ((1, 10, bug), (2, 20, trap), (3, 35, other))
+    findings = [
+        finding(i, line, verdict=verdict, posted=verdict == "confirmed")
+        for i, line, verdict in verdicts
+    ]
+    return {(case.id, "agent"): result(case, "agent", findings)}
+
+
+def repeats_text(compare=None) -> str:
+    case = make_case(traps=[TRAP])
+    pipeline = {
+        (case.id, "pipeline"): result(
+            case,
+            "pipeline",
+            [finding(i, line, posted=True) for i, line in ((1, 10), (2, 20), (3, 35))],
+        )
+    }
+    runs = [
+        pipeline | agent_run(case, "confirmed", "dropped"),
+        pipeline | agent_run(case, "dropped", "confirmed"),
+        # The plain false positive changes only in the last run: every run must be compared.
+        pipeline | agent_run(case, "confirmed", "dropped", other="confirmed"),
+    ]
+    return render_repeats(["v3", "v3-r2", "v3-r3"], [case], runs, compare)
+
+
+def test_repeats_show_each_run_and_the_range():
+    text = repeats_text()
+
+    assert "| Bugs caught | 1/1 | 0/1 | 1/1 | 0–1 |" in text
+    assert "| Traps posted | 0/1 | 1/1 | 0/1 | 0–1 |" in text
+    assert "| False positives | 0 | 1 | 1 | 0–1 |" in text  # the trap, then line 35
+
+
+def test_repeats_count_stable_verdicts_and_list_the_changed_ones():
+    text = repeats_text()
+
+    assert "0 of 3 candidates got the same verdict in every run." in text
+    assert (
+        "| c | `a.py:35` correctness/high: finding 3 | false positive | dropped | dropped | "
+        "confirmed |" in text
+    )
+    assert (
+        "| c | `a.py:10` correctness/high: finding 1 | bug | confirmed | dropped | confirmed |"
+        in text
+    )
+    assert (
+        "| c | `a.py:20` correctness/high: finding 2 | trap | dropped | confirmed | dropped |"
+        in text
+    )
+
+
+def test_repeats_count_each_bug_across_runs():
+    text = repeats_text()
+
+    assert "Bugs caught: 0 in 3/3, 1 in 2/3, 0 in 1/3, 0 in 0/3." in text
+    assert "| c | the bug | 2/3 |" in text
+
+
+def test_repeats_check_another_agent_against_the_range():
+    case = make_case(traps=[TRAP])
+    baseline = agent_run(case, "dropped", "dropped")
+
+    text = repeats_text(compare=("baseline", baseline))
+
+    assert "`baseline` caught 0 bugs in its one run, **inside** this agent's range of 0–1." in text

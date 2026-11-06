@@ -234,6 +234,148 @@ def render(
     return "\n".join(lines)
 
 
+REPEATS_INTRO = """\
+**What this measures.** The same agent run several times on exactly the same candidates (every
+lane call came from the cache), so any difference between the columns is the agent's own
+run-to-run variation: it samples at Groq's default temperature. Scored by the same rule as every
+report. Latency isn't compared: Groq's 429 handling changed after the first run (Phase 6c fix 3),
+which affects waits, not verdicts."""
+
+
+def render_repeats(
+    names: list[str],
+    cases: list[Case],
+    runs: list[dict],
+    compare: tuple[str, dict] | None = None,
+) -> str:
+    """`names` and `runs` are the same agent's evals (e.g. agent-v3, agent-v3-r2, agent-v3-r3),
+    all with the first one's pipeline results. `compare` is (name, results) of another agent on
+    the same candidates, e.g. the baseline, whose single run is checked against the range."""
+    first = runs[0]
+    paired = [
+        (case, current(first, case, "pipeline"), [current(r, case, "agent") for r in runs])
+        for case in cases
+    ]
+    paired = [(case, p, agents) for case, p, agents in paired if p and all(agents)]
+    if compare:
+        compare = (compare[0], {case.id: current(compare[1], case, "agent") for case in cases})
+        paired = [(case, p, agents) for case, p, agents in paired if compare[1][case.id]]
+    lines = [
+        f"# Repeats: {', '.join(names)}",
+        "",
+        f"Generated {datetime.now(UTC):%Y-%m-%d %H:%M} UTC.",
+        "",
+        REPEATS_INTRO,
+        "",
+        f"{len(paired)} of {len(cases)} cases have complete results in every run.",
+        "",
+    ]
+    if not paired:
+        return "\n".join(lines)
+    per_run = [[(case, p, agents[i]) for case, p, agents in paired] for i in range(len(runs))]
+    lines += _repeats_metrics(names, per_run, compare)
+    lines += _verdict_stability(names, paired)
+    lines += _bugs_across_runs(paired)
+    return "\n".join(lines)
+
+
+def _repeats_metrics(names: list[str], per_run: list[list], compare) -> list[str]:
+    """One column per run, and the range of each count over the runs."""
+    t = [totals([(case, {"agent": a}) for case, _, a in run], "agent") for run in per_run]
+    p_values = []
+    for run in per_run:
+        bugs_kept, bugs_removed, others_kept, others_removed = _kept_and_removed(run)
+        p_values.append(fisher_one_sided(bugs_removed, bugs_kept, others_removed, others_kept))
+    rows = [
+        ["Bugs caught", *(f"{x.caught}/{x.expected}" for x in t), _range(x.caught for x in t)],
+        [
+            "Traps posted",
+            *(f"{x.traps_posted}/{x.traps}" for x in t),
+            _range(x.traps_posted for x in t),
+        ],
+        [
+            "Clean PRs with a false positive",
+            *(f"{x.clean_with_fp}/{x.clean}" for x in t),
+            _range(x.clean_with_fp for x in t),
+        ],
+        [
+            "False positives",
+            *(str(x.false_positives) for x in t),
+            _range(x.false_positives for x in t),
+        ],
+        [
+            "Precision (inline comments)",
+            *(_pct(x.true_positives, x.true_positives + x.false_positives) for x in t),
+            "",
+        ],
+        ["Fisher's p (removes false positives rather than bugs)", *map(_p, p_values), ""],
+    ]
+    lines = ["## Each run", "", *_table(["Metric", *names, "Range"], rows), ""]
+    if compare:
+        other_name, other = compare
+        other_caught = totals(
+            [(case, {"agent": other[case.id]}) for case, _, _ in per_run[0]], "agent"
+        ).caught
+        low, high = min(x.caught for x in t), max(x.caught for x in t)
+        inside = "inside" if low <= other_caught <= high else "outside"
+        lines += [
+            f"`{other_name}` caught {other_caught} bugs in its one run, **{inside}** this "
+            f"agent's range of {low}–{high}.",
+            "",
+        ]
+    return lines
+
+
+def _range(values) -> str:
+    values = list(values)
+    return f"{min(values)}–{max(values)}"
+
+
+def _verdict_stability(names: list[str], paired: list) -> list[str]:
+    """Every candidate that passed aggregation, with its verdict in each run."""
+    same, changed = 0, []
+    for case, _, agents in paired:
+        for f in agents[0]["findings"]:
+            if f["drop_reason"]:
+                continue
+            verdicts = [
+                (twin or {}).get("verdict") or "not verified"
+                for twin in (_twin(f, a["findings"]) for a in agents)
+            ]
+            if len(set(verdicts)) == 1:
+                same += 1
+            else:
+                changed.append([case.id, _describe(f), truth(case, f), *verdicts])
+    lines = [
+        "## Verdict stability",
+        "",
+        f"{same} of {same + len(changed)} candidates got the same verdict in every run.",
+        "",
+    ]
+    if changed:
+        lines += _table(["Case", "Finding", "Label", *names], changed) + [""]
+    return lines
+
+
+def _bugs_across_runs(paired: list) -> list[str]:
+    """Each planted bug: in how many runs it was caught."""
+    n = len(paired[0][2])
+    counts = Counter()
+    unsteady = []
+    for case, _, agents in paired:
+        caught = [[label for label, _ in score(case, a["findings"]).caught] for a in agents]
+        for label in case.expect:
+            hits = sum(1 for run in caught if label in run)
+            counts[hits] += 1
+            if 0 < hits < n:
+                unsteady.append([case.id, label.note, f"{hits}/{n}"])
+    summary = ", ".join(f"{counts[hits]} in {hits}/{n}" for hits in range(n, -1, -1))
+    lines = ["## Each planted bug across runs", "", f"Bugs caught: {summary}.", ""]
+    if unsteady:
+        lines += _table(["Case", "Bug", "Caught in"], unsteady) + [""]
+    return lines
+
+
 @dataclass
 class Totals:
     """One column of the summary: every paired case in one mode."""
@@ -430,15 +572,7 @@ def _confidence(paired: list, compare: tuple[str, dict] | None) -> list[str]:
         "",
     ]
 
-    # Each of the pipeline's inline comments, kept or removed by the agent. The agent can only
-    # remove comments (the lanes came from the same cache), so each one is paired with itself.
-    kept = {"bug": [0, 0], "other": [0, 0]}  # [kept, removed]
-    for case, pipeline, agent in paired:
-        for f in pipeline["findings"]:
-            group = {"bug": "bug", "acceptable": None}.get(truth(case, f), "other")
-            if f["posted"] and group:
-                kept[group][0 if _posted_in(f, agent) else 1] += 1
-    (bugs_kept, bugs_removed), (others_kept, others_removed) = kept["bug"], kept["other"]
+    bugs_kept, bugs_removed, others_kept, others_removed = _kept_and_removed(paired)
     lines += ["**Does the agent remove false positives rather than bugs?**", ""]
     if bugs_removed + others_removed == 0:
         lines += ["The agent removed none of the pipeline's inline comments.", ""]
@@ -479,6 +613,19 @@ def _confidence(paired: list, compare: tuple[str, dict] | None) -> list[str]:
             "",
         ]
     return lines + [CONFIDENCE_RULE, ""]
+
+
+def _kept_and_removed(paired: list) -> tuple[int, int, int, int]:
+    """The pipeline's inline comments, kept or removed by the agent: (bugs kept, bugs removed,
+    others kept, others removed). "Others" are false positives and traps. The agent can only
+    remove comments (the lanes came from the same cache), so each one is paired with itself."""
+    kept = {"bug": [0, 0], "other": [0, 0]}  # [kept, removed]
+    for case, pipeline, agent in paired:
+        for f in pipeline["findings"]:
+            group = {"bug": "bug", "acceptable": None}.get(truth(case, f), "other")
+            if f["posted"] and group:
+                kept[group][0 if _posted_in(f, agent) else 1] += 1
+    return kept["bug"][0], kept["bug"][1], kept["other"][0], kept["other"][1]
 
 
 def _posted_in(finding: dict, run: dict) -> bool:
@@ -924,10 +1071,23 @@ def main() -> None:
         metavar="FOLDER",
         help="case folder under evals/: cases (default, the tuning set) or heldout",
     )
+    parser.add_argument(
+        "--repeats",
+        nargs="+",
+        metavar="NAME",
+        help="other runs of the same agent on the same candidates; writes repeats.md instead",
+    )
     args = parser.parse_args()
     results_dir = RESULTS_DIR / args.name
     compare = (args.compare, load_results(RESULTS_DIR / args.compare)) if args.compare else None
     cases = load_cases(Path(__file__).resolve().parent / args.cases)
+    if args.repeats:
+        names = [args.name, *args.repeats]
+        runs = [load_results(RESULTS_DIR / name) for name in names]
+        text = render_repeats(names, cases, runs, compare)
+        (results_dir / "repeats.md").write_text(text + "\n", encoding="utf-8")
+        print(f"Wrote {results_dir / 'repeats.md'}")
+        return
     results = load_results(results_dir)
     text = render(args.name, cases, results, compare, held_out=args.cases == "heldout")
     (results_dir / "report.md").write_text(text + "\n", encoding="utf-8")
