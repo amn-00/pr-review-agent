@@ -193,10 +193,15 @@ Most of the agent's latency is waiting for Groq's free-tier per-minute token lim
 for v3, summed over parallel calls.
 
 **What it shows:**
-- **The agent removes false positives without losing bugs.** v3 posted none of the 3 traps,
-  and half as many false positives as the pipeline alone, while catching the same 14 bugs.
-- **v3's gain over v1 is the bugs it keeps, not fewer false positives.** Both have 5 false
-  positives. v1 dropped 2 real bugs that v3 confirms.
+- **The agent removes false positives without losing bugs, and that isn't luck.** It kept all
+  18 of the pipeline's comments that found a planted bug, and removed 6 of the 11 that didn't,
+  including all 3 traps. If it had removed 6 comments at random, the chance of sparing every
+  bug comment is p ≈ 0.001 (Fisher's exact test).
+- **v3's gain over v1 can't be told from noise.** v3 keeps 2 real bugs that v1 dropped, and both
+  have 5 false positives. 2 against 0 gives p = 0.5 on a sign test: the right direction, too few
+  cases to show it.
+- **The catch rate is a wide range:** 14/16 bugs is 64–97% at 95% confidence (a Wilson
+  interval).
 - **Where it misses:**
   - **bug-13:** no lane flagged a token compared with `!=` instead of `hmac.compare_digest`.
   - **bug-08:** a second bug on the same line as the SQL injection was merged into it by the

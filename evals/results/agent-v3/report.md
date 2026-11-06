@@ -1,6 +1,6 @@
 # Eval report: agent-v3
 
-Generated 2026-11-05 16:07 UTC from `evals/results/agent-v3/`.
+Generated 2026-11-06 16:24 UTC from `evals/results/agent-v3/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 23 small Python cases, written for this project. The
@@ -41,6 +41,26 @@ Generated 2026-11-05 16:07 UTC from `evals/results/agent-v3/`.
 **Over-correction check, against `agent-v2`:** bugs caught +0, traps posted +0, clean PRs with a false positive +0, false positives +1. This agent wins only if bugs caught don't go down, none of the other three go up, and at least one of the four gets better: **doesn't pass**. With one sample per finding, a change of 1–2 can be noise.
 
 Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run got every lane call from the cache). Latency leaves out runs that took more than one attempt. False positives are inline comments that match no planted bug and no `acceptable` label; precision = inline comments matching a planted bug / all inline comments that aren't `acceptable`. A bug lost to an uncertain verdict was reported by a finding that passed aggregation but that the agent ended `uncertain`; the number in brackets is how many of those the evidence check made uncertain (a quote not on its line, or a line the agent wasn't shown).
+
+## How sure are these numbers
+
+| 95% interval | Pipeline only | Pipeline + agent (agent-v2, agent v2) | Pipeline + agent (agent v3) |
+|---|---|---|---|
+| Bugs caught | 14/16: 64–97% | 14/16: 64–97% | 14/16: 64–97% |
+| Precision (inline comments) | 18/29: 44–77% | 18/22: 61–93% | 18/23: 58–90% |
+
+The columns judge the same candidates, so overlapping intervals don't mean "no difference". The paired tests below are the right comparison.
+
+**Does the agent remove false positives rather than bugs?**
+
+Of the pipeline's inline comments, the agent kept 18 of the 18 that match a planted bug, and 5 of the 11 that match none (false positives and traps). If it had removed 6 comments at random, the chance of removing no bug comments is **p = 0.00097** (Fisher's exact test, one-sided).
+
+**This agent against `agent-v2`** (exact sign test on what only one of the two got):
+
+- Bugs caught by only this agent: 0; by only `agent-v2`: 0. **p = 1**
+- False positives posted by only this agent: 1; by only `agent-v2`: 0. **p = 1**
+
+**How to read p:** below 0.05, the difference is unlikely to be chance. A large p means **can't tell**, not "no difference": with this few cases, only big differences can show at all. The tests treat findings as independent, though findings in the same case aren't, and the agent's run-to-run variance isn't in these numbers (one sample per case).
 
 ## Changed verdicts
 

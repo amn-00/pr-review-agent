@@ -1,6 +1,6 @@
 # Eval report: heldout-v3
 
-Generated 2026-11-05 16:07 UTC from `evals/results/heldout-v3/`.
+Generated 2026-11-06 16:24 UTC from `evals/results/heldout-v3/`.
 
 **Read this first.**
 - This is a synthetic benchmark of 4 small Python cases, written for this project. The
@@ -41,6 +41,26 @@ Generated 2026-11-05 16:07 UTC from `evals/results/heldout-v3/`.
 **Over-correction check, against `heldout-v1`:** bugs caught +0, traps posted +0, clean PRs with a false positive +0, false positives +0. This agent wins only if bugs caught don't go down, none of the other three go up, and at least one of the four gets better: **doesn't pass**. With one sample per finding, a change of 1–2 can be noise.
 
 Pipeline + agent cost and latency = the pipeline run's plus the agent's (the agent run got every lane call from the cache). Latency leaves out runs that took more than one attempt. False positives are inline comments that match no planted bug and no `acceptable` label; precision = inline comments matching a planted bug / all inline comments that aren't `acceptable`. A bug lost to an uncertain verdict was reported by a finding that passed aggregation but that the agent ended `uncertain`; the number in brackets is how many of those the evidence check made uncertain (a quote not on its line, or a line the agent wasn't shown).
+
+## How sure are these numbers
+
+| 95% interval | Pipeline only | Pipeline + agent (heldout-v1, agent v1) | Pipeline + agent (agent v3) |
+|---|---|---|---|
+| Bugs caught | 2/2: 34–100% | 2/2: 34–100% | 2/2: 34–100% |
+| Precision (inline comments) | 2/2: 34–100% | 2/2: 34–100% | 2/2: 34–100% |
+
+The columns judge the same candidates, so overlapping intervals don't mean "no difference". The paired tests below are the right comparison.
+
+**Does the agent remove false positives rather than bugs?**
+
+The agent removed none of the pipeline's inline comments.
+
+**This agent against `heldout-v1`** (exact sign test on what only one of the two got):
+
+- Bugs caught by only this agent: 0; by only `heldout-v1`: 0. **p = 1**
+- False positives posted by only this agent: 0; by only `heldout-v1`: 0. **p = 1**
+
+**How to read p:** below 0.05, the difference is unlikely to be chance. A large p means **can't tell**, not "no difference": with this few cases, only big differences can show at all. The tests treat findings as independent, though findings in the same case aren't, and the agent's run-to-run variance isn't in these numbers (one sample per case).
 
 **Traps that test nothing.** No lane reported anything on these, so there was no false positive for the agent to drop. They count in "Traps posted" as 0/1 in every column:
 

@@ -5,7 +5,17 @@ import json
 import pytest
 
 from evals.dataset import Case, Label
-from evals.report import calls_cost, corroborated, load_results, render, score, truth
+from evals.report import (
+    calls_cost,
+    corroborated,
+    fisher_one_sided,
+    load_results,
+    render,
+    score,
+    sign_test,
+    truth,
+    wilson,
+)
 
 BUG = Label("a.py", (10, 10), "the bug", ("bug",))
 SECURITY = Label("a.py", (10, 10), "the injection", ("security",))
@@ -399,3 +409,63 @@ def test_a_run_with_an_older_prompt_on_todays_code_says_so():
 
     assert "**An older prompt on today's code.**" in render("t", [case], results)
     assert "**An older prompt on today's code.**" not in report(case, [], [])
+
+
+# --- how sure are these numbers: intervals and paired tests ---
+
+
+def test_wilson_interval_matches_hand_computed_values():
+    low, high = wilson(14, 16)
+    assert round(low, 3) == 0.640 and round(high, 3) == 0.965
+    assert wilson(0, 10)[0] == 0.0  # stays inside 0..1 at 0%
+    assert wilson(10, 10)[1] == 1.0  # and at 100%
+    assert wilson(0, 0) is None
+
+
+def test_fisher_one_sided_matches_hand_computed_values():
+    # 18 bug comments all kept, 6 of 11 others removed: C(11,6) / C(29,6).
+    assert fisher_one_sided(0, 18, 6, 5) == pytest.approx(462 / 475020)
+    # Removing one of each from 2 + 2: nothing unusual.
+    assert fisher_one_sided(1, 1, 1, 1) == pytest.approx(5 / 6)
+    assert fisher_one_sided(0, 3, 0, 3) == 1.0  # nothing removed
+    assert fisher_one_sided(0, 0, 0, 0) is None
+
+
+def test_sign_test_matches_hand_computed_values():
+    assert sign_test(2, 0) == 0.5
+    assert sign_test(0, 0) == 1.0
+    assert sign_test(6, 0) == pytest.approx(0.03125)
+    assert sign_test(3, 3) == 1.0
+
+
+def test_confidence_section_tests_what_the_agent_removed():
+    case = make_case()
+    pipeline = [finding(i, line, posted=True) for i, line in ((1, 10), (2, 25), (3, 35))]
+    agent = [
+        finding(1, 10, verdict="confirmed", posted=True),
+        finding(2, 25, verdict="dropped"),
+        finding(3, 35, verdict="dropped"),
+    ]
+
+    text = report(case, pipeline, agent)
+
+    assert "## How sure are these numbers" in text
+    assert "| Bugs caught | 1/1: 21–100% | 1/1: 21–100% |" in text
+    assert "kept 1 of the 1 that match a planted bug, and 0 of the 2 that match none" in text
+    assert "**p = 0.33**" in text  # C(2,2) / C(3,2): removing 2 of 3 at random spares the bug
+    assert "This agent against" not in text  # only with --compare
+
+
+def test_confidence_section_says_when_the_agent_removed_nothing():
+    case = make_case()
+
+    text = report(case, [finding(1, 10, posted=True)], [finding(1, 10, posted=True)])
+
+    assert "The agent removed none of the pipeline's inline comments." in text
+
+
+def test_confidence_section_compares_two_agents_with_a_sign_test():
+    text = compared("confirmed", "dropped")  # this agent caught the bug, the baseline didn't
+
+    assert "Bugs caught by only this agent: 1; by only `baseline`: 0. **p = 1**" in text
+    assert "False positives posted by only this agent: 0; by only `baseline`: 0." in text

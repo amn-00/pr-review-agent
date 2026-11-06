@@ -13,6 +13,7 @@ import json
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from math import comb, sqrt
 from pathlib import Path
 from statistics import mean
 
@@ -110,6 +111,43 @@ def corroborated(finding: dict, tool_findings: list[dict]) -> bool:
     )
 
 
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float] | None:
+    """95% Wilson score interval for k successes out of n. Unlike the textbook p ± z·SE, it
+    stays inside 0..1 and holds up at small n and at 0% or 100%."""
+    if n == 0:
+        return None
+    p = k / n
+    denominator = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denominator
+    half = z * sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / denominator
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def fisher_one_sided(
+    bugs_removed: int, bugs_kept: int, others_removed: int, others_kept: int
+) -> float | None:
+    """Fisher's exact test, one-sided: if the agent had removed the same number of comments at
+    random, the chance it would remove this few (or fewer) bug comments. The hypergeometric
+    lower tail."""
+    bugs = bugs_removed + bugs_kept
+    total = bugs + others_removed + others_kept
+    removed = bugs_removed + others_removed
+    if total == 0:
+        return None
+    ways = sum(comb(bugs, i) * comb(total - bugs, removed - i) for i in range(bugs_removed + 1))
+    return ways / comb(total, removed)
+
+
+def sign_test(only_this: int, only_other: int) -> float:
+    """Exact two-sided sign test (McNemar's test on the discordant pairs): items only one of two
+    agents got, against a fair coin."""
+    n = only_this + only_other
+    if n == 0:
+        return 1.0
+    tail = sum(comb(n, i) for i in range(min(only_this, only_other) + 1)) / 2**n
+    return min(1.0, 2 * tail)
+
+
 def load_results(results_dir: Path) -> dict[tuple[str, str], dict]:
     results = {}
     for path in sorted(results_dir.glob("*.json")):
@@ -177,6 +215,7 @@ def render(
         "",
     ]
     lines += _summary(paired, len(cases), compare)
+    lines += _confidence(paired, compare)
     lines += _untested_traps(paired)
     if compare:
         lines += _changed_verdicts(paired, compare)
@@ -353,6 +392,114 @@ def _over_correction(runs: list, other_runs: list, other_name: str) -> list[str]
         "four gets better: " + ("**passes**." if wins else "**doesn't pass**.") + " With one "
         "sample per finding, a change of 1–2 can be noise.",
     ]
+
+
+CONFIDENCE_RULE = (
+    "**How to read p:** below 0.05, the difference is unlikely to be chance. A large p means "
+    '**can\'t tell**, not "no difference": with this few cases, only big differences can show '
+    "at all. The tests treat findings as independent, though findings in the same case aren't, "
+    "and the agent's run-to-run variance isn't in these numbers (one sample per case)."
+)
+
+
+def _confidence(paired: list, compare: tuple[str, dict] | None) -> list[str]:
+    """Intervals for the summary's rates, and paired tests: does the agent remove false
+    positives rather than bugs, and (with `compare`) does it differ from the other agent?"""
+    if not paired:
+        return []
+    runs = [(case, {"pipeline": pipeline, "agent": agent}) for case, pipeline, agent in paired]
+    headers = ["95% interval", "Pipeline only", f"Pipeline + agent ({_versions(paired)})"]
+    columns = [totals(runs, "pipeline"), totals(runs, "agent")]
+    if compare:
+        other_name, other = compare
+        other_runs = [(case, r | {"agent": other[case.id]}) for case, r in runs]
+        other_paired = [(case, r["pipeline"], r["agent"]) for case, r in other_runs]
+        headers.insert(2, f"Pipeline + agent ({other_name}, {_versions(other_paired)})")
+        columns.insert(1, totals(other_runs, "agent"))
+    rows = [
+        ["Bugs caught", *(_interval(t.caught, t.expected) for t in columns)],
+        [
+            "Precision (inline comments)",
+            *(_interval(t.true_positives, t.true_positives + t.false_positives) for t in columns),
+        ],
+    ]
+    lines = ["## How sure are these numbers", "", *_table(headers, rows), ""]
+    lines += [
+        "The columns judge the same candidates, so overlapping intervals don't mean \"no "
+        'difference". The paired tests below are the right comparison.',
+        "",
+    ]
+
+    # Each of the pipeline's inline comments, kept or removed by the agent. The agent can only
+    # remove comments (the lanes came from the same cache), so each one is paired with itself.
+    kept = {"bug": [0, 0], "other": [0, 0]}  # [kept, removed]
+    for case, pipeline, agent in paired:
+        for f in pipeline["findings"]:
+            group = {"bug": "bug", "acceptable": None}.get(truth(case, f), "other")
+            if f["posted"] and group:
+                kept[group][0 if _posted_in(f, agent) else 1] += 1
+    (bugs_kept, bugs_removed), (others_kept, others_removed) = kept["bug"], kept["other"]
+    lines += ["**Does the agent remove false positives rather than bugs?**", ""]
+    if bugs_removed + others_removed == 0:
+        lines += ["The agent removed none of the pipeline's inline comments.", ""]
+    else:
+        p = fisher_one_sided(bugs_removed, bugs_kept, others_removed, others_kept)
+        lines += [
+            f"Of the pipeline's inline comments, the agent kept {bugs_kept} of the "
+            f"{bugs_kept + bugs_removed} that match a planted bug, and {others_kept} of the "
+            f"{others_kept + others_removed} that match none (false positives and traps). If it "
+            f"had removed {bugs_removed + others_removed} comments at random, the chance of "
+            f"removing {_as_few(bugs_removed)} bug comments is **p = {_p(p)}** (Fisher's exact "
+            "test, one-sided).",
+            "",
+        ]
+
+    if compare:
+        other_name, other = compare
+        only = Counter()
+        for case, _, agent in paired:
+            mine, theirs = score(case, agent["findings"]), score(case, other[case.id]["findings"])
+            mine_caught = [label for label, _ in mine.caught]
+            their_caught = [label for label, _ in theirs.caught]
+            only["bugs this"] += sum(1 for label in mine_caught if label not in their_caught)
+            only["bugs other"] += sum(1 for label in their_caught if label not in mine_caught)
+            only["fp this"] += sum(
+                1 for f in mine.false_positives if not _posted_in(f, other[case.id])
+            )
+            only["fp other"] += sum(1 for f in theirs.false_positives if not _posted_in(f, agent))
+        lines += [
+            f"**This agent against `{other_name}`** (exact sign test on what only one of the two "
+            "got):",
+            "",
+            f"- Bugs caught by only this agent: {only['bugs this']}; by only `{other_name}`: "
+            f"{only['bugs other']}. **p = {_p(sign_test(only['bugs this'], only['bugs other']))}**",
+            f"- False positives posted by only this agent: {only['fp this']}; by only "
+            f"`{other_name}`: {only['fp other']}. "
+            f"**p = {_p(sign_test(only['fp this'], only['fp other']))}**",
+            "",
+        ]
+    return lines + [CONFIDENCE_RULE, ""]
+
+
+def _posted_in(finding: dict, run: dict) -> bool:
+    """Whether the same candidate was an inline comment in another run of the same case."""
+    twin = _twin(finding, run["findings"])
+    return bool(twin and twin["posted"])
+
+
+def _interval(k: int, n: int) -> str:
+    bounds = wilson(k, n)
+    if bounds is None:
+        return "n/a"
+    return f"{k}/{n}: {100 * bounds[0]:.0f}–{100 * bounds[1]:.0f}%"
+
+
+def _as_few(n: int) -> str:
+    return "no" if n == 0 else f"{n} or fewer"
+
+
+def _p(p: float | None) -> str:
+    return "n/a" if p is None else f"{p:.2g}"
 
 
 def _untested_traps(paired: list) -> list[str]:

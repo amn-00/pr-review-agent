@@ -1524,3 +1524,37 @@ zero and its caller):
 The same root cause got two comments, at the division and at the call site. Their lines don't
 overlap, so the cross-lane dedupe keeps both. The eval counts either place as the catch
 (`also_at`).
+
+## Evals — How sure are these numbers
+
+The plan is in `docs/plans/eval-statistics.md`. Every report now has a section, "How sure are
+these numbers", worked out from the existing results, with no LLM calls.
+
+**Three statistics, each one answering one question:**
+- **Wilson 95% intervals** for bugs caught and precision. The textbook p ± z·SE interval
+  breaks at small n and at 0% or 100% (it can pass 100%). Wilson's doesn't.
+- **Fisher's exact test, one-sided,** for "does the agent remove false positives rather than
+  bugs?" The agent can only remove the pipeline's comments, never add one, since the lanes come
+  from the same cache. So the pipeline's comments split into kept and removed, by whether each
+  one matches a planted bug. The test asks how likely it is that random removal would spare
+  this many bug comments.
+- **Exact sign tests** (McNemar's test on the discordant pairs) for agent against agent. Only
+  the items one agent got and the other didn't carry information.
+
+**Stdlib only.** Three functions of about ten lines each, using `math.comb` and `math.sqrt`. No
+SciPy: a new dependency would need asking (SPEC 2), and formulas this short are easier to explain
+than a library call.
+
+**A new section, not new columns.** The summary table and every other section are unchanged, so
+older reports and the existing tests keep their meaning.
+
+**The results** (agent v3 against baseline, 23 cases):
+- **Kept or removed:** the agent kept 18/18 bug comments and removed 6/11 others, p = 0.00097.
+- **v3 against v1:** 2 against 0 on bugs, p = 0.5. 1 against 1 on false positives, p = 1.
+- **Bugs caught:** 14/16, 64–97%.
+- **Held out:** every count is 2/2 or 0. Nothing is removed and nothing differs, so there's
+  nothing to test.
+
+**The stated limits:** the tests treat findings as independent, but findings in one case aren't,
+and run-to-run variance isn't included. The report says a large p means "can't tell", not "no
+difference".
