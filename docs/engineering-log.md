@@ -471,3 +471,53 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **Result:** `alembic current` against Neon from the dev machine connected over verified TLS.
   On Render, `/health/ready` reports `"postgres": "ok"`, and the first review (PR #6) ran
   against Neon.
+
+## Real-world eval
+
+### The plan named a repo that has moved
+- **Problem:** the plan lists `encode/starlette`. The repo is now `Kludex/starlette`. Under the
+  old name GitHub redirects every API request, and each one counts twice against the rate limit.
+  The rule that keeps links to upstream issues out of the sample would also have searched for
+  the old name only.
+- **How we found it:** a read-only check of the selection code against the real API, before any
+  real run. 18 requests used 36 of the hour's quota, and `GET /repos/encode/starlette` answered
+  301.
+- **Fix:** the repo list uses the current names. The link rule now matches a link to any GitHub
+  issue or PR, whatever the repo. That's also the right rule: our bot shouldn't add a
+  cross-reference on anyone's issue.
+- **Result:** the same check under the new name: 4 requests used 4. The link rule is tested with
+  the new name, the old name and another project's issue.
+
+### One of the three chosen repos had no usable PR
+- **Problem:** the plan picked Starlette, httpx and pydantic-settings without counting how many
+  of their PRs pass the selection rule. Each repo needs 20.
+- **How we found it:** the first real draw. Starlette had 25 and pydantic-settings 29, but httpx
+  had 0: 113 PRs in two years, 73 never merged, and no merged one with a line comment from a
+  human reviewer. The backups were counted next: click 9, uvicorn 7.
+- **Fix:** 15 PRs each from the two repos that have enough, instead of 10 each from three. The
+  rule stays as it is, because the comparison with human reviewers needs their line comments.
+- **Result:** the redraw gave 30 PRs to replay (15 and 15) and 24 held back (10 and 14), with
+  no PR in both. Its first 20 are the same PRs, in the same order, as the first draw's 20: the
+  seeded shuffle is reproducible.
+
+### One read timeout ended a 35-minute selection run
+- **Problem:** the selection reads GitHub one request at a time, a few thousand in a row, with
+  no retry. A single slow answer raised `httpx.ReadTimeout` and the whole run was lost.
+- **How we found it:** counting the backup repos' qualifying PRs. The run died in the first
+  repo, with nothing saved.
+- **Fix:** `common.get` tries a GET up to 3 times after a timeout or a dropped connection.
+  Every read in the selection goes through it. HTTP errors aren't retried.
+- **Result:** the same count, run again, finished both repos. A test covers two failures
+  followed by a success, giving up after 3 tries, and a 404 that isn't retried.
+
+### A wrong assertion made every broken line look caught
+- **Problem:** to check that the new tests fail when the code is broken, 20 one-line breakages
+  were run against them. A new assertion expected git's date as `+00:00`, but git prints `Z`, so
+  that test failed whatever the code did. With "stop at the first failure", it "caught" all 11
+  breakages in `replay.py` by itself.
+- **How we found it:** all 11 reported the same count, "1 failed, 22 passed", though the
+  breakages were in different functions.
+- **Fix:** the assertion compares timestamps. The breakage run now starts with an unmodified
+  run, and stops if that fails.
+- **Result:** unmodified, 34 passed. Then 20 of 20 breakages were caught, each at a different
+  test (between 8 and 33 tests passed before the failure).

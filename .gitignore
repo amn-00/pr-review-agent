@@ -11,6 +11,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 
+# Real-world eval: local clones of the upstream repos
+realworld/work/
+
 # Editors / OS
 .vscode/
 .idea/

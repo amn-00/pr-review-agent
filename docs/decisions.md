@@ -1558,3 +1558,101 @@ older reports and the existing tests keep their meaning.
 **The stated limits:** the tests treat findings as independent, but findings in one case aren't,
 and run-to-run variance isn't included. The report says a large p means "can't tell", not "no
 difference".
+
+## Real-world eval — Part 1: selection and replay
+
+The plan is in `docs/plans/real-world-eval.md`, approved 2026-11-11. Part 1 is
+`realworld/select.py` and `realworld/replay.py`. Nothing has been selected or replayed yet.
+
+**The version the reviewers first saw is the first human review's `commit_id`.**
+GitHub records the head commit each review was made on, which stays right after a rebase, where
+commit dates don't. The review must be by a person other than the author: bots' reviews don't
+count. If that commit is no longer among the PR's commits (a force-push after the review), the
+PR doesn't qualify, because it can't be fetched through the PR. That's one more selection bias;
+`prs.json` counts how many PRs each part of the rule turned away.
+
+**The sample: a seeded shuffle per repo, numbered round-robin.**
+`random.Random(f"{seed}:{repo}")` shuffles the qualifying PRs sorted by number, so the draw
+doesn't depend on the order GitHub lists them in. The first 10 are replayed and the next 10 held
+back. `k` takes a PR from each repo in turn, so replays that stop early still cover all three
+repos. `prs.json` records the seed, the rule and the draw time, and the script refuses to
+overwrite it.
+
+**No link to any GitHub issue or PR in the replayed diff (wider than the plan).**
+The plan said links to the upstream repo. A comment from our bot that repeated a link to any
+repo's issue could add a cross-reference there, so the rule covers
+`github.com/<owner>/<repo>/issues|pull/N` and `<owner>/<repo>#N` for every repo. It only checks
+the diff. A link elsewhere in the repo that the agent reads and repeats is still possible;
+collection will report it.
+
+**GitHub as the owner: `gh auth token` and httpx, not `gh pr create` (a change from the plan).**
+Selection makes many reads and the replay makes one write. One httpx client with the token from
+the GitHub CLI's login does both, and respx can test it. The token stays in memory. The target
+repo is in the URL of every call, so nothing can default to the upstream, which was the plan's
+worry about `gh pr create`. `require_fork` still refuses any repo not owned by `amn-00`, before a
+push and before opening a PR.
+
+**One new commit per replay, with a fixed author and date.**
+`git commit-tree <the replayed commit's tree> -p <merge base>`: the same files on the same base,
+so the PR's diff is identical, and no upstream commit message reaches the fork. The author and
+date are fixed, so making the commit again gives the same SHA. A run that died between the push
+and opening the PR can simply be run again: the push changes nothing, and `open_pull` returns a
+PR that's already there.
+
+**The budget pre-flight: room for one whole attempt.**
+Before each PR, today's `daily_token_usage` rows are read from Neon. A PR starts only if every
+lane row has 50K left (`PR_TOKEN_BUDGET`) and every agent row 30K (`AGENT_PR_TOKEN_BUDGET`).
+- **Why that's enough:** the job skips a lane call for the day's budget when
+  `used today + estimate > 110K`, and for the PR's budget when
+  `spent this attempt + estimate > 50K`. With 50K left at the start, the PR's budget always
+  stops first. The agent's two checks work the same way, with 70K and 30K.
+- **The gap:** a retried attempt starts its own count again, so a budget can still be hit after
+  a retry. Collection's budget-limited flag covers that.
+
+**One review at a time: the session waits for each run.**
+The script polls `review_runs` in Neon until the run has finished, for at most 25 minutes (the
+900 s job timeout, a cold start and one reconciler cycle). Reviews don't compete for the
+per-minute quota, so production latency is measured cleanly, and the budget check before the
+next PR sees everything the last one spent. A run that isn't `completed` stops the session.
+
+**Neon is read-only for these scripts.**
+The URL comes from `PROD_DATABASE_URL`, never from `.env`. The engine sets
+`default_transaction_read_only` on every connection, so Postgres refuses a write (tested).
+
+**`realworld/replays.json` is separate from `prs.json`.**
+`prs.json` is the pre-registered sample and doesn't change once it's committed. `replays.json`
+records each opened PR (fork, number, URL, head commit), written as soon as the PR exists.
+
+**Two repos with 15 PRs each, not three with 10 (decided 2026-11-11, after the first draw).**
+Each repo needs 20 PRs that pass the rule: 10 to replay and 10 held back. The first draw found
+25 in Starlette, 29 in pydantic-settings and 0 in httpx, which had only 113 PRs in two years and
+no merged one with a line comment from a human reviewer. The backups were too small as well
+(click 9, uvicorn 7), for the same reason. Rather than loosen the rule, which B depends on, the
+sample is 15 per repo from the two that have enough: still 30 PRs, with 24 held back (10 and
+14). The cost is two projects instead of three, and the report says so.
+
+**The size rule stays, though some sampled PRs won't fit the per-PR budget.**
+The draw printed each sampled PR's lane-token estimate: median 29K, and 8 of 30 above the 50K
+per-PR budget. The estimate runs high: on the 23 eval cases, the lanes really spent 78% of it
+(70–88% per case). So a PR is likely to hit the budget above about 64K, which is 4 of the 30.
+- **Why not tighten the rule:** Starlette has only 25 qualifying PRs, and a tighter rule would
+  leave too few. The estimate also depends on the number of hunks more than on the 300-line
+  limit, so a lower line limit wouldn't fix it.
+- **What happens to those 4:** the bot's normal behaviour. It reviews source files first, skips
+  the least important chunks, and lists them in the review. The report counts these reviews.
+
+**GitHub reads are retried after a timeout.**
+`common.get` tries a GET up to 3 times after a timeout or a dropped connection, waiting 2 s and
+then 4 s. The selection makes a few thousand requests in a row, and a run was lost to one read
+timeout (see the engineering log). HTTP errors aren't retried: a 404 or a rate-limit 403 won't
+get better in 4 seconds.
+
+**Checked against real GitHub, read-only (2026-11-11).**
+- **Selection's rules** on Starlette's 6 newest merged PRs by people: all 6 were turned away for
+  "no line comment from a reviewer". On #3769, the only line comments were an AI review bot's
+  and the author's replies. So Starlette may have fewer than 20 qualifying PRs. The script says
+  so when that happens, and `pallets/click` is the plan's backup.
+- **The git path** on #3769: fetched, one new commit made, and its diff is the same as the
+  reviewed version's. Nothing was pushed.
+- **Not run yet:** the whole selection, which needs the GitHub CLI's login for the rate limit,
+  and any replay.

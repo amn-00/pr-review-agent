@@ -1,0 +1,557 @@
+{
+ "drawn_at": "2026-11-11T11:54:33+00:00",
+ "seed": 20261111,
+ "rule": {
+  "window_days": 730,
+  "max_lines": 300,
+  "max_files": 10,
+  "per_repo": 15
+ },
+ "repos": {
+  "Kludex/starlette": {
+   "qualifying": 25,
+   "rejected": {
+    "no line comment from a reviewer": 263,
+    "not merged": 333,
+    "opened by a bot": 53,
+    "release or version bump": 45,
+    "the first review's commit was force-pushed away": 4,
+    "no .py file outside tests and docs": 5,
+    "links to a GitHub issue or PR": 2,
+    "more than 10 files": 1
+   }
+  },
+  "pydantic/pydantic-settings": {
+   "qualifying": 29,
+   "rejected": {
+    "not merged": 61,
+    "opened by a bot": 47,
+    "no line comment from a reviewer": 195,
+    "release or version bump": 20,
+    "the first review's commit was force-pushed away": 13,
+    "more than 300 changed lines": 5,
+    "more than 10 files": 2
+   }
+  }
+ },
+ "sample": [
+  {
+   "k": 1,
+   "repo": "Kludex/starlette",
+   "number": 2962,
+   "replay_sha": "f14ee57f3ad4659a0496e509f9fa9ef08baf5697",
+   "merge_base_sha": "fa5355442753f794965ae1af0f87f9fec1b9a3de",
+   "files": 2,
+   "lines": 36,
+   "lane_tokens": 19753
+  },
+  {
+   "k": 2,
+   "repo": "pydantic/pydantic-settings",
+   "number": 926,
+   "replay_sha": "21d125b2e2d424aaa9c6aad58f9b38c03666aef2",
+   "merge_base_sha": "ae25d703c458b57f5a9a425f6ec9a28ad868f980",
+   "files": 2,
+   "lines": 36,
+   "lane_tokens": 13342
+  },
+  {
+   "k": 3,
+   "repo": "Kludex/starlette",
+   "number": 3631,
+   "replay_sha": "279a37979a55fd8d68e70b6de26b23a492624d02",
+   "merge_base_sha": "ff5b4df55ac4ac625582ecc446c850200c91ae64",
+   "files": 2,
+   "lines": 91,
+   "lane_tokens": 28352
+  },
+  {
+   "k": 4,
+   "repo": "pydantic/pydantic-settings",
+   "number": 1034,
+   "replay_sha": "5bd6f79f4415ff2016caede58dd28607f1cd8180",
+   "merge_base_sha": "ca9d7c4d7440ca35edff91a0e947f96e6381d890",
+   "files": 3,
+   "lines": 80,
+   "lane_tokens": 25938
+  },
+  {
+   "k": 5,
+   "repo": "Kludex/starlette",
+   "number": 2816,
+   "replay_sha": "1b603d8b125d9517883cc14beba2b62879835775",
+   "merge_base_sha": "ea7ce8a5b04669d02bd4911ff53ab6b4cef7c835",
+   "files": 6,
+   "lines": 29,
+   "lane_tokens": 58602
+  },
+  {
+   "k": 6,
+   "repo": "pydantic/pydantic-settings",
+   "number": 843,
+   "replay_sha": "d4c4e3da53611b54c9315a37874b8045526ba750",
+   "merge_base_sha": "577c05f7e8ac25904da2381db51ed4ddd4b3e4fe",
+   "files": 2,
+   "lines": 236,
+   "lane_tokens": 49526
+  },
+  {
+   "k": 7,
+   "repo": "Kludex/starlette",
+   "number": 3036,
+   "replay_sha": "0cbdb7bd31a4fe0f971572c85992326e2f5f4048",
+   "merge_base_sha": "4915a9309fcad58ac08b9fa550563d3287b531ad",
+   "files": 3,
+   "lines": 31,
+   "lane_tokens": 31114
+  },
+  {
+   "k": 8,
+   "repo": "pydantic/pydantic-settings",
+   "number": 749,
+   "replay_sha": "a3767124b972a0b85146331f1ca1e2ff54eac0c1",
+   "merge_base_sha": "7d4273edee47e1a37705c691e87cecfdf7659b42",
+   "files": 9,
+   "lines": 137,
+   "lane_tokens": 116640
+  },
+  {
+   "k": 9,
+   "repo": "Kludex/starlette",
+   "number": 3542,
+   "replay_sha": "1e561e79a03c3e6dbfe585a4843b69ad5158596a",
+   "merge_base_sha": "f03f65c2f98c592773d691b4d309c68b83e568ef",
+   "files": 4,
+   "lines": 101,
+   "lane_tokens": 34596
+  },
+  {
+   "k": 10,
+   "repo": "pydantic/pydantic-settings",
+   "number": 878,
+   "replay_sha": "a7f97e3fdfea9aba1aeba29dc2a798b01ac845a3",
+   "merge_base_sha": "e20044d155ad86d047a004dbccef4a7aa6532a03",
+   "files": 3,
+   "lines": 219,
+   "lane_tokens": 42107
+  },
+  {
+   "k": 11,
+   "repo": "Kludex/starlette",
+   "number": 2949,
+   "replay_sha": "eada435ae41ad50fd8f8fdb59bf7b56dd73c5f67",
+   "merge_base_sha": "739321d719db5b6e3fff9ccca9a2ccc7c2e07f18",
+   "files": 7,
+   "lines": 40,
+   "lane_tokens": 50952
+  },
+  {
+   "k": 12,
+   "repo": "pydantic/pydantic-settings",
+   "number": 680,
+   "replay_sha": "81cff9d8abeacd37ba264dadf6b62dc4547aab63",
+   "merge_base_sha": "9c6c9b55e27ab78e48eaa570965c6e52c32c9f38",
+   "files": 2,
+   "lines": 71,
+   "lane_tokens": 24740
+  },
+  {
+   "k": 13,
+   "repo": "Kludex/starlette",
+   "number": 2939,
+   "replay_sha": "db042b16bce1c37ecd5e4ad616d4df27543915aa",
+   "merge_base_sha": "4acf1d1ca3e8aa767567cb4e6e12f093f066553b",
+   "files": 1,
+   "lines": 15,
+   "lane_tokens": 7752
+  },
+  {
+   "k": 14,
+   "repo": "pydantic/pydantic-settings",
+   "number": 708,
+   "replay_sha": "922c819c4a21baf88bc6a7f5957b1b7177738595",
+   "merge_base_sha": "61e0b46eb96e2f67f390b0371c4297f2d6b24573",
+   "files": 1,
+   "lines": 11,
+   "lane_tokens": 6940
+  },
+  {
+   "k": 15,
+   "repo": "Kludex/starlette",
+   "number": 2903,
+   "replay_sha": "202c45c21be53b68c95d9cf001bc38f56e25d1a8",
+   "merge_base_sha": "c8a46925366361e40b65b117473db1342895b904",
+   "files": 1,
+   "lines": 6,
+   "lane_tokens": 13773
+  },
+  {
+   "k": 16,
+   "repo": "pydantic/pydantic-settings",
+   "number": 603,
+   "replay_sha": "3e394016c201877911da9a7051fec9108e709d06",
+   "merge_base_sha": "18747409238dbba5c4ba9779c46353648f79f7ca",
+   "files": 3,
+   "lines": 40,
+   "lane_tokens": 25452
+  },
+  {
+   "k": 17,
+   "repo": "Kludex/starlette",
+   "number": 2810,
+   "replay_sha": "d6b8106a40c188fd53d475c48adfbed100533789",
+   "merge_base_sha": "4e625bb9793f36a1ff9d30f935d7bc83513c71fe",
+   "files": 1,
+   "lines": 10,
+   "lane_tokens": 15198
+  },
+  {
+   "k": 18,
+   "repo": "pydantic/pydantic-settings",
+   "number": 832,
+   "replay_sha": "019a3657a377fae0d550fdc805def5e67959d86d",
+   "merge_base_sha": "2ae12c7276c54cbe050060acf82086a8cdfc6c8f",
+   "files": 6,
+   "lines": 115,
+   "lane_tokens": 50061
+  },
+  {
+   "k": 19,
+   "repo": "Kludex/starlette",
+   "number": 2830,
+   "replay_sha": "e7806503107f9b1b4f8c369ac66eb62dddfe8270",
+   "merge_base_sha": "76e053ac8221349fc068ef542fa43d20b40340d1",
+   "files": 7,
+   "lines": 111,
+   "lane_tokens": 81926
+  },
+  {
+   "k": 20,
+   "repo": "pydantic/pydantic-settings",
+   "number": 533,
+   "replay_sha": "2380e975ab71008079ad2252b6db63d36f3654c5",
+   "merge_base_sha": "65929cd1f5356b967456ac1b4f78e929fe04d398",
+   "files": 3,
+   "lines": 139,
+   "lane_tokens": 34744
+  },
+  {
+   "k": 21,
+   "repo": "Kludex/starlette",
+   "number": 2815,
+   "replay_sha": "e32c078d2d3f3a2bf0839699ae5050850eaf56c8",
+   "merge_base_sha": "ea7ce8a5b04669d02bd4911ff53ab6b4cef7c835",
+   "files": 3,
+   "lines": 79,
+   "lane_tokens": 29178
+  },
+  {
+   "k": 22,
+   "repo": "pydantic/pydantic-settings",
+   "number": 698,
+   "replay_sha": "2d469a6e8fd911bc15e6e80616e7e7095ab14f98",
+   "merge_base_sha": "fc8a694e364a73daa58a2d371bfa44ba33174503",
+   "files": 8,
+   "lines": 281,
+   "lane_tokens": 73535
+  },
+  {
+   "k": 23,
+   "repo": "Kludex/starlette",
+   "number": 3376,
+   "replay_sha": "7b7c083a418845c057ab66b750fc097bfde69129",
+   "merge_base_sha": "5174d4c8358a6f06aa8056bafd14c2272dab8dd1",
+   "files": 3,
+   "lines": 22,
+   "lane_tokens": 20859
+  },
+  {
+   "k": 24,
+   "repo": "pydantic/pydantic-settings",
+   "number": 607,
+   "replay_sha": "ca02c2b1f4434191499584e2c08bdb7a3e1b2558",
+   "merge_base_sha": "212784c47c0bb04d46961e6ff9c1be700ba90562",
+   "files": 3,
+   "lines": 130,
+   "lane_tokens": 23754
+  },
+  {
+   "k": 25,
+   "repo": "Kludex/starlette",
+   "number": 2793,
+   "replay_sha": "f42de81c23d30024aa364f0059a6351ae65fa4a8",
+   "merge_base_sha": "8a99adfb5839b37efee33f2f49c1ba27a954fcbd",
+   "files": 2,
+   "lines": 16,
+   "lane_tokens": 12795
+  },
+  {
+   "k": 26,
+   "repo": "pydantic/pydantic-settings",
+   "number": 755,
+   "replay_sha": "3ba56cde8bfe7f8fa99bd2ff294b18663e521666",
+   "merge_base_sha": "4b4fb72abc2e69c29fcfec180e5a5a0cb6cedbd1",
+   "files": 2,
+   "lines": 70,
+   "lane_tokens": 16831
+  },
+  {
+   "k": 27,
+   "repo": "Kludex/starlette",
+   "number": 2808,
+   "replay_sha": "a13b42d4752572887ad5bdba666000d4b4052b39",
+   "merge_base_sha": "f884b6649ea7e0b019443a265db7ff62ebe7914b",
+   "files": 4,
+   "lines": 77,
+   "lane_tokens": 50346
+  },
+  {
+   "k": 28,
+   "repo": "pydantic/pydantic-settings",
+   "number": 587,
+   "replay_sha": "1775221b09d434b323b5f2bc42355be5b7d71655",
+   "merge_base_sha": "d54d1462466761880a1aa7dc417c3afdf7c82459",
+   "files": 2,
+   "lines": 47,
+   "lane_tokens": 39241
+  },
+  {
+   "k": 29,
+   "repo": "Kludex/starlette",
+   "number": 3585,
+   "replay_sha": "09c447ee20caa485d3c0394ce1709a3f30513b30",
+   "merge_base_sha": "b7901fb908f0c6c3b8b6e495517cea6b2e77e66b",
+   "files": 3,
+   "lines": 24,
+   "lane_tokens": 26529
+  },
+  {
+   "k": 30,
+   "repo": "pydantic/pydantic-settings",
+   "number": 1032,
+   "replay_sha": "d98c9fa59f3de5178b6e59b92e6db4cbef1c134f",
+   "merge_base_sha": "f7534ec8835f6c7ba2fa9167fbca05a19f0a6fc3",
+   "files": 5,
+   "lines": 226,
+   "lane_tokens": 72838
+  }
+ ],
+ "reserve": [
+  {
+   "repo": "Kludex/starlette",
+   "number": 2976,
+   "replay_sha": "ec88bf0c9947c2225140d11ca6f730c851d03532",
+   "merge_base_sha": "6ee94f2cac955eeae68d2898a8dec8cf17b48736",
+   "files": 2,
+   "lines": 70,
+   "lane_tokens": 14769
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 2813,
+   "replay_sha": "29b9c42273ad5e3a4a8120b3a1a8f7b578be894a",
+   "merge_base_sha": "ea7ce8a5b04669d02bd4911ff53ab6b4cef7c835",
+   "files": 3,
+   "lines": 54,
+   "lane_tokens": 33156
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 2767,
+   "replay_sha": "c28f6c52627732110e4063a3f8d6786d60bde871",
+   "merge_base_sha": "009a3bab62c4e3f1479914b08a3291cfe86e5e9e",
+   "files": 2,
+   "lines": 18,
+   "lane_tokens": 22612
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 2814,
+   "replay_sha": "57701e7fe2a15e29c479a94df429fee444bcc29c",
+   "merge_base_sha": "ea7ce8a5b04669d02bd4911ff53ab6b4cef7c835",
+   "files": 1,
+   "lines": 75,
+   "lane_tokens": 20683
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 2996,
+   "replay_sha": "3b30b1182839a04eb51381323c888530fade2804",
+   "merge_base_sha": "1ee8f857048368b3603f32f91a1214390e79d614",
+   "files": 1,
+   "lines": 4,
+   "lane_tokens": 6530
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 2804,
+   "replay_sha": "bf34abb88aab714d3d0dd4bfa8a6f0dff0e7bc5a",
+   "merge_base_sha": "827de43b97ad58c7b8daae12ad17c1848a4f1341",
+   "files": 5,
+   "lines": 32,
+   "lane_tokens": 33418
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 3130,
+   "replay_sha": "3911ffd2d7f8d57f2005a24fdabc284564c83ea8",
+   "merge_base_sha": "de970d7b3facb853eb7ad077decbf3d94f2aab6c",
+   "files": 4,
+   "lines": 116,
+   "lane_tokens": 31634
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 3523,
+   "replay_sha": "9277bec44797b77c941e29659c9296fc17d8c05c",
+   "merge_base_sha": "bc833498bbcb1d0acc8dc328a037d28f08e0dc4b",
+   "files": 4,
+   "lines": 201,
+   "lane_tokens": 46252
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 2752,
+   "replay_sha": "4303e102f993e9f280d3851b0ba5a46d3bccbb13",
+   "merge_base_sha": "c2e3a39b09a613553ee03586589ed9cd0fbf07f3",
+   "files": 5,
+   "lines": 73,
+   "lane_tokens": 64402
+  },
+  {
+   "repo": "Kludex/starlette",
+   "number": 2768,
+   "replay_sha": "6b38536d993c1966b53e443cc5c390a2223245c9",
+   "merge_base_sha": "009a3bab62c4e3f1479914b08a3291cfe86e5e9e",
+   "files": 2,
+   "lines": 9,
+   "lane_tokens": 17952
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 702,
+   "replay_sha": "91c583f5de91d359f98d88c341f5cf70acc2cb3f",
+   "merge_base_sha": "02de5b622b8648404aa792df01599aa1179c3aa7",
+   "files": 2,
+   "lines": 18,
+   "lane_tokens": 13636
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 626,
+   "replay_sha": "d84cfc7578c0bd6dfe52c9cebf0ce78bfe3eef75",
+   "merge_base_sha": "e9f7994872ebcd7a284d98d0ed501cc314a6a7fa",
+   "files": 2,
+   "lines": 34,
+   "lane_tokens": 17631
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 773,
+   "replay_sha": "079d30792d20b1ef7b215ba21f5a4cd2e05f8188",
+   "merge_base_sha": "0f8f951b89b137bd563ce74dac016ba2c4cdc7a2",
+   "files": 3,
+   "lines": 130,
+   "lane_tokens": 21745
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 723,
+   "replay_sha": "9fd7c67dd4344f0685256224d0e0fd035b61c35c",
+   "merge_base_sha": "63cd453be165834400475aa38ce110ca1720cb71",
+   "files": 2,
+   "lines": 30,
+   "lane_tokens": 12501
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 762,
+   "replay_sha": "e9bc4d64241238b9fb5ac26df5d3c9f4fbee981e",
+   "merge_base_sha": "0e96e9c27eb73599054b83959bb938c82bbebde7",
+   "files": 3,
+   "lines": 44,
+   "lane_tokens": 25288
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 534,
+   "replay_sha": "b773f0d39c39da613ae6cbe3ea000c2d6ef35875",
+   "merge_base_sha": "65929cd1f5356b967456ac1b4f78e929fe04d398",
+   "files": 5,
+   "lines": 128,
+   "lane_tokens": 94767
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 663,
+   "replay_sha": "2e987f492f4593263be34463c78dedd900fcb019",
+   "merge_base_sha": "1fc20873d208979dfac0fa336f99fc05c0562ae8",
+   "files": 2,
+   "lines": 67,
+   "lane_tokens": 21737
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 992,
+   "replay_sha": "c7a9a96d867d41b96fd6196d1029d143cc496bb7",
+   "merge_base_sha": "aabb8698424c326aeb62f50b27e9aa9d1b3e865e",
+   "files": 2,
+   "lines": 120,
+   "lane_tokens": 19538
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 949,
+   "replay_sha": "c7787f3ea5028a066775f7509465cf0cf06e8dff",
+   "merge_base_sha": "4ae5b3a09f28def12dcdcfbe8fcd549f230fe2ae",
+   "files": 7,
+   "lines": 39,
+   "lane_tokens": 72235
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 862,
+   "replay_sha": "75201c5f1b7d04f1220214648d78069f57552f04",
+   "merge_base_sha": "f4fcb53321da24cb13db797d18787a7fb71889a4",
+   "files": 2,
+   "lines": 39,
+   "lane_tokens": 40133
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 712,
+   "replay_sha": "de5486e7d22ebeac65dcefbd37df8e171e50ea21",
+   "merge_base_sha": "7b924d2acddc31c9667383cb49a1cced976ca4f9",
+   "files": 2,
+   "lines": 39,
+   "lane_tokens": 20244
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 764,
+   "replay_sha": "ba0e1fbbd0893747ac66ddbe286a78eef3a3aa3f",
+   "merge_base_sha": "a04b03450e62f583cdaee2d93df693b991aeb319",
+   "files": 4,
+   "lines": 153,
+   "lane_tokens": 63998
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 1008,
+   "replay_sha": "8d79b549da35109aef59dd7fcbbb82d8bbca6080",
+   "merge_base_sha": "bcb58241d9f4e16068092727aa5602a9cb2ae2a8",
+   "files": 2,
+   "lines": 194,
+   "lane_tokens": 44039
+  },
+  {
+   "repo": "pydantic/pydantic-settings",
+   "number": 629,
+   "replay_sha": "b883884b8d319586c080a226f0e45f260e4575c7",
+   "merge_base_sha": "159ef14dc1d299a29992283060d038cf6e6d3b56",
+   "files": 2,
+   "lines": 67,
+   "lane_tokens": 16841
+  }
+ ]
+}
