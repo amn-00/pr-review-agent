@@ -1740,3 +1740,31 @@ mark, are counted as such and left out of the rates.
 **Checked on two real replayed PRs (2026-11-16).** On replay 3 (Starlette), the bot's one
 inline comment sits 2 lines from a reviewer's comment, and its lines changed before the merge.
 On replay 2 (pydantic-settings), neither bot comment is near the reviewer's one comment.
+
+## The runs page
+
+**`/runs`: a read-only page of the latest 50 reviews, and `/` leads to it.**
+The deployed URL used to redirect to the repo, so the live service showed nothing. The page
+lists each run with a link to its PR, its status, how long it took, inline comments posted, the
+agent's verdict counts and the cost. The SPEC allows "a simple runs list". It replaces the 307
+to the repo from Phase 8c; the page links to the repo instead.
+
+**Plain HTML from one query, with no new dependency.**
+`recent_runs` is one statement: runs joined to their PR and repo, with `COUNT(...) FILTER`
+over an outer join to findings, so a clean PR with no findings is still a row. The page is an
+f-string template: no template engine, no JavaScript, no forms.
+
+**Everything from GitHub is escaped.**
+Repo names, PR titles and statuses go through `html.escape` before they reach the page. A PR
+title is attacker-controlled text: tested with a `<script>` title and a repo name that tries to
+break out of the link.
+
+**The API process now reads Postgres on this one route.**
+Phase 1 kept the webhook away from Postgres so it stays fast and works when the database is
+down. That still holds: only `/runs` opens a session, and it only reads.
+
+**Known limits.**
+- It shows every repo the App is installed on. Today those are all public. Before installing
+  the App on a private repo, the page would need a filter or a login.
+- "Review time" is the last attempt's, from claiming the run to finishing it.
+- The free instance sleeps, so the first visit after a quiet spell takes up to a minute.

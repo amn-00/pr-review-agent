@@ -310,3 +310,37 @@ async def add_daily_tokens(
         )
     )
     await session.commit()
+
+
+async def recent_runs(session: AsyncSession, limit: int) -> list:
+    """The latest runs, newest first, for the runs page. Each row has the run, its PR, and what
+    became of its findings: how many were posted as inline comments, and the agent's verdicts.
+    One query; every join and the ordering use a primary key or an indexed column."""
+
+    def findings_where(condition):
+        return func.count(Finding.id).filter(condition)
+
+    statement = (
+        select(
+            ReviewRun.id,
+            ReviewRun.status,
+            ReviewRun.started_at,
+            ReviewRun.finished_at,
+            ReviewRun.cost_usd,
+            Repo.full_name,
+            PullRequest.number,
+            PullRequest.title,
+            findings_where(Finding.posted).label("comments"),
+            findings_where(Finding.verdict == "confirmed").label("confirmed"),
+            findings_where(Finding.verdict == "dropped").label("dropped"),
+            findings_where(Finding.verdict == "uncertain").label("uncertain"),
+        )
+        .join(PullRequest, ReviewRun.pr_id == PullRequest.id)
+        .join(Repo, PullRequest.repo_id == Repo.id)
+        # Outer: a run with no findings (a clean PR) is still a row, with zero counts.
+        .outerjoin(Finding, Finding.run_id == ReviewRun.id)
+        .group_by(ReviewRun.id, Repo.full_name, PullRequest.number, PullRequest.title)
+        .order_by(ReviewRun.id.desc())
+        .limit(limit)
+    )
+    return list(await session.execute(statement))

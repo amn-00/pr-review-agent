@@ -109,7 +109,7 @@ any local `api` and `worker` containers too, so two bots don't review the same P
   worker for 2 functions: review_pr, cron:reconcile`, then `← cron:reconcile ● N`.
 - **`/health`** → `{"status":"ok"}`.
 - **`/health/ready`** → `{"redis":"ok","postgres":"ok"}`.
-- **`/`** → a redirect to this repo.
+- **`/`** → the page of recent reviews (`/runs`).
 
 ## 4. Point the GitHub App at Render
 

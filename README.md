@@ -313,7 +313,7 @@ The full steps are in [docs/deploy.md](docs/deploy.md). In short:
    - The start command migrates, then `exec`s uvicorn.
 4. **The GitHub App's webhook URL:** `https://<service>.onrender.com/webhook`.
 
-The service has no pages: opening its URL redirects here. To see it working, open
+Opening the service's URL shows a read-only page of its latest reviews. For one review, open
 [pr-agent-playground#6](https://github.com/amn-00/pr-agent-playground/pull/6).
 
 ## Known limits
@@ -344,7 +344,8 @@ The service has no pages: opening its URL redirects here. To see it working, ope
   then posts nothing, and the reconciler retries the run 5 or more minutes later, paying only for
   the failed call. If the last automatic retry still fails, the review is posted and marked
   incomplete. This happened on 1 of 115 lane calls in the baseline eval.
-- **No dashboard.** Runs, findings and agent steps are in Postgres.
+- **No dashboard beyond a read-only list of recent reviews** (`/runs`). Findings and agent
+  steps are in Postgres.
 
 ## Repo map
 
