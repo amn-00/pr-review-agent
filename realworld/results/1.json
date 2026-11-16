@@ -1,0 +1,330 @@
+{
+ "k": 1,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 2962,
+  "replay_sha": "f14ee57f3ad4659a0496e509f9fa9ef08baf5697",
+  "merge_base_sha": "fa5355442753f794965ae1af0f87f9fec1b9a3de"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 1,
+  "url": "https://github.com/amn-00/starlette/pull/1",
+  "head_sha": "9b816b81ec5082a8b85da318ecfc04a548092229"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 2,
+  "pr_id": 2,
+  "head_sha": "9b816b81ec5082a8b85da318ecfc04a548092229",
+  "status": "completed",
+  "started_at": "2026-11-11 17:43:06.707419+00:00",
+  "finished_at": "2026-11-11 17:46:25.939043+00:00",
+  "tokens_in": 31466,
+  "tokens_out": 3068,
+  "cost_usd": "0.005875125",
+  "llm_calls": 17,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5863041264
+ },
+ "findings": [
+  {
+   "id": 5,
+   "run_id": 2,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_formparsers.py",
+   "line_start": 5,
+   "line_end": 5,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Unused import of BytesIO",
+   "explanation": "The BytesIO import is never used in the test file, adding noise and potential confusion for future readers.",
+   "suggested_fix": "Remove the unused import to keep the code clean.",
+   "verdict": "dropped",
+   "verdict_reason": "The test file imports BytesIO and later uses it to create a large in\u2011memory file for a multipart request, so the import is not unused.",
+   "evidence": [
+    {
+     "why": "BytesIO is instantiated here, so the import is used",
+     "line": 308,
+     "path": "tests/test_formparsers.py",
+     "quote": "data = BytesIO(b\" \" * MultiPartParser.spool_max_size * 2)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 12,
+     "finding_id": 5,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "BytesIO"
+     },
+     "result_chars": 750,
+     "result_summary": "Lines containing 'BytesIO':\nstarlette/middleware/gzip.py:125: self.gzip_buffer = io.BytesIO()\nstarlette/middleware/wsgi.py:40: \"wsgi.input\": io.BytesIO(body),\nstarlette/testclient.py:294: raw_kwargs: dict[str, Any] = {\"stream\": io.BytesIO()}\nstarlette/testclient.py:362: \"stream\": io.BytesIO(),\ntests",
+     "tokens_in": 2019,
+     "tokens_out": 42,
+     "latency_ms": 531
+    },
+    {
+     "id": 13,
+     "finding_id": 5,
+     "step_no": 2,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"The finding: unused import BytesIO at line5. Need",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 44574
+    },
+    {
+     "id": 15,
+     "finding_id": 5,
+     "step_no": 3,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_formparsers.py",
+      "line_end": 320,
+      "line_start": 300
+     },
+     "result_chars": 834,
+     "result_summary": "tests/test_formparsers.py, lines 300-320 of 752:\n  300              \"content_type\": \"text/plain\",\n  301          },\n  302          \"field0\": \"value0\",\n  303          \"field1\": \"value1\",\n  304      }\n  305  \n  306  \n  307  def test_multipart_request_large_file(tmpdir: Path, test_client_factory: TestC",
+     "tokens_in": 2295,
+     "tokens_out": 64,
+     "latency_ms": 460
+    },
+    {
+     "id": 17,
+     "finding_id": 5,
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The test file imports BytesIO and later uses it to create a large in\u2011memory file for a multipart request, so the import is not unused.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "BytesIO is instantiated here, so the import is used",
+        "line": 308,
+        "path": "tests/test_formparsers.py",
+        "quote": "data = BytesIO(b\" \" * MultiPartParser.spool_max_size * 2)"
+       }
+      ]
+     },
+     "result_chars": 143,
+     "result_summary": "dropped: The test file imports BytesIO and later uses it to create a large in\u2011memory file for a multipart request, so the import is not unused.",
+     "tokens_in": 2608,
+     "tokens_out": 164,
+     "latency_ms": 54069
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "run_id": 2,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_formparsers.py",
+   "line_start": 13,
+   "line_end": 13,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Importing internal helper function",
+   "explanation": "The test imports the private function _user_safe_decode from starlette.formparsers, which is an implementation detail and not part of the public API. Future refactors may rename or remove it, causing failures.",
+   "suggested_fix": "Replace usage with a public interface or test the behavior through the public API instead of the private helper.",
+   "verdict": "confirmed",
+   "verdict_reason": "The test imports a name that is defined with a leading underscore, which signals a private implementation detail not part of the public API. Importing it is an idiom/style concern.",
+   "evidence": [
+    {
+     "why": "Test imports the private helper _user_safe_decode",
+     "line": 13,
+     "path": "tests/test_formparsers.py",
+     "quote": "from starlette.formparsers import MultiPartException, MultiPartParser, _user_safe_decode"
+    },
+    {
+     "why": "Definition uses leading underscore, indicating internal use",
+     "line": 45,
+     "path": "starlette/formparsers.py",
+     "quote": "def _user_safe_decode(src: bytes | bytearray, codec: str) -> str:"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 14,
+     "finding_id": 6,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def _user_safe_decode"
+     },
+     "result_chars": 136,
+     "result_summary": "Lines containing 'def _user_safe_decode':\nstarlette/formparsers.py:45: def _user_safe_decode(src: bytes | bytearray, codec: str) -> str:",
+     "tokens_in": 2143,
+     "tokens_out": 77,
+     "latency_ms": 45519
+    },
+    {
+     "id": 16,
+     "finding_id": 6,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/formparsers.py",
+      "line_end": 50,
+      "line_start": 40
+     },
+     "result_chars": 480,
+     "result_summary": "starlette/formparsers.py, lines 40-50 of 276:\n   40      data: bytearray = field(default_factory=bytearray)\n   41      file: UploadFile | None = None\n   42      item_headers: list[tuple[bytes, bytes]] = field(default_factory=list)\n   43  \n   44  \n   45  def _user_safe_decode(src: bytes | bytearray, ",
+     "tokens_in": 2244,
+     "tokens_out": 133,
+     "latency_ms": 54375
+    },
+    {
+     "id": 19,
+     "finding_id": 6,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The test imports a name that is defined with a leading underscore, which signals a private implementation detail not part of the public API. Importing it is an idiom/style concern.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Test imports the private helper _user_safe_decode",
+        "line": 13,
+        "path": "tests/test_formparsers.py",
+        "quote": "from starlette.formparsers import MultiPartException, MultiPartParser, _user_safe_decode"
+       },
+       {
+        "why": "Definition uses leading underscore, indicating internal use",
+        "line": 45,
+        "path": "starlette/formparsers.py",
+        "quote": "def _user_safe_decode(src: bytes | bytearray, codec: str) -> str:"
+       }
+      ]
+     },
+     "result_chars": 191,
+     "result_summary": "confirmed: The test imports a name that is defined with a leading underscore, which signals a private implementation detail not part of the public API. Importing it is an idiom/style concern.",
+     "tokens_in": 2458,
+     "tokens_out": 312,
+     "latency_ms": 40724
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "run_id": 2,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_formparsers.py",
+   "line_start": 308,
+   "line_end": 308,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Variable name shadows built-in",
+   "explanation": "The variable `data` in the test shadows the built-in `data` name, which can confuse readers and potentially lead to accidental misuse of the built-in.",
+   "suggested_fix": "Rename the variable to something more descriptive, e.g., `large_file_data`.",
+   "verdict": "dropped",
+   "verdict_reason": "Python has no built-in called data, so the variable does not shadow any built-in; the finding is a false positive.",
+   "evidence": [
+    {
+     "why": "Variable named data is defined here, but there is no built-in named data to be shadowed",
+     "line": 308,
+     "path": "tests/test_formparsers.py",
+     "quote": "data = BytesIO(b\" \" * MultiPartParser.spool_max_size * 2)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 18,
+     "finding_id": 7,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "Python has no built-in called data, so the variable does not shadow any built-in; the finding is a false positive.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Variable named data is defined here, but there is no built-in named data to be shadowed",
+        "line": 308,
+        "path": "tests/test_formparsers.py",
+        "quote": "data = BytesIO(b\" \" * MultiPartParser.spool_max_size * 2)"
+       }
+      ]
+     },
+     "result_chars": 123,
+     "result_summary": "dropped: Python has no built-in called data, so the variable does not shadow any built-in; the finding is a false positive.",
+     "tokens_in": 2363,
+     "tokens_out": 249,
+     "latency_ms": 904
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "run_id": 2,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_formparsers.py",
+   "line_start": 308,
+   "line_end": 308,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Hardcoding buffer size based on a private constant",
+   "explanation": "The test constructs the byte stream using `MultiPartParser.spool_max_size * 2`, which accesses a private constant. This couples the test to internal implementation details and makes the intent unclear.",
+   "suggested_fix": "Use a clear numeric literal or a named constant that describes the purpose, e.g., `bytes_of_data = 2 * MAX_SPooled_SIZE` with `MAX_SPooled_SIZE` defined in the test module.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 7,
+   "agent_steps": []
+  },
+  {
+   "id": 9,
+   "run_id": 2,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_formparsers.py",
+   "line_start": 308,
+   "line_end": 308,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Using BytesIO without context manager",
+   "explanation": "`BytesIO` objects are not closed, which can lead to resource warnings in some environments.",
+   "suggested_fix": "Wrap the `BytesIO` in a `with` statement or ensure it is explicitly closed.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 7,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-11T17:42:36Z",
+ "review": {
+  "id": 5863041264,
+  "url": "https://github.com/amn-00/starlette/pull/1#pullrequestreview-5863041264",
+  "submitted_at": "2026-11-11T17:46:25Z",
+  "body": "<!-- pr-review-agent run:2 -->\n### Automated review of `9b816b8`\nNo confirmed issues found. 1 style suggestion(s) below.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 1 confirmed, 2 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0059 at list prices (free tier; agent $0.0030); 0 of 9 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `tests/test_formparsers.py:13` Importing internal helper function: The test imports the private function _user_safe_decode from starlette.formparsers, which is an implementation detail and not part of the public API. Future refactors may rename or remove it, causing failures.\n\n</details>"
+ },
+ "comments": []
+}

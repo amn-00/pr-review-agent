@@ -13,7 +13,6 @@ in are kept.
 """
 
 import asyncio
-import csv
 import json
 from pathlib import Path
 
@@ -28,6 +27,7 @@ from realworld.common import (
     gh_token,
     github_client,
     iter_items,
+    merge_rows,
     prod_database_url,
     read_only_engine,
 )
@@ -150,33 +150,23 @@ def write_result(result: dict) -> None:
 def update_labels(results: list[dict]) -> int:
     """Add a row to labels.csv for every inline comment that has none yet, keeping the labels
     and notes already filled in. Returns how many rows still have no label."""
-    rows: dict[str, dict] = {}
-    if LABELS_FILE.exists():
-        with LABELS_FILE.open(encoding="utf-8-sig", newline="") as file:
-            rows = {row["comment_id"]: row for row in csv.DictReader(file)}
-    for result in results:
-        for comment in result["comments"]:
-            rows.setdefault(
-                str(comment["id"]),
-                {
-                    "k": result["k"],
-                    "comment_id": comment["id"],
-                    "url": comment["url"],
-                    "file": comment["file"],
-                    "line": comment["line"],
-                    # The comment's first line: "**medium** · bug · <title>".
-                    "title": comment["body"].splitlines()[0].replace("**", ""),
-                    "label": "",
-                    "note": "",
-                },
-            )
-    ordered = sorted(rows.values(), key=lambda row: (int(row["k"]), row["file"], int(row["line"])))
-    # utf-8-sig: Excel reads the file as UTF-8 only with this marker.
-    with LABELS_FILE.open("w", encoding="utf-8-sig", newline="") as file:
-        writer = csv.DictWriter(file, LABEL_COLUMNS)
-        writer.writeheader()
-        writer.writerows(ordered)
-    return sum(1 for row in ordered if not row["label"].strip())
+    new_rows = [
+        {
+            "k": result["k"],
+            "comment_id": comment["id"],
+            "url": comment["url"],
+            "file": comment["file"],
+            "line": comment["line"],
+            # The comment's first line: "**medium** · bug · <title>".
+            "title": comment["body"].splitlines()[0].replace("**", ""),
+            "label": "",
+            "note": "",
+        }
+        for result in results
+        for comment in result["comments"]
+    ]
+    rows = merge_rows(LABELS_FILE, LABEL_COLUMNS, new_rows)
+    return sum(1 for row in rows if not row["label"].strip())
 
 
 async def collect(sample: list[dict], replays: dict[str, dict]) -> list[dict]:

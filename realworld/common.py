@@ -1,11 +1,13 @@
 """Shared by the real-world eval scripts: GitHub as the owner, and the prod database read-only."""
 
+import csv
 import os
 import socket
 import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from pathlib import Path
 
 import httpx
 from sqlalchemy.engine import make_url
@@ -121,3 +123,27 @@ def read_only_engine(url: str) -> AsyncEngine:
     return create_async_engine(
         url, connect_args={"server_settings": {"default_transaction_read_only": "on"}}
     )
+
+
+def read_rows(path: Path) -> list[dict]:
+    """The rows of one of the hand-filled sheets; none if it doesn't exist yet."""
+    if not path.exists():
+        return []
+    with path.open(encoding="utf-8-sig", newline="") as file:
+        return list(csv.DictReader(file))
+
+
+def merge_rows(path: Path, columns: list[str], new_rows: list[dict]) -> list[dict]:
+    """Write a sheet with a row for every `comment_id` already in it or in `new_rows`. A row
+    that's already there is kept as it is, so what was filled in by hand survives a re-run.
+    Ordered by PR, file and line. Returns the rows written."""
+    rows = {row["comment_id"]: row for row in read_rows(path)}
+    for row in new_rows:
+        rows.setdefault(str(row["comment_id"]), row)
+    ordered = sorted(rows.values(), key=lambda row: (int(row["k"]), row["file"], int(row["line"])))
+    # utf-8-sig: Excel reads the file as UTF-8 only with this marker.
+    with path.open("w", encoding="utf-8-sig", newline="") as file:
+        writer = csv.DictWriter(file, columns)
+        writer.writeheader()
+        writer.writerows(ordered)
+    return ordered

@@ -1,0 +1,7 @@
+﻿k,comment_id,url,file,line,text,problem,bot_comment_url,same_issue
+1,2199836116,https://github.com/Kludex/starlette/pull/2962#discussion_r2199836116,tests/test_formparsers.py,314,This test passes on master. We want some condition that proves this PR actually solves the issue.,,,
+2,3727561540,https://github.com/pydantic/pydantic-settings/pull/926#discussion_r3727561540,tests/test_settings.py,3953,please move the import to the top of the file,,,
+3,4255828866,https://github.com/Kludex/starlette/pull/3631#discussion_r4255828866,starlette/middleware/gzip.py,124,I don't think we need this comment here.,,,
+3,4255826989,https://github.com/Kludex/starlette/pull/3631#discussion_r4255826989,starlette/middleware/gzip.py,181,Why do we need this conditional here now?,,https://github.com/amn-00/starlette/pull/2#discussion_r4541444767,
+3,4255830792,https://github.com/Kludex/starlette/pull/3631#discussion_r4255830792,tests/middleware/test_gzip.py,1,Is this amount of tests necessary? Maybe a single test is enough?,,,
+5,1898805826,https://github.com/Kludex/starlette/pull/2816#discussion_r1898805826,pyproject.toml,95,```suggestion ```,,,

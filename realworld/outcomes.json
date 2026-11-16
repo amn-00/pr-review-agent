@@ -1,0 +1,58 @@
+{
+ "1": {
+  "added": 31,
+  "added_changed": 10,
+  "flagged": 0,
+  "flagged_changed": 0,
+  "comments": {}
+ },
+ "2": {
+  "added": 35,
+  "added_changed": 2,
+  "flagged": 4,
+  "flagged_changed": 0,
+  "comments": {
+   "4541360093": {
+    "changed_before_merge": false,
+    "reviewer_comment_ids": []
+   },
+   "4541360104": {
+    "changed_before_merge": false,
+    "reviewer_comment_ids": []
+   }
+  }
+ },
+ "3": {
+  "added": 87,
+  "added_changed": 67,
+  "flagged": 2,
+  "flagged_changed": 2,
+  "comments": {
+   "4541444767": {
+    "changed_before_merge": true,
+    "reviewer_comment_ids": [
+     4255826989
+    ]
+   }
+  }
+ },
+ "4": {
+  "added": 57,
+  "added_changed": 0,
+  "flagged": 0,
+  "flagged_changed": 0,
+  "comments": {}
+ },
+ "5": {
+  "added": 20,
+  "added_changed": 1,
+  "flagged": 1,
+  "flagged_changed": 0,
+  "comments": {
+   "4589049117": {
+    "changed_before_merge": false,
+    "reviewer_comment_ids": []
+   }
+  }
+ }
+}

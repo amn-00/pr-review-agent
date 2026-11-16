@@ -93,6 +93,18 @@ def git(work: Path, *args: str, env: dict | None = None) -> str:
     return result.stdout.strip()
 
 
+def fetch_upstream_pull(work: Path, upstream_url: str, number: int) -> str:
+    """Fetch an upstream PR's commits into the local clone `work` (public, read-only). Returns
+    the ref that now holds the PR's final head."""
+    if not (work / ".git").exists():
+        work.mkdir(parents=True, exist_ok=True)
+        git(work, "init", "--quiet")
+    # Into a ref, so git's garbage collection keeps the commits.
+    ref = f"refs/upstream/pull/{number}"
+    git(work, "fetch", "--quiet", upstream_url, f"+refs/pull/{number}/head:{ref}")
+    return ref
+
+
 def make_replay_commit(work: Path, upstream_url: str, entry: dict, message: str) -> str:
     """Fetch the upstream PR into the local clone `work`, and return a new commit holding the
     replayed version's files on top of the merge base.
@@ -101,13 +113,7 @@ def make_replay_commit(work: Path, upstream_url: str, entry: dict, message: str)
     "Fixes #123". The new commit has the same files on the same base, so the PR's diff is
     identical, and the bot reads the diff and the files, never the commit messages.
     """
-    if not (work / ".git").exists():
-        work.mkdir(parents=True, exist_ok=True)
-        git(work, "init", "--quiet")
-    number = entry["number"]
-    # Into a ref, so git's garbage collection keeps the commits.
-    refspec = f"+refs/pull/{number}/head:refs/upstream/pull/{number}"
-    git(work, "fetch", "--quiet", upstream_url, refspec)
+    fetch_upstream_pull(work, upstream_url, entry["number"])
     tree = f"{entry['replay_sha']}^{{tree}}"
     return git(
         work, "commit-tree", tree, "-p", entry["merge_base_sha"], "-m", message, env=REPLAY_IDENTITY

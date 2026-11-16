@@ -1703,3 +1703,40 @@ comment before looking at B, and a sheet that showed both would bias the labels.
 Selection keeps such links out of the replayed diff, but the agent can read one elsewhere in
 the repo and repeat it. Collection searches the review and its comments with selection's own
 pattern and prints any hit.
+
+## Real-world eval — Part 2b: outcomes and the report
+
+`realworld/outcomes.py` works out B's raw material; `realworld/report.py` writes the report.
+
+**"Changed before merge" compares the replayed version with the PR's final head.**
+`git diff -U0 -M <replayed commit> <final head>`, read on the old side: the lines of the
+replayed version that were changed or removed. Lines that only moved don't count, and a renamed
+file is found under its old name (both tested on real git repos). The limit: if the PR's branch
+merged the base branch in between, unrelated changes to the same lines count too.
+
+**The base-rate test's unit is an added line.**
+A flagged line is an added line inside a bot comment's range; the other added lines are the
+base rate. Fisher's exact test, one-sided, asks whether flagged lines changed more often. It
+reuses `fisher_one_sided` with the columns swapped (unchanged, changed), because that function
+gives the lower tail. Checked against a hand-computed value, C(4,3) / C(10,3).
+
+**Only the reviewers' comments made on the replayed commit are used.**
+Their `original_line` is then a line number in the version the bot saw, so "within 3 lines"
+means something. Comments from later review rounds sit on later versions with other line
+numbers. Replies inside a thread, the author's own comments, bots and comments on deleted lines
+are left out.
+
+**One sheet serves both directions of B.**
+A match is a pair: a bot comment and a reviewer's comment within 3 lines in the same file.
+`reviewer_comments.csv` has one row per reviewer comment, with the bot comment near it (if
+any). The owner marks `problem` (a real code problem, or not) and, for pairs, `same_issue`.
+Counting pairs from the bot's side gives "bot comments near a reviewer's"; counting from the
+reviewers' side gives "problems the bot also flagged".
+
+**The report never guesses a missing label.**
+It can be written at any point. Comments without a label, and reviewer comments without a
+mark, are counted as such and left out of the rates.
+
+**Checked on two real replayed PRs (2026-11-16).** On replay 3 (Starlette), the bot's one
+inline comment sits 2 lines from a reviewer's comment, and its lines changed before the merge.
+On replay 2 (pydantic-settings), neither bot comment is near the reviewer's one comment.

@@ -1,0 +1,322 @@
+{
+ "k": 2,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 926,
+  "replay_sha": "21d125b2e2d424aaa9c6aad58f9b38c03666aef2",
+  "merge_base_sha": "ae25d703c458b57f5a9a425f6ec9a28ad868f980"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 1,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/1",
+  "head_sha": "e849e108637d43f024e19638634168042ee2f7aa"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 3,
+  "pr_id": 3,
+  "head_sha": "e849e108637d43f024e19638634168042ee2f7aa",
+  "status": "completed",
+  "started_at": "2026-11-11 17:46:46.103048+00:00",
+  "finished_at": "2026-11-11 17:50:08.870896+00:00",
+  "tokens_in": 24758,
+  "tokens_out": 2116,
+  "cost_usd": "0.004681800",
+  "llm_calls": 15,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5863092189
+ },
+ "findings": [
+  {
+   "id": 10,
+   "run_id": 3,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/env.py",
+   "line_start": 370,
+   "line_end": 370,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Swallows JSON decoding errors silently",
+   "explanation": "The added exception handler catches json.JSONDecodeError and then does nothing (pass). This suppresses parsing failures, causing the function to return the original string instead of raising an error or attempting further handling, which can lead to incorrect configuration values being accepted without notice.",
+   "suggested_fix": "Remove json.JSONDecodeError from the except clause or handle it explicitly, e.g., re\u2011raise the error or fallback to a safe default.",
+   "verdict": "confirmed",
+   "verdict_reason": "The added except block catches json.JSONDecodeError and then does nothing, so parsing failures are silently ignored and the original string is returned.",
+   "evidence": [
+    {
+     "why": "catches JSONDecodeError",
+     "line": 370,
+     "path": "pydantic_settings/sources/providers/env.py",
+     "quote": "except (ValidationError, json.JSONDecodeError):"
+    },
+    {
+     "why": "comment indicates intention but code passes",
+     "line": 371,
+     "path": "pydantic_settings/sources/providers/env.py",
+     "quote": "# Allow validation error to be raised at time of instantiation"
+    },
+    {
+     "why": "swallows the exception, returning original value",
+     "line": 372,
+     "path": "pydantic_settings/sources/providers/env.py",
+     "quote": "pass"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 20,
+     "finding_id": 10,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class EnvSettingsSource"
+     },
+     "result_chars": 146,
+     "result_summary": "Lines containing 'class EnvSettingsSource':\npydantic_settings/sources/providers/env.py:47: class EnvSettingsSource(PydanticBaseEnvSettingsSource):",
+     "tokens_in": 2202,
+     "tokens_out": 41,
+     "latency_ms": 55837
+    },
+    {
+     "id": 22,
+     "finding_id": 10,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/providers/env.py",
+      "line_end": 380,
+      "line_start": 340
+     },
+     "result_chars": 2302,
+     "result_summary": "pydantic_settings/sources/providers/env.py, lines 340-380 of 382:\n  340      def _coerce_env_val_strict(self, field: FieldInfo | None, value: Any) -> Any:\n  341          \"\"\"\n  342          Coerce environment string values based on field annotation if model config is `strict=True`\n  343          or i",
+     "tokens_in": 2297,
+     "tokens_out": 52,
+     "latency_ms": 41522
+    },
+    {
+     "id": 24,
+     "finding_id": 10,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The added except block catches json.JSONDecodeError and then does nothing, so parsing failures are silently ignored and the original string is returned.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "catches JSONDecodeError",
+        "line": 370,
+        "path": "pydantic_settings/sources/providers/env.py",
+        "quote": "except (ValidationError, json.JSONDecodeError):"
+       },
+       {
+        "why": "comment indicates intention but code passes",
+        "line": 371,
+        "path": "pydantic_settings/sources/providers/env.py",
+        "quote": "# Allow validation error to be raised at time of instantiation"
+       },
+       {
+        "why": "swallows the exception, returning original value",
+        "line": 372,
+        "path": "pydantic_settings/sources/providers/env.py",
+        "quote": "pass"
+       }
+      ]
+     },
+     "result_chars": 163,
+     "result_summary": "confirmed: The added except block catches json.JSONDecodeError and then does nothing, so parsing failures are silently ignored and the original string is returned.",
+     "tokens_in": 2886,
+     "tokens_out": 257,
+     "latency_ms": 1064
+    }
+   ]
+  },
+  {
+   "id": 11,
+   "run_id": 3,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_settings.py",
+   "line_start": 3970,
+   "line_end": 3972,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Invalid usage of strict parameter in BaseSettings subclass",
+   "explanation": "The class StrictSettings is defined with `BaseSettings, strict=True`, but BaseSettings does not accept a `strict` argument in its inheritance list. This will raise a TypeError at class creation time, causing the test to fail before validation logic is exercised.",
+   "suggested_fix": "Define strict mode via the model_config dictionary, e.g.,\n```python\nclass StrictSettings(BaseSettings):\n    model_config = SettingsConfigDict(strict=True)\n    my_int: int = 0\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "BaseSettings is defined without any support for a `strict` keyword in its inheritance list, so using `class StrictSettings(BaseSettings, strict=True):` is invalid Python syntax and will raise a TypeError at class creation.",
+   "evidence": [
+    {
+     "why": "Shows BaseSettings is defined without a `strict` parameter",
+     "line": 132,
+     "path": "pydantic_settings/main.py",
+     "quote": "class BaseSettings(BaseModel):"
+    },
+    {
+     "why": "Uses an unsupported `strict` argument in the class definition",
+     "line": 3970,
+     "path": "tests/test_settings.py",
+     "quote": "class StrictSettings(BaseSettings, strict=True):"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 21,
+     "finding_id": 11,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class BaseSettings"
+     },
+     "result_chars": 100,
+     "result_summary": "Lines containing 'class BaseSettings':\npydantic_settings/main.py:132: class BaseSettings(BaseModel):",
+     "tokens_in": 2267,
+     "tokens_out": 90,
+     "latency_ms": 56036
+    },
+    {
+     "id": 23,
+     "finding_id": 11,
+     "step_no": 2,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need to see if BaseSettings accepts strict par",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 41539
+    },
+    {
+     "id": 25,
+     "finding_id": 11,
+     "step_no": 3,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/main.py",
+      "line_end": 150,
+      "line_start": 120
+     },
+     "result_chars": 1841,
+     "result_summary": "pydantic_settings/main.py, lines 120-150 of 978:\n  120      enable_decoding: bool\n  121  \n  122  \n  123  # Extend `config_keys` by pydantic settings config keys to\n  124  # support setting config through class kwargs.\n  125  # Pydantic uses `config_keys` in `pydantic._internal._config.ConfigWrapper.",
+     "tokens_in": 2349,
+     "tokens_out": 50,
+     "latency_ms": 48293
+    },
+    {
+     "id": 26,
+     "finding_id": 11,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 638
+    },
+    {
+     "id": 27,
+     "finding_id": 11,
+     "step_no": 5,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 357
+    },
+    {
+     "id": 28,
+     "finding_id": 11,
+     "step_no": 6,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "BaseSettings is defined without any support for a `strict` keyword in its inheritance list, so using `class StrictSettings(BaseSettings, strict=True):` is invalid Python syntax and will raise a TypeError at class creation.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Shows BaseSettings is defined without a `strict` parameter",
+        "line": 132,
+        "path": "pydantic_settings/main.py",
+        "quote": "class BaseSettings(BaseModel):"
+       },
+       {
+        "why": "Uses an unsupported `strict` argument in the class definition",
+        "line": 3970,
+        "path": "tests/test_settings.py",
+        "quote": "class StrictSettings(BaseSettings, strict=True):"
+       }
+      ]
+     },
+     "result_chars": 233,
+     "result_summary": "confirmed: BaseSettings is defined without any support for a `strict` keyword in its inheritance list, so using `class StrictSettings(BaseSettings, strict=True):` is invalid Python syntax and will raise a TypeError at class creation.",
+     "tokens_in": 2683,
+     "tokens_out": 321,
+     "latency_ms": 46662
+    }
+   ]
+  },
+  {
+   "id": 12,
+   "run_id": 3,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "tests/test_settings.py",
+   "line_start": 3999,
+   "line_end": 4000,
+   "category": "security",
+   "severity": "low",
+   "title": "Hard-coded secret-like value in test environment variable",
+   "explanation": "The test sets environment variables with values that look like API keys ('sk-...'), embedding secret-like strings directly in source code. This can lead to accidental exposure of real credentials if not replaced with placeholders, and encourages committing secrets.",
+   "suggested_fix": "Replace the hard-coded secret values with placeholders or load them from a secure location, e.g., using a mock or environment variable injection without real secrets.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-11T17:46:42Z",
+ "review": {
+  "id": 5863092189,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/1#pullrequestreview-5863092189",
+  "submitted_at": "2026-11-11T17:50:07Z",
+  "body": "<!-- pr-review-agent run:3 -->\n### Automated review of `e849e10`\nFound 2 confirmed issue(s): 2 medium.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0047 at list prices (free tier; agent $0.0027); 0 of 6 lane call(s) answered from cache."
+ },
+ "comments": [
+  {
+   "id": 4541360093,
+   "url": "https://github.com/amn-00/pydantic-settings/pull/1#discussion_r4541360093",
+   "file": "pydantic_settings/sources/providers/env.py",
+   "line": 370,
+   "start_line": 370,
+   "body": "**medium** \u00b7 bug \u00b7 Swallows JSON decoding errors silently\n\nThe added exception handler catches json.JSONDecodeError and then does nothing (pass). This suppresses parsing failures, causing the function to return the original string instead of raising an error or attempting further handling, which can lead to incorrect configuration values being accepted without notice.\n\n**Suggested fix:** Remove json.JSONDecodeError from the except clause or handle it explicitly, e.g., re\u2011raise the error or fallback to a safe default.\n\n_Checked against `pydantic_settings/sources/providers/env.py:370`, `pydantic_settings/sources/providers/env.py:371`, `pydantic_settings/sources/providers/env.py:372`_"
+  },
+  {
+   "id": 4541360104,
+   "url": "https://github.com/amn-00/pydantic-settings/pull/1#discussion_r4541360104",
+   "file": "tests/test_settings.py",
+   "line": 3972,
+   "start_line": 3970,
+   "body": "**medium** \u00b7 bug \u00b7 Invalid usage of strict parameter in BaseSettings subclass\n\nThe class StrictSettings is defined with `BaseSettings, strict=True`, but BaseSettings does not accept a `strict` argument in its inheritance list. This will raise a TypeError at class creation time, causing the test to fail before validation logic is exercised.\n\n**Suggested fix:** Define strict mode via the model_config dictionary, e.g.,\n```python\nclass StrictSettings(BaseSettings):\n    model_config = SettingsConfigDict(strict=True)\n    my_int: int = 0\n```\n\n_Checked against `pydantic_settings/main.py:132`, `tests/test_settings.py:3970`_"
+  }
+ ]
+}

@@ -1,0 +1,620 @@
+{
+ "k": 5,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 2816,
+  "replay_sha": "1b603d8b125d9517883cc14beba2b62879835775",
+  "merge_base_sha": "ea7ce8a5b04669d02bd4911ff53ab6b4cef7c835"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 3,
+  "url": "https://github.com/amn-00/starlette/pull/3",
+  "head_sha": "7de3d9f7cae79b1b4ce74487879b8a9e97270a79"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [
+  "finding 29 not verified (agent PR token budget)"
+ ],
+ "issue_links": [],
+ "run": {
+  "id": 6,
+  "pr_id": 6,
+  "head_sha": "7de3d9f7cae79b1b4ce74487879b8a9e97270a79",
+  "status": "completed",
+  "started_at": "2026-11-16 17:09:50.570032+00:00",
+  "finished_at": "2026-11-16 17:19:42.385117+00:00",
+  "tokens_in": 75884,
+  "tokens_out": 6288,
+  "cost_usd": "0.013519425",
+  "llm_calls": 46,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5924297596
+ },
+ "findings": [
+  {
+   "id": 24,
+   "run_id": 6,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/_utils.py",
+   "line_start": 78,
+   "line_end": 78,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Reference to undefined variable 'has_exceptiongroups'",
+   "explanation": "The added code checks 'if has_exceptiongroups' but the variable is never defined or imported in this module, causing a NameError at runtime when an exception is caught.",
+   "suggested_fix": "Import or define 'has_exceptiongroups' (e.g., from 'exceptiongroup' import has_exceptiongroups) or replace the check with a proper feature-detection guard.",
+   "verdict": "dropped",
+   "verdict_reason": "The variable 'has_exceptiongroups' is defined in this module (lines 16 and 21), so the code will not raise a NameError. The finding is incorrect.",
+   "evidence": [
+    {
+     "why": "Variable defined earlier in the module",
+     "line": 16,
+     "path": "starlette/_utils.py",
+     "quote": "has_exceptiongroups = True"
+    },
+    {
+     "why": "Variable also defined, so it exists",
+     "line": 21,
+     "path": "starlette/_utils.py",
+     "quote": "has_exceptiongroups = False"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 53,
+     "finding_id": 24,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "has_exceptiongroups"
+     },
+     "result_chars": 210,
+     "result_summary": "Lines containing 'has_exceptiongroups':\nstarlette/_utils.py:16: has_exceptiongroups = True\nstarlette/_utils.py:21: has_exceptiongroups = False\nstarlette/_utils.py:78: if has_exceptiongroups:  # pragma: no cover",
+     "tokens_in": 2199,
+     "tokens_out": 45,
+     "latency_ms": 54117
+    },
+    {
+     "id": 55,
+     "finding_id": 24,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The variable 'has_exceptiongroups' is defined in this module (lines 16 and 21), so the code will not raise a NameError. The finding is incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Variable defined earlier in the module",
+        "line": 16,
+        "path": "starlette/_utils.py",
+        "quote": "has_exceptiongroups = True"
+       },
+       {
+        "why": "Variable also defined, so it exists",
+        "line": 21,
+        "path": "starlette/_utils.py",
+        "quote": "has_exceptiongroups = False"
+       }
+      ]
+     },
+     "result_chars": 154,
+     "result_summary": "dropped: The variable 'has_exceptiongroups' is defined in this module (lines 16 and 21), so the code will not raise a NameError. The finding is incorrect.",
+     "tokens_in": 2312,
+     "tokens_out": 201,
+     "latency_ms": 745
+    }
+   ]
+  },
+  {
+   "id": 25,
+   "run_id": 6,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/gzip.py",
+   "line_start": 91,
+   "line_end": 91,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Misplaced elif inside else block",
+   "explanation": "The added `elif message_type == \"http.response.body\":` appears to be indented at the same level as the preceding `else:` block, which could lead to confusing or incorrect control flow. This makes it hard for readers to understand the intended logic and may introduce bugs if the indentation is wrong.",
+   "suggested_fix": "Reindent the `elif` to align with the outer `if` that precedes the `else`, or refactor the logic into separate guard clauses for clarity.",
+   "verdict": "confirmed",
+   "verdict_reason": "The added `elif` is aligned with the preceding `else:` block, making it part of the same `if` chain rather than nested inside the `else`. This misplaced indentation creates confusing control flow and is a readability issue.",
+   "evidence": [
+    {
+     "why": "Starts the else block that the new elif is intended to be inside",
+     "line": 76,
+     "path": "starlette/middleware/gzip.py",
+     "quote": "else:"
+    },
+    {
+     "why": "Elif is indented to the same level as the else, not nested inside it",
+     "line": 91,
+     "path": "starlette/middleware/gzip.py",
+     "quote": "elif message_type == \"http.response.body\":  # pragma: no branch"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 54,
+     "finding_id": 25,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/middleware/gzip.py",
+      "line_end": 110,
+      "line_start": 70
+     },
+     "result_chars": 1824,
+     "result_summary": "starlette/middleware/gzip.py, lines 70-108 of 108:\n   70                  headers[\"Content-Length\"] = str(len(body))\n   71                  headers.add_vary_header(\"Accept-Encoding\")\n   72                  message[\"body\"] = body\n   73  \n   74                  await self.send(self.initial_message)\n  ",
+     "tokens_in": 2218,
+     "tokens_out": 99,
+     "latency_ms": 54366
+    },
+    {
+     "id": 56,
+     "finding_id": 25,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "async def __call__"
+     },
+     "result_chars": 1235,
+     "result_summary": "Lines containing 'async def __call__':\ndocs/middleware.md:285: async def __call__(self, scope, receive, send):\ndocs/middleware.md:351: async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:\ndocs/middleware.md:373: async def __call__(self, scope: Scope, receive: ASGIReceiveCall",
+     "tokens_in": 2728,
+     "tokens_out": 97,
+     "latency_ms": 42876
+    },
+    {
+     "id": 58,
+     "finding_id": 25,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 45096
+    },
+    {
+     "id": 61,
+     "finding_id": 25,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 45327
+    },
+    {
+     "id": 62,
+     "finding_id": 25,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The added `elif` is aligned with the preceding `else:` block, making it part of the same `if` chain rather than nested inside the `else`. This misplaced indentation creates confusing control flow and is a readability issue.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Starts the else block that the new elif is intended to be inside",
+        "line": 76,
+        "path": "starlette/middleware/gzip.py",
+        "quote": "else:"
+       },
+       {
+        "why": "Elif is indented to the same level as the else, not nested inside it",
+        "line": 91,
+        "path": "starlette/middleware/gzip.py",
+        "quote": "elif message_type == \"http.response.body\":  # pragma: no branch"
+       }
+      ]
+     },
+     "result_chars": 234,
+     "result_summary": "confirmed: The added `elif` is aligned with the preceding `else:` block, making it part of the same `if` chain rather than nested inside the `else`. This misplaced indentation creates confusing control flow and is a readability issue.",
+     "tokens_in": 2929,
+     "tokens_out": 196,
+     "latency_ms": 1061
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "run_id": 6,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 253,
+   "line_end": 253,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential AttributeError when accessing undefined _form attribute",
+   "explanation": "The added check `if self._form is None` assumes that the `_form` attribute always exists on the request object. If `_form` has not been set previously, accessing it will raise an AttributeError before the condition can be evaluated, causing a runtime error when parsing form data.",
+   "suggested_fix": "Use `if getattr(self, \"_form\", None) is None:` or initialize `self._form = None` in the class constructor before this method is called.",
+   "verdict": "dropped",
+   "verdict_reason": "The request object sets self._form to None earlier, guaranteeing the attribute exists before the added check, so no AttributeError can occur.",
+   "evidence": [
+    {
+     "why": "Initializes _form attribute, so later check self._form is None will not raise AttributeError",
+     "line": 208,
+     "path": "starlette/requests.py",
+     "quote": "self._form = None"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 57,
+     "finding_id": 26,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_form ="
+     },
+     "result_chars": 260,
+     "result_summary": "Lines containing '_form =':\nstarlette/requests.py:208: self._form = None\nstarlette/requests.py:268: self._form = await multipart_parser.parse()\nstarlette/requests.py:275: self._form = await form_parser.parse()\nstarlette/requests.py:277: self._form = FormData()",
+     "tokens_in": 2291,
+     "tokens_out": 62,
+     "latency_ms": 42184
+    },
+    {
+     "id": 59,
+     "finding_id": 26,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The request object sets self._form to None earlier, guaranteeing the attribute exists before the added check, so no AttributeError can occur.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Initializes _form attribute, so later check self._form is None will not raise AttributeError",
+        "line": 208,
+        "path": "starlette/requests.py",
+        "quote": "self._form = None"
+       }
+      ]
+     },
+     "result_chars": 150,
+     "result_summary": "dropped: The request object sets self._form to None earlier, guaranteeing the attribute exists before the added check, so no AttributeError can occur.",
+     "tokens_in": 2422,
+     "tokens_out": 160,
+     "latency_ms": 45415
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "run_id": 6,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/routing.py",
+   "line_start": 401,
+   "line_end": 401,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential UnboundLocalError for non-HTTP/WebSocket scopes",
+   "explanation": "The variable `path_params` is only defined inside the `if scope[\"type\"] in (\"http\", \"websocket\")` block. If the scope type is something else, the function later may reference `path_params` (e.g., when building `child_scope` or returning a result), causing an UnboundLocalError at runtime.",
+   "suggested_fix": "Initialize `path_params` before the conditional or add an `else` branch that sets it to an empty dict or handles other scope types appropriately.",
+   "verdict": "confirmed",
+   "verdict_reason": "If `scope[\"type\"]` is not \"http\" or \"websocket\", the function returns without assigning `path_params`, yet later code (outside the shown excerpt) expects `path_params` to exist, leading to an UnboundLocalError.",
+   "evidence": [
+    {
+     "why": "Declares the variable without initializing it",
+     "line": 400,
+     "path": "starlette/routing.py",
+     "quote": "path_params: dict[str, typing.Any]"
+    },
+    {
+     "why": "Only in this branch is `path_params` assigned",
+     "line": 401,
+     "path": "starlette/routing.py",
+     "quote": "if scope[\"type\"] in (\"http\", \"websocket\"):  # pragma: no branch"
+    },
+    {
+     "why": "Initializes `path_params` only inside the conditional block",
+     "line": 411,
+     "path": "starlette/routing.py",
+     "quote": "path_params = dict(scope.get(\"path_params\", {}))"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 60,
+     "finding_id": 27,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def matches"
+     },
+     "result_chars": 441,
+     "result_summary": "Lines containing 'def matches':\nstarlette/routing.py:179: def matches(self, scope: Scope) -> tuple[Match, Scope]:\nstarlette/routing.py:250: def matches(self, scope: Scope) -> tuple[Match, Scope]:\nstarlette/routing.py:335: def matches(self, scope: Scope) -> tuple[Match, Scope]:\nstarlette/routing.py:3",
+     "tokens_in": 2412,
+     "tokens_out": 43,
+     "latency_ms": 879
+    },
+    {
+     "id": 63,
+     "finding_id": 27,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/routing.py",
+      "line_end": 420,
+      "line_start": 395
+     },
+     "result_chars": 1673,
+     "result_summary": "starlette/routing.py, lines 395-420 of 875:\n  395      @property\n  396      def routes(self) -> list[BaseRoute]:\n  397          return getattr(self._base_app, \"routes\", [])\n  398  \n  399      def matches(self, scope: Scope) -> tuple[Match, Scope]:\n  400          path_params: dict[str, typing.Any]\n  ",
+     "tokens_in": 2596,
+     "tokens_out": 49,
+     "latency_ms": 93288
+    },
+    {
+     "id": 66,
+     "finding_id": 27,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 41153
+    },
+    {
+     "id": 67,
+     "finding_id": 27,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 45612
+    },
+    {
+     "id": 69,
+     "finding_id": 27,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "If `scope[\"type\"]` is not \"http\" or \"websocket\", the function returns without assigning `path_params`, yet later code (outside the shown excerpt) expects `path_params` to exist, leading to an UnboundLocalError.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Declares the variable without initializing it",
+        "line": 400,
+        "path": "starlette/routing.py",
+        "quote": "path_params: dict[str, typing.Any]"
+       },
+       {
+        "why": "Only in this branch is `path_params` assigned",
+        "line": 401,
+        "path": "starlette/routing.py",
+        "quote": "if scope[\"type\"] in (\"http\", \"websocket\"):  # pragma: no branch"
+       },
+       {
+        "why": "Initializes `path_params` only inside the conditional block",
+        "line": 411,
+        "path": "starlette/routing.py",
+        "quote": "path_params = dict(scope.get(\"path_params\", {}))"
+       }
+      ]
+     },
+     "result_chars": 221,
+     "result_summary": "confirmed: If `scope[\"type\"]` is not \"http\" or \"websocket\", the function returns without assigning `path_params`, yet later code (outside the shown excerpt) expects `path_params` to exist, leading to an UnboundLocalError.",
+     "tokens_in": 2846,
+     "tokens_out": 256,
+     "latency_ms": 50741
+    }
+   ]
+  },
+  {
+   "id": 28,
+   "run_id": 6,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/routing.py",
+   "line_start": 484,
+   "line_end": 484,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential KeyError when 'type' key is missing in scope",
+   "explanation": "The added line accesses `scope[\"type\"]` directly. If the incoming `scope` dictionary does not contain a \"type\" key, a KeyError will be raised, causing a crash instead of gracefully handling the scope.",
+   "suggested_fix": "Use `scope.get(\"type\")` and compare against the tuple, e.g., `if scope.get(\"type\") in (\"http\", \"websocket\"):`",
+   "verdict": "dropped",
+   "verdict_reason": "In the ASGI specification, the `scope` dictionary always includes a mandatory \"type\" key, so accessing `scope[\"type\"]` cannot raise a KeyError. The code correctly assumes its presence.",
+   "evidence": [
+    {
+     "why": "The line accesses scope[\"type\"], but the ASGI spec guarantees this key exists, preventing a KeyError.",
+     "line": 484,
+     "path": "starlette/routing.py",
+     "quote": "if scope[\"type\"] in (\"http\", \"websocket\"):  # pragma:no branch"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 64,
+     "finding_id": 28,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def matches(self, scope"
+     },
+     "result_chars": 453,
+     "result_summary": "Lines containing 'def matches(self, scope':\nstarlette/routing.py:179: def matches(self, scope: Scope) -> tuple[Match, Scope]:\nstarlette/routing.py:250: def matches(self, scope: Scope) -> tuple[Match, Scope]:\nstarlette/routing.py:335: def matches(self, scope: Scope) -> tuple[Match, Scope]:\nstarlette/",
+     "tokens_in": 2350,
+     "tokens_out": 52,
+     "latency_ms": 48041
+    },
+    {
+     "id": 65,
+     "finding_id": 28,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/routing.py",
+      "line_end": 520,
+      "line_start": 470
+     },
+     "result_chars": 2514,
+     "result_summary": "starlette/routing.py, lines 470-520 of 875:\n  470  \n  471  class Host(BaseRoute):\n  472      def __init__(self, host: str, app: ASGIApp, name: str | None = None) -> None:\n  473          assert not host.startswith(\"/\"), \"Host must not start with '/'\"\n  474          self.host = host\n  475          sel",
+     "tokens_in": 2550,
+     "tokens_out": 52,
+     "latency_ms": 41097
+    },
+    {
+     "id": 68,
+     "finding_id": 28,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'find_callers' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"find_callers\\\", \\\"argum",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 45822
+    },
+    {
+     "id": 70,
+     "finding_id": 28,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 50555
+    },
+    {
+     "id": 71,
+     "finding_id": 28,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "In the ASGI specification, the `scope` dictionary always includes a mandatory \"type\" key, so accessing `scope[\"type\"]` cannot raise a KeyError. The code correctly assumes its presence.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "The line accesses scope[\"type\"], but the ASGI spec guarantees this key exists, preventing a KeyError.",
+        "line": 484,
+        "path": "starlette/routing.py",
+        "quote": "if scope[\"type\"] in (\"http\", \"websocket\"):  # pragma:no branch"
+       }
+      ]
+     },
+     "result_chars": 193,
+     "result_summary": "dropped: In the ASGI specification, the `scope` dictionary always includes a mandatory \"type\" key, so accessing `scope[\"type\"]` cannot raise a KeyError. The code correctly assumes its presence.",
+     "tokens_in": 3045,
+     "tokens_out": 279,
+     "latency_ms": 49082
+    }
+   ]
+  },
+  {
+   "id": 29,
+   "run_id": 6,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/gzip.py",
+   "line_start": 16,
+   "line_end": 16,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Inconsistent indentation on added line",
+   "explanation": "The added line has an extra space before the `if`, resulting in a 5\u2011space indent instead of the 4\u2011space style used elsewhere. This inconsistency can make the code harder to read and maintain.",
+   "suggested_fix": "Remove the leading space so the line aligns with the surrounding block:\n\n```python\nif scope[\"type\"] == \"http\":  # pragma: no branch\n```",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 30,
+   "run_id": 6,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/_utils.py",
+   "line_start": 78,
+   "line_end": 78,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Unclear name for feature flag",
+   "explanation": "The variable `has_exceptiongroups` is used without prior definition in this snippet, making it unclear where it comes from and what it controls. Future readers will need to search elsewhere to understand the flag, reducing maintainability.",
+   "suggested_fix": "Rename to a more descriptive name and add a comment or import: e.g., `# Feature flag for ExceptionGroup support\nfrom .compat import HAS_EXCEPTION_GROUPS` and use `HAS_EXCEPTION_GROUPS`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 24,
+   "agent_steps": []
+  },
+  {
+   "id": 31,
+   "run_id": 6,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/_utils.py",
+   "line_start": 78,
+   "line_end": 78,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Overuse of pragma no cover on a runtime check",
+   "explanation": "The `# pragma: no cover` comment hides this branch from test coverage, but the branch is controlled by a runtime flag. It is better to keep it covered or explicitly document why it is excluded.",
+   "suggested_fix": "Remove the pragma or provide a test case for the branch, or add a comment explaining the reason for exclusion.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 24,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-16T17:09:46Z",
+ "review": {
+  "id": 5924297596,
+  "url": "https://github.com/amn-00/starlette/pull/3#pullrequestreview-5924297596",
+  "submitted_at": "2026-11-16T17:19:41Z",
+  "body": "<!-- pr-review-agent run:6 -->\n### Automated review of `7de3d9f`\nFound 1 confirmed issue(s): 1 medium. 1 style suggestion(s) below.\nReviewed 6 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 3 dropped, 0 uncertain, 1 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0135 at list prices (free tier; agent $0.0059); 0 of 27 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `starlette/middleware/gzip.py:91` Misplaced elif inside else block: The added `elif message_type == \"http.response.body\":` appears to be indented at the same level as the preceding `else:` block, which could lead to confusing or incorrect control flow. This makes it hard for readers to understand the intended logic and may introduce bugs if the indentation is wrong.\n\n</details>\n\n<details><summary>Not verified (not posted): 1</summary>\n\n- `starlette/middleware/gzip.py:16` **low** Inconsistent indentation on added line \u2014 agent PR token budget\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4589049117,
+   "url": "https://github.com/amn-00/starlette/pull/3#discussion_r4589049117",
+   "file": "starlette/routing.py",
+   "line": 401,
+   "start_line": 401,
+   "body": "**medium** \u00b7 bug \u00b7 Potential UnboundLocalError for non-HTTP/WebSocket scopes\n\nThe variable `path_params` is only defined inside the `if scope[\"type\"] in (\"http\", \"websocket\")` block. If the scope type is something else, the function later may reference `path_params` (e.g., when building `child_scope` or returning a result), causing an UnboundLocalError at runtime.\n\n**Suggested fix:** Initialize `path_params` before the conditional or add an `else` branch that sets it to an empty dict or handles other scope types appropriately.\n\n_Checked against `starlette/routing.py:400`, `starlette/routing.py:401`, `starlette/routing.py:411`_"
+  }
+ ]
+}

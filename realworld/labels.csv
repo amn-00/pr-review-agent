@@ -1,0 +1,5 @@
+﻿k,comment_id,url,file,line,title,label,note
+2,4541360093,https://github.com/amn-00/pydantic-settings/pull/1#discussion_r4541360093,pydantic_settings/sources/providers/env.py,370,medium · bug · Swallows JSON decoding errors silently,,
+2,4541360104,https://github.com/amn-00/pydantic-settings/pull/1#discussion_r4541360104,tests/test_settings.py,3972,medium · bug · Invalid usage of strict parameter in BaseSettings subclass,,
+3,4541444767,https://github.com/amn-00/starlette/pull/2#discussion_r4541444767,starlette/middleware/gzip.py,183,medium · bug · Missing update of started flag may cause duplicate initial messages,,
+5,4589049117,https://github.com/amn-00/starlette/pull/3#discussion_r4589049117,starlette/routing.py,401,medium · bug · Potential UnboundLocalError for non-HTTP/WebSocket scopes,,

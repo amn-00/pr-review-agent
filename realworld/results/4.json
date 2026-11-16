@@ -1,0 +1,383 @@
+{
+ "k": 4,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 1034,
+  "replay_sha": "5bd6f79f4415ff2016caede58dd28607f1cd8180",
+  "merge_base_sha": "ca9d7c4d7440ca35edff91a0e947f96e6381d890"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 2,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/2",
+  "head_sha": "a383039478d1c3623c3d6334fdf31416cc751edf"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 5,
+  "pr_id": 5,
+  "head_sha": "a383039478d1c3623c3d6334fdf31416cc751edf",
+  "status": "completed",
+  "started_at": "2026-11-16 17:05:57.517646+00:00",
+  "finished_at": "2026-11-16 17:09:29.912771+00:00",
+  "tokens_in": 31232,
+  "tokens_out": 3435,
+  "cost_usd": "0.005830125",
+  "llm_calls": 19,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5924146536
+ },
+ "findings": [
+  {
+   "id": 19,
+   "run_id": 5,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/base.py",
+   "line_start": 222,
+   "line_end": 232,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect indentation in _existing_files method",
+   "explanation": "The added lines inside the `_existing_files` static method are not properly indented. Python will raise an `IndentationError` when parsing the file, preventing the module from loading and breaking all functionality that relies on this mixin.",
+   "suggested_fix": "Indent all statements inside the method consistently (e.g., 4 spaces). Example:\n```python\n@staticmethod\ndef _existing_files(files: ConfigFileSourceType | None) -> list[Path | Traversable]:\n    \"\"\"Return the given files that exist, with `~` expanded in native paths.\"\"\"\n    if files is None:\n        return []\n    if not isinstance(files, Sequence) or isinstance(files, str):\n        files = [files]\n    existing: list[Path | Traversable] = []\n    for file in files:\n        file_path: Path | Traversable = Path(file) if isinstance(file, str) else file\n        if isinstance(file_path, Path):\n            file_path = file_path.expanduser()\n        if file_path.is_file():\n            existing.append(file_path)\n    return existing\n```",
+   "verdict": "dropped",
+   "verdict_reason": "The `_existing_files` method is correctly indented in the repository; the lines are aligned under the method definition and no IndentationError will occur.",
+   "evidence": [
+    {
+     "why": "Method definition line is correctly indented with no extra spaces.",
+     "line": 221,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "def _existing_files(files: ConfigFileSourceType | None) -> list[Path | Traversable]:"
+    },
+    {
+     "why": "Docstring is indented consistently under the method.",
+     "line": 222,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "\"\"\"Return the given files that exist, with `~` expanded in native paths.\"\"\""
+    },
+    {
+     "why": "First statement inside method is properly indented.",
+     "line": 223,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "if files is None:"
+    },
+    {
+     "why": "Return statement aligns with the if block, showing correct indentation.",
+     "line": 224,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "return []"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 47,
+     "finding_id": 19,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/base.py",
+      "line_end": 250,
+      "line_start": 210
+     },
+     "result_chars": 1735,
+     "result_summary": "pydantic_settings/sources/base.py, lines 210-250 of 746:\n  210              return value\n  211  \n  212          return json.loads(value)\n  213  \n  214      @abstractmethod\n  215      def __call__(self) -> dict[str, Any]:\n  216          pass\n  217  \n  218  \n  219  class ConfigFileSourceMixin(ABC):\n  ",
+     "tokens_in": 2370,
+     "tokens_out": 87,
+     "latency_ms": 43959
+    },
+    {
+     "id": 49,
+     "finding_id": 19,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The `_existing_files` method is correctly indented in the repository; the lines are aligned under the method definition and no IndentationError will occur.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Method definition line is correctly indented with no extra spaces.",
+        "line": 221,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "def _existing_files(files: ConfigFileSourceType | None) -> list[Path | Traversable]:"
+       },
+       {
+        "why": "Docstring is indented consistently under the method.",
+        "line": 222,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "\"\"\"Return the given files that exist, with `~` expanded in native paths.\"\"\""
+       },
+       {
+        "why": "First statement inside method is properly indented.",
+        "line": 223,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "if files is None:"
+       },
+       {
+        "why": "Return statement aligns with the if block, showing correct indentation.",
+        "line": 224,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "return []"
+       }
+      ]
+     },
+     "result_chars": 188,
+     "result_summary": "called as 'commentary': dropped: The `_existing_files` method is correctly indented in the repository; the lines are aligned under the method definition and no IndentationError will occur.",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 41982
+    }
+   ]
+  },
+  {
+   "id": 20,
+   "run_id": 5,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/base.py",
+   "line_start": 237,
+   "line_end": 237,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Shadow built-in name 'vars'",
+   "explanation": "The variable name `vars` shadows the built\u2011in `vars()` function, which can confuse readers and make debugging harder.",
+   "suggested_fix": "Rename the variable to something more descriptive, e.g. `variables` or `merged_vars`.",
+   "verdict": "confirmed",
+   "verdict_reason": "The added code introduces a local variable named `vars`, directly shadowing the built\u2011in `vars()` function, which matches the finding's claim.",
+   "evidence": [
+    {
+     "why": "Defines a local variable named 'vars', which shadows the built-in function vars()",
+     "line": 237,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "vars: dict[str, Any] = {}"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 46,
+     "finding_id": 20,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The added code introduces a local variable named `vars`, directly shadowing the built\u2011in `vars()` function, which matches the finding's claim.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Defines a local variable named 'vars', which shadows the built-in function vars()",
+        "line": 237,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "vars: dict[str, Any] = {}"
+       }
+      ]
+     },
+     "result_chars": 153,
+     "result_summary": "confirmed: The added code introduces a local variable named `vars`, directly shadowing the built\u2011in `vars()` function, which matches the finding's claim.",
+     "tokens_in": 2280,
+     "tokens_out": 194,
+     "latency_ms": 43854
+    }
+   ]
+  },
+  {
+   "id": 21,
+   "run_id": 5,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/toml.py",
+   "line_start": 68,
+   "line_end": 69,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential TypeError when paths is None",
+   "explanation": "The `_any_file_exists` method forwards its `paths` argument directly to `_existing_files`. If `paths` is None, `_existing_files` may attempt to iterate over it or perform operations assuming a collection, causing a TypeError. This can happen when the caller passes None, which is allowed by the type hint.",
+   "suggested_fix": "Add a guard for None before calling `_existing_files`, e.g., `if paths is None: return False`.",
+   "verdict": "dropped",
+   "verdict_reason": "The _any_file_exists method calls _existing_files, which explicitly handles a None argument by returning an empty list. Therefore, passing None does not cause a TypeError.",
+   "evidence": [
+    {
+     "why": "Defines the helper handling None",
+     "line": 221,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "def _existing_files(files: ConfigFileSourceType | None) -> list[Path | Traversable]:"
+    },
+    {
+     "why": "Checks for None and returns empty list",
+     "line": 223,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "if files is None:"
+    },
+    {
+     "why": "Ensures _existing_files returns empty list for None, so bool([]) is False, no TypeError",
+     "line": 224,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "return []"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 48,
+     "finding_id": 21,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def _existing_files"
+     },
+     "result_chars": 163,
+     "result_summary": "Lines containing 'def _existing_files':\npydantic_settings/sources/base.py:221: def _existing_files(files: ConfigFileSourceType | None) -> list[Path | Traversable]:",
+     "tokens_in": 2198,
+     "tokens_out": 39,
+     "latency_ms": 41318
+    },
+    {
+     "id": 50,
+     "finding_id": 21,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/base.py",
+      "line_end": 250,
+      "line_start": 200
+     },
+     "result_chars": 2197,
+     "result_summary": "pydantic_settings/sources/base.py, lines 200-250 of 746:\n  200              field: The field.\n  201              value: The value of the field that has to be prepared.\n  202  \n  203          Returns:\n  204              The decoded value for further preparation\n  205          \"\"\"\n  206          metad",
+     "tokens_in": 2303,
+     "tokens_out": 47,
+     "latency_ms": 567
+    },
+    {
+     "id": 52,
+     "finding_id": 21,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The _any_file_exists method calls _existing_files, which explicitly handles a None argument by returning an empty list. Therefore, passing None does not cause a TypeError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Defines the helper handling None",
+        "line": 221,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "def _existing_files(files: ConfigFileSourceType | None) -> list[Path | Traversable]:"
+       },
+       {
+        "why": "Checks for None and returns empty list",
+        "line": 223,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "if files is None:"
+       },
+       {
+        "why": "Ensures _existing_files returns empty list for None, so bool([]) is False, no TypeError",
+        "line": 224,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "return []"
+       }
+      ]
+     },
+     "result_chars": 204,
+     "result_summary": "called as 'commentary': dropped: The _any_file_exists method calls _existing_files, which explicitly handles a None argument by returning an empty list. Therefore, passing None does not cause a TypeError.",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 61449
+    }
+   ]
+  },
+  {
+   "id": 22,
+   "run_id": 5,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_source_toml.py",
+   "line_start": 39,
+   "line_end": 39,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Ambiguous variable name for a single Path or list",
+   "explanation": "The variable `paths` is assigned either a single `Path` object or a list of `Path` objects depending on the `multiple_files` parameter. This dual nature can confuse readers and makes the code harder to maintain.",
+   "suggested_fix": "Rename `paths` to `toml_paths` or use separate variables for single and multiple cases, and explicitly cast to a list when passing to `TomlConfigSettingsSource`. For example:\n```python\ntoml_paths = [path] if multiple_files else [path]\nsource = TomlConfigSettingsSource(Settings, toml_file=toml_paths, ...)\n```\n",
+   "verdict": "confirmed",
+   "verdict_reason": "The test defines 'paths' that can be a single Path or a list, matching the finding's claim of ambiguous naming.",
+   "evidence": [
+    {
+     "why": "Variable 'paths' is assigned either a list or a single Path depending on multiple_files, making its name ambiguous",
+     "line": 34,
+     "path": "tests/test_source_toml.py",
+     "quote": "paths = [path_type('~/missing.toml'), path] if multiple_files else path"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 51,
+     "finding_id": 22,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The test defines 'paths' that can be a single Path or a list, matching the finding's claim of ambiguous naming.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Variable 'paths' is assigned either a list or a single Path depending on multiple_files, making its name ambiguous",
+        "line": 34,
+        "path": "tests/test_source_toml.py",
+        "quote": "paths = [path_type('~/missing.toml'), path] if multiple_files else path"
+       }
+      ]
+     },
+     "result_chars": 122,
+     "result_summary": "confirmed: The test defines 'paths' that can be a single Path or a list, matching the finding's claim of ambiguous naming.",
+     "tokens_in": 2442,
+     "tokens_out": 267,
+     "latency_ms": 60187
+    }
+   ]
+  },
+  {
+   "id": 23,
+   "run_id": 5,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/base.py",
+   "line_start": 224,
+   "line_end": 224,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Shadow built-in name 'vars' in static method",
+   "explanation": "The variable `vars` is reused as a list of paths, again shadowing the built\u2011in `vars()` function. This can lead to subtle bugs if `vars` is referenced later in the same scope.",
+   "suggested_fix": "Rename the list to `existing_paths` or `found_paths` for clarity.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 19,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-16T17:05:53Z",
+ "review": {
+  "id": 5924146536,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/2#pullrequestreview-5924146536",
+  "submitted_at": "2026-11-16T17:09:29Z",
+  "body": "<!-- pr-review-agent run:5 -->\n### Automated review of `a383039`\nNo confirmed issues found. 2 style suggestion(s) below.\nReviewed 3 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 2 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0058 at list prices (free tier; agent $0.0021); 0 of 12 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 2</summary>\n\n- `pydantic_settings/sources/base.py:237` Shadow built-in name 'vars': The variable name `vars` shadows the built\u2011in `vars()` function, which can confuse readers and make debugging harder.\n- `tests/test_source_toml.py:39` Ambiguous variable name for a single Path or list: The variable `paths` is assigned either a single `Path` object or a list of `Path` objects depending on the `multiple_files` parameter. This dual nature can confuse readers and makes the code harder to maintain.\n\n</details>"
+ },
+ "comments": []
+}
