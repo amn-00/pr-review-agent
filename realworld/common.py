@@ -1,12 +1,14 @@
 """Shared by the real-world eval scripts: GitHub as the owner, and the prod database read-only."""
 
 import os
+import socket
 import subprocess
 import sys
 import time
 from collections.abc import Iterator
 
 import httpx
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 # The only account these scripts may push to or open pull requests in.
@@ -14,6 +16,8 @@ OWNER = "amn-00"
 GITHUB_API = "https://api.github.com"
 GET_TRIES = 3
 GET_RETRY_SECONDS = 2
+# Cloudflare's DNS-over-HTTPS endpoint with JSON answers.
+DNS_OVER_HTTPS = "https://cloudflare-dns.com/dns-query"
 
 
 def gh_token() -> str:
@@ -78,9 +82,42 @@ def prod_database_url() -> str:
     return url
 
 
+def use_public_dns_if_needed(host: str) -> None:
+    """If this machine's DNS can't resolve `host`, look its address up over HTTPS and use that
+    for the rest of this process.
+
+    The owner's home router refuses to resolve Neon's endpoint names, while public DNS servers
+    answer. Only the address lookup changes: TLS still gets the real name, so the certificate
+    and hostname are verified as before (`ssl=verify-full`).
+    """
+    try:
+        socket.getaddrinfo(host, None)
+        return
+    except socket.gaierror:
+        pass
+    response = httpx.get(
+        DNS_OVER_HTTPS,
+        params={"name": host, "type": "A"},
+        headers={"Accept": "application/dns-json"},
+        timeout=15.0,
+    )
+    response.raise_for_status()
+    # Type 1 is an A record; the answer can also hold the CNAMEs on the way to it.
+    addresses = [a["data"] for a in response.json().get("Answer", []) if a["type"] == 1]
+    if not addresses:
+        sys.exit(f"No address found for {host}, by this machine's DNS or over HTTPS.")
+    system_lookup = socket.getaddrinfo
+
+    def lookup(name, *args, **kwargs):
+        return system_lookup(addresses[0] if name == host else name, *args, **kwargs)
+
+    socket.getaddrinfo = lookup
+
+
 def read_only_engine(url: str) -> AsyncEngine:
     """An engine whose every transaction is read-only. These scripts only read the prod
     database, and with this a bug in them can't write to it."""
+    use_public_dns_if_needed(make_url(url).host)
     return create_async_engine(
         url, connect_args={"server_settings": {"default_transaction_read_only": "on"}}
     )

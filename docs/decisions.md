@@ -1641,11 +1641,27 @@ per-PR budget. The estimate runs high: on the 23 eval cases, the lanes really sp
 - **What happens to those 4:** the bot's normal behaviour. It reviews source files first, skips
   the least important chunks, and lists them in the review. The report counts these reviews.
 
+**A DNS fallback for the prod database's host, in these scripts only.**
+The owner's home router refuses to resolve the Neon endpoint's name, while public DNS servers
+answer (see the engineering log). `use_public_dns_if_needed` first tries the system's lookup.
+Only if that fails does it ask Cloudflare's DNS over HTTPS for the address, and it uses that
+for this one name for the rest of the process. TLS still gets the real name, so `verify-full`
+checks the certificate and hostname as before. Chosen over changing the PC's DNS settings,
+which the owner didn't want, and over connecting by IP, which would break hostname
+verification and Neon's routing by server name. The deployed bot isn't involved: it runs on
+Render's network.
+
 **GitHub reads are retried after a timeout.**
 `common.get` tries a GET up to 3 times after a timeout or a dropped connection, waiting 2 s and
 then 4 s. The selection makes a few thousand requests in a row, and a run was lost to one read
 timeout (see the engineering log). HTTP errors aren't retried: a 404 or a rate-limit 403 won't
 get better in 4 seconds.
+
+**The first replay session (2026-11-11).**
+3 PRs were opened and reviewed, one after another, in 3.5 to 7.5 minutes each. The session
+stopped before the fourth: the agent had 7K of its 70K daily tokens left, and a review may need
+30K. So a day holds about 3 PRs, as the plan expected. No review was cut down by a daily
+budget, and the titles, bodies and commits carry no reference to the upstream PRs.
 
 **Checked against real GitHub, read-only (2026-11-11).**
 - **Selection's rules** on Starlette's 6 newest merged PRs by people: all 6 were turned away for
@@ -1656,3 +1672,34 @@ get better in 4 seconds.
   reviewed version's. Nothing was pushed.
 - **Not run yet:** the whole selection, which needs the GitHub CLI's login for the rate limit,
   and any replay.
+
+## Real-world eval — Part 2a: collection
+
+`realworld/collect.py` writes one result file per replayed PR and the sheet for hand labels.
+
+**The review is found by the run's `github_review_id`, not by its author.**
+The run row stores the ID of the review it posted, so collection fetches exactly that review.
+Its inline comments come from the PR's comment list, filtered by `pull_request_review_id`:
+GitHub's list of one review's comments leaves out their line numbers (checked on the first real
+review). The line kept is `original_line`, the comment's place in the commit it was made on,
+which is the replayed version.
+
+**"Budget-limited" is the eval runner's own rule.**
+`evals.run.completeness` (now public, like `load_chunks`) already separates problems (a daily
+budget ran out, a lane call failed, the run didn't complete) from notes (the per-PR budget, the
+time limit). Collection calls it, so the two evals can't drift apart. A result with a problem
+is `budget_limited`: the report lists it and leaves it out of the scores.
+
+**`labels.csv` is merged, never overwritten.**
+Each inline comment gets one row, keyed by GitHub's comment ID. Running the collection again
+adds rows for new comments and keeps every label and note already filled in (tested). It's
+written as UTF-8 with a byte-order mark, which Excel needs to read the file as UTF-8.
+
+**The labels and B's results are kept in separate files.**
+`labels.csv` has no column about what the human reviewers did. The plan says to judge each
+comment before looking at B, and a sheet that showed both would bias the labels.
+
+**A link to a GitHub issue in a posted review is reported.**
+Selection keeps such links out of the replayed diff, but the agent can read one elsewhere in
+the repo and repeat it. Collection searches the review and its comments with selection's own
+pattern and prints any hit.

@@ -3,10 +3,12 @@ PR, and only while the day's token budgets have room for a whole review."""
 
 import asyncio
 import json
+import socket
 from datetime import datetime, timedelta
 
 import httpx
 import pytest
+import respx
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -15,7 +17,7 @@ from app.db.models import BudgetPurpose, RunStatus
 from app.db.queries import add_daily_tokens, daily_tokens_used, finish_run, get_or_create_run
 from app.github.webhooks import PullRequestPayload
 from app.pipeline.orchestrator import PIPELINE_DAILY_TOKEN_BUDGET, PR_TOKEN_BUDGET, utc_today
-from realworld import replay
+from realworld import common, replay
 from realworld.common import github_client, read_only_engine
 from realworld.replay import (
     REPLAY_IDENTITY,
@@ -286,3 +288,25 @@ async def test_a_session_stops_if_the_last_replay_did_not_complete(sessionmaker,
         await replay.run(SAMPLE, {"1": REPLAYED, "2": REPLAYED}, max_prs=4, dry_run=False)
 
     assert session_setup == []
+
+
+def test_a_host_the_local_dns_refuses_is_looked_up_over_https(monkeypatch):
+    def system_lookup(host, *args, **kwargs):
+        if host == "db.example.test":
+            raise socket.gaierror(11001, "getaddrinfo failed")
+        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (host, 5432))]
+
+    monkeypatch.setattr(socket, "getaddrinfo", system_lookup)  # restored after the test
+    answer = {"Answer": [{"type": 5, "data": "alias.example."}, {"type": 1, "data": "203.0.113.7"}]}
+    with respx.mock() as doh:
+        route = doh.get(common.DNS_OVER_HTTPS).mock(return_value=httpx.Response(200, json=answer))
+        # A name that resolves is left alone: no request, and the system's lookup stays.
+        common.use_public_dns_if_needed("localhost")
+        assert not route.called and socket.getaddrinfo is system_lookup
+
+        common.use_public_dns_if_needed("db.example.test")
+
+    assert route.calls.last.request.url.params["name"] == "db.example.test"
+    # The refused name now resolves to the A record (not the CNAME); other names are untouched.
+    assert socket.getaddrinfo("db.example.test", 5432)[0][4] == ("203.0.113.7", 5432)
+    assert socket.getaddrinfo("other.example.test", 5432)[0][4] == ("other.example.test", 5432)

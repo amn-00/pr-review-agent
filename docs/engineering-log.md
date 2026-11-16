@@ -510,6 +510,21 @@ we changed, and what the numbers were before and after. Details and reasoning ar
 - **Result:** the same count, run again, finished both repos. A test covers two failures
   followed by a success, giving up after 3 tries, and a 404 that isn't retried.
 
+### The home router's DNS refused the prod database's name
+- **Problem:** the replay script reads token budgets and run status from Neon. On the owner's
+  PC it failed before connecting, with `socket.gaierror: getaddrinfo failed`.
+- **How we found it:** the first dry run against the real database. Looking the endpoint's name
+  up on each DNS server showed the cause: the Wi-Fi router answered "DNS operation refused",
+  while 8.8.8.8 and 1.1.1.1 returned an address. A TCP connection to that address on port 5432
+  succeeded, so only the lookup was blocked.
+- **Fix:** when the system's lookup fails, the scripts ask Cloudflare's DNS over HTTPS for that
+  one name and use the answer for that run. TLS still verifies the certificate and hostname.
+  The PC's settings and the deployed bot are unchanged.
+- **Result:** with the fallback, a connection from the same PC reached Neon over verified TLS
+  (it rejected a deliberately wrong password, the expected answer). The owner's dry run and
+  the first replay session then ran from that PC: 3 PRs opened, each run read back as
+  `completed`.
+
 ### A wrong assertion made every broken line look caught
 - **Problem:** to check that the new tests fail when the code is broken, 20 one-line breakages
   were run against them. A new assertion expected git's date as `+00:00`, but git prints `Z`, so

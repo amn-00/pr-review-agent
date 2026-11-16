@@ -296,7 +296,7 @@ async def run_one(
 
     run, findings = await _load_run(sessionmaker, case, number, sha)
     review = github.reviews[-1] if github.reviews else None
-    problems, notes = _completeness(run, findings, review, deferred)
+    problems, notes = completeness(run, findings, review, deferred)
     return {
         "case": case.id,
         "mode": mode,
@@ -358,12 +358,12 @@ def _columns(row, skip: set[str]) -> dict:
     return {c.key: getattr(row, c.key) for c in row.__table__.columns if c.key not in skip}
 
 
-def _completeness(
+def completeness(
     run: dict, findings: list[dict], review: dict | None, deferred: str | None
 ) -> tuple[list[str], list[str]]:
     """Problems make a result incomplete (it runs again another day): the eval's quota ran
     out, or a call failed. Notes are the system's normal limits (time, per-PR budget), which
-    are part of what's measured."""
+    are part of what's measured. The real-world eval's collection uses the same rule."""
     problems, notes = [], []
     if deferred:
         problems.append(deferred)
