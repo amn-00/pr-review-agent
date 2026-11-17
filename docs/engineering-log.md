@@ -525,6 +525,19 @@ we changed, and what the numbers were before and after. Details and reasoning ar
   the first replay session then ran from that PC: 3 PRs opened, each run read back as
   `completed`.
 
+### The outcome script crashed on a curly quote in a diff
+- **Problem:** `realworld/outcomes.py` reads `git diff` output, which contains the files' own
+  text. On Windows, Python decoded it with the locale's code page (cp1252) instead of UTF-8.
+  A file with a curly closing quote (UTF-8 bytes E2 80 9D) made the reader thread fail, and
+  the script crashed with `'NoneType' object has no attribute 'strip'`.
+- **How we found it:** the third daily run, on replay 7's upstream PR (Starlette). Replays 1 to
+  6 had no such character in their diffs.
+- **Fix:** the shared `git()` helper decodes as UTF-8, replacing any byte that isn't valid
+  instead of failing.
+- **Result:** a new test diffs a file with curly quotes. It fails without the fix on Windows
+  and passes with it. The full suite passes (524). On Linux the default is already UTF-8, so
+  CI couldn't have caught this one.
+
 ### A wrong assertion made every broken line look caught
 - **Problem:** to check that the new tests fail when the code is broken, 20 one-line breakages
   were run against them. A new assertion expected git's date as `+00:00`, but git prints `Z`, so

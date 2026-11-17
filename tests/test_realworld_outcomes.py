@@ -67,6 +67,16 @@ def test_added_and_deleted_files_and_lines_that_look_like_diff_headers(repo):
     assert diff_lines(work, base, head, "new") == {"added.py": {1, 2, 3}, "sql.py": {3}}
 
 
+def test_a_diff_with_text_outside_the_windows_code_page_is_read(repo):
+    # Replay 7 (Starlette) crashed here: "”" is the bytes E2 80 9D in UTF-8, and Windows
+    # decoded git's output as cp1252, which has no character for 9D.
+    work, commit = repo
+    replayed = commit({"a.py": numbered("x = 1", 'msg = "“quoted”"', "y = 2")})
+    merged = commit({"a.py": numbered("x = 1", 'msg = "“quoted, edited”"', "y = 2")})
+
+    assert diff_lines(work, replayed, merged, "old") == {"a.py": {2}}
+
+
 def github_comment(comment_id=1, user=REVIEWER, line=10, start=None, **fields) -> dict:
     return {
         "id": comment_id,

@@ -1,0 +1,652 @@
+{
+ "k": 7,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 3036,
+  "replay_sha": "0cbdb7bd31a4fe0f971572c85992326e2f5f4048",
+  "merge_base_sha": "4915a9309fcad58ac08b9fa550563d3287b531ad"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 4,
+  "url": "https://github.com/amn-00/starlette/pull/4",
+  "head_sha": "e9f85cb383ccef97fd465fae6fce2bd1d7942745"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [
+  "finding 42 not verified (agent PR token budget)",
+  "finding 43 not verified (agent PR token budget)"
+ ],
+ "issue_links": [],
+ "run": {
+  "id": 8,
+  "pr_id": 8,
+  "head_sha": "e9f85cb383ccef97fd465fae6fce2bd1d7942745",
+  "status": "completed",
+  "started_at": "2026-11-17 16:05:02.566348+00:00",
+  "finished_at": "2026-11-17 16:10:23.808428+00:00",
+  "tokens_in": 52089,
+  "tokens_out": 4743,
+  "cost_usd": "0.009549975",
+  "llm_calls": 33,
+  "cached_calls": 14,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 1,
+  "agent_enabled": true,
+  "github_review_id": 5942068145
+ },
+ "findings": [
+  {
+   "id": 37,
+   "run_id": 8,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": ".github/workflows/main.yml",
+   "line_start": 17,
+   "line_end": 17,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Unsupported Python version may cause workflow failures",
+   "explanation": "The matrix includes Python 3.14, which at the time of execution may not be available in the GitHub Actions runner images, leading to job failures when installing uv or running scripts. Only linting is conditionally skipped, but other steps will still attempt to use this version.",
+   "suggested_fix": "Remove \"3.14\" from the python-version list until the version is supported by the runner, or add a conditional to skip the entire job for unsupported versions.",
+   "verdict": "confirmed",
+   "verdict_reason": "The workflow matrix lists Python 3.14, which is not available on GitHub Actions runners, so jobs using this version will fail. No guard prevents its use.",
+   "evidence": [
+    {
+     "why": "Matrix includes unsupported Python 3.14 which GitHub runners do not provide",
+     "line": 17,
+     "path": ".github/workflows/main.yml",
+     "quote": "python-version: [\"3.10\", \"3.11\", \"3.12\", \"3.13\", \"3.14\"]"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 79,
+     "finding_id": 37,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The workflow matrix lists Python 3.14, which is not available on GitHub Actions runners, so jobs using this version will fail. No guard prevents its use.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Matrix includes unsupported Python 3.14 which GitHub runners do not provide",
+        "line": 17,
+        "path": ".github/workflows/main.yml",
+        "quote": "python-version: [\"3.10\", \"3.11\", \"3.12\", \"3.13\", \"3.14\"]"
+       }
+      ]
+     },
+     "result_chars": 164,
+     "result_summary": "confirmed: The workflow matrix lists Python 3.14, which is not available on GitHub Actions runners, so jobs using this version will fail. No guard prevents its use.",
+     "tokens_in": 2190,
+     "tokens_out": 256,
+     "latency_ms": 865
+    }
+   ]
+  },
+  {
+   "id": 38,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 6,
+   "line_end": 6,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Unnecessary imports",
+   "explanation": "The added import line brings in several names (TYPE_CHECKING, Any, Generic, NoReturn, cast) that are not used in the file, increasing clutter and potentially confusing readers. Unused imports also inflate the module\u2019s namespace.",
+   "suggested_fix": "Remove the unused imports: \"from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast\" \u2192 \"from typing import TYPE_CHECKING, cast\" (or only import what is needed).",
+   "verdict": "dropped",
+   "verdict_reason": "The imported names are used elsewhere in the file: `TYPE_CHECKING` is referenced at line 17, and `cast` is used at lines 186 and 218. Therefore the import line is not unnecessary.",
+   "evidence": [
+    {
+     "why": "TYPE_CHECKING imported on line 6 is used here",
+     "line": 17,
+     "path": "starlette/requests.py",
+     "quote": "if TYPE_CHECKING:"
+    },
+    {
+     "why": "cast imported on line 6 is used here",
+     "line": 186,
+     "path": "starlette/requests.py",
+     "quote": "return cast(StateT, self._state)"
+    },
+    {
+     "why": "cast imported on line 6 is used here",
+     "line": 218,
+     "path": "starlette/requests.py",
+     "quote": "return cast(str, self.scope[\"method\"])"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 80,
+     "finding_id": 38,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "TYPE_CHECKING"
+     },
+     "result_chars": 538,
+     "result_summary": "Lines containing 'TYPE_CHECKING':\npyproject.toml:125: \"if TYPE_CHECKING:\",\nstarlette/formparsers.py:7: from typing import TYPE_CHECKING\nstarlette/formparsers.py:12: if TYPE_CHECKING:\nstarlette/requests.py:6: from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast\nstarlette/requests.py:17: if ",
+     "tokens_in": 2099,
+     "tokens_out": 51,
+     "latency_ms": 1190
+    },
+    {
+     "id": 82,
+     "finding_id": 38,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "cast("
+     },
+     "result_chars": 1075,
+     "result_summary": "Lines containing 'cast(':\nstarlette/config.py:102: return self._perform_cast(key, value, cast)\nstarlette/config.py:105: return self._perform_cast(key, value, cast)\nstarlette/config.py:107: return self._perform_cast(key, default, cast)\nstarlette/config.py:122: def _perform_cast(\nstarlette/config.py:1",
+     "tokens_in": 2311,
+     "tokens_out": 47,
+     "latency_ms": 53760
+    },
+    {
+     "id": 84,
+     "finding_id": 38,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 2432
+    },
+    {
+     "id": 86,
+     "finding_id": 38,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 43827
+    },
+    {
+     "id": 88,
+     "finding_id": 38,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The imported names are used elsewhere in the file: `TYPE_CHECKING` is referenced at line 17, and `cast` is used at lines 186 and 218. Therefore the import line is not unnecessary.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "TYPE_CHECKING imported on line 6 is used here",
+        "line": 17,
+        "path": "starlette/requests.py",
+        "quote": "if TYPE_CHECKING:"
+       },
+       {
+        "why": "cast imported on line 6 is used here",
+        "line": 186,
+        "path": "starlette/requests.py",
+        "quote": "return cast(StateT, self._state)"
+       },
+       {
+        "why": "cast imported on line 6 is used here",
+        "line": 218,
+        "path": "starlette/requests.py",
+        "quote": "return cast(str, self.scope[\"method\"])"
+       }
+      ]
+     },
+     "result_chars": 188,
+     "result_summary": "dropped: The imported names are used elsewhere in the file: `TYPE_CHECKING` is referenced at line 17, and `cast` is used at lines 186 and 218. Therefore the import line is not unnecessary.",
+     "tokens_in": 2464,
+     "tokens_out": 508,
+     "latency_ms": 44753
+    }
+   ]
+  },
+  {
+   "id": 39,
+   "run_id": 8,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 72,
+   "line_end": 72,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Unsupported `default` argument in TypeVar declaration",
+   "explanation": "The `default` parameter for `TypeVar` was introduced in Python 3.12. Using it in environments with earlier Python versions will raise a TypeError at import time, breaking the module.",
+   "suggested_fix": "Remove the `default=State` argument or guard it with a version check, e.g., `StateT = TypeVar(\"StateT\", bound=Mapping[str, Any] | State)`.",
+   "verdict": "uncertain",
+   "verdict_reason": "agent error: Groq 400: {\"error\":{\"message\":\"Failed to validate JSON. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"json_validate_failed\",\"failed_gener",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 81,
+     "finding_id": 39,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "from typing import TypeVar"
+     },
+     "result_chars": 58,
+     "result_summary": "Lines containing 'from typing import TypeVar': no matches.",
+     "tokens_in": 2225,
+     "tokens_out": 44,
+     "latency_ms": 714
+    },
+    {
+     "id": 83,
+     "finding_id": 39,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "TypeVar"
+     },
+     "result_chars": 1068,
+     "result_summary": "Lines containing 'TypeVar':\nstarlette/_utils.py:7: from typing import Any, Callable, Generic, Protocol, TypeVar, overload\nstarlette/_utils.py:26: T = TypeVar(\"T\")\nstarlette/_utils.py:45: T_co = TypeVar(\"T_co\", covariant=True)\nstarlette/_utils.py:55: SupportsAsyncCloseType = TypeVar(\"SupportsAsyncClo",
+     "tokens_in": 2299,
+     "tokens_out": 32,
+     "latency_ms": 53165
+    },
+    {
+     "id": 85,
+     "finding_id": 39,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 45768
+    },
+    {
+     "id": 87,
+     "finding_id": 39,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 44495
+    }
+   ]
+  },
+  {
+   "id": 40,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/datastructures.py",
+   "line_start": 703,
+   "line_end": 704,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Incorrect type hint for __iter__",
+   "explanation": "The __iter__ method is annotated to return Iterator[str], but the underlying _state dictionary keys can be of any type, not just strings. This mismatch can mislead users and static type checkers.",
+   "suggested_fix": "Change the return type to Iterator[Any] or remove the annotation if keys are untyped: `def __iter__(self) -> Iterator[Any]:`",
+   "verdict": "dropped",
+   "verdict_reason": "The State class defines _state as dict[str, Any], so its keys are strings. The __iter__ method correctly annotates Iterator[str]. The finding is therefore incorrect.",
+   "evidence": [
+    {
+     "why": "declares that keys are strings",
+     "line": 674,
+     "path": "starlette/datastructures.py",
+     "quote": "_state: dict[str, Any]"
+    },
+    {
+     "why": "type hint matches declared key type",
+     "line": 703,
+     "path": "starlette/datastructures.py",
+     "quote": "def __iter__(self) -> Iterator[str]:"
+    },
+    {
+     "why": "iterates over dict keys which are str per declaration",
+     "line": 704,
+     "path": "starlette/datastructures.py",
+     "quote": "return iter(self._state)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 89,
+     "finding_id": 40,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_state ="
+     },
+     "result_chars": 1195,
+     "result_summary": "Lines containing '_state =':\nstarlette/requests.py:185: self._state = State(self.scope[\"state\"])\nstarlette/testclient.py:220: self.app_state = app_state\nstarlette/websockets.py:32: self.client_state = WebSocketState.CONNECTING\nstarlette/websockets.py:33: self.application_state = WebSocketState.CONNE",
+     "tokens_in": 2076,
+     "tokens_out": 75,
+     "latency_ms": 698
+    },
+    {
+     "id": 91,
+     "finding_id": 40,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/datastructures.py",
+      "line_end": 720,
+      "line_start": 650
+     },
+     "result_chars": 2089,
+     "result_summary": "starlette/datastructures.py, lines 650-707 of 707:\n  650              self[key] = val\n  651  \n  652      def append(self, key: str, value: str) -> None:\n  653          \"\"\"\n  654          Append a header, preserving any duplicate entries.\n  655          \"\"\"\n  656          append_key = key.lower().enc",
+     "tokens_in": 2430,
+     "tokens_out": 67,
+     "latency_ms": 59281
+    },
+    {
+     "id": 93,
+     "finding_id": 40,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The State class defines _state as dict[str, Any], so its keys are strings. The __iter__ method correctly annotates Iterator[str]. The finding is therefore incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "declares that keys are strings",
+        "line": 674,
+        "path": "starlette/datastructures.py",
+        "quote": "_state: dict[str, Any]"
+       },
+       {
+        "why": "type hint matches declared key type",
+        "line": 703,
+        "path": "starlette/datastructures.py",
+        "quote": "def __iter__(self) -> Iterator[str]:"
+       },
+       {
+        "why": "iterates over dict keys which are str per declaration",
+        "line": 704,
+        "path": "starlette/datastructures.py",
+        "quote": "return iter(self._state)"
+       }
+      ]
+     },
+     "result_chars": 174,
+     "result_summary": "dropped: The State class defines _state as dict[str, Any], so its keys are strings. The __iter__ method correctly annotates Iterator[str]. The finding is therefore incorrect.",
+     "tokens_in": 3127,
+     "tokens_out": 320,
+     "latency_ms": 41028
+    }
+   ]
+  },
+  {
+   "id": 41,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 9,
+   "line_end": 9,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unnecessary TypeVar import",
+   "explanation": "The TypeVar imported from typing_extensions is not used anywhere in the file, adding noise to the imports. It also suggests the intent to create a type variable that never gets defined, which can mislead future readers.",
+   "suggested_fix": "Remove \"from typing_extensions import TypeVar\" if it is not required for type checking elsewhere in this file.",
+   "verdict": "confirmed",
+   "verdict_reason": "The file imports TypeVar from typing_extensions on line\u202f9 but there is no reference to TypeVar anywhere else in the file, so the import is unnecessary and adds noise.",
+   "evidence": [
+    {
+     "why": "Import appears but TypeVar is never used in the file",
+     "line": 9,
+     "path": "starlette/requests.py",
+     "quote": "from typing_extensions import TypeVar"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 90,
+     "finding_id": 41,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "TypeVar"
+     },
+     "result_chars": 1068,
+     "result_summary": "Lines containing 'TypeVar':\nstarlette/_utils.py:7: from typing import Any, Callable, Generic, Protocol, TypeVar, overload\nstarlette/_utils.py:26: T = TypeVar(\"T\")\nstarlette/_utils.py:45: T_co = TypeVar(\"T_co\", covariant=True)\nstarlette/_utils.py:55: SupportsAsyncCloseType = TypeVar(\"SupportsAsyncClo",
+     "tokens_in": 2130,
+     "tokens_out": 42,
+     "latency_ms": 722
+    },
+    {
+     "id": 92,
+     "finding_id": 41,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/requests.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 2496,
+     "result_summary": "starlette/requests.py, lines 1-80 of 328:\n    1  from __future__ import annotations\n    2  \n    3  import json\n    4  from collections.abc import AsyncGenerator, Iterator, Mapping\n    5  from http import cookies as http_cookies\n    6  from typing import TYPE_CHECKING, Any, Generic, NoReturn, cast\n  ",
+     "tokens_in": 2501,
+     "tokens_out": 66,
+     "latency_ms": 41861
+    },
+    {
+     "id": 94,
+     "finding_id": 41,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"The finding says TypeVar import unused. Search in",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 36331
+    },
+    {
+     "id": 95,
+     "finding_id": 41,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"The finding says TypeVar import unused. Search fi",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 40821
+    },
+    {
+     "id": 96,
+     "finding_id": 41,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The file imports TypeVar from typing_extensions on line\u202f9 but there is no reference to TypeVar anywhere else in the file, so the import is unnecessary and adds noise.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Import appears but TypeVar is never used in the file",
+        "line": 9,
+        "path": "starlette/requests.py",
+        "quote": "from typing_extensions import TypeVar"
+       }
+      ]
+     },
+     "result_chars": 177,
+     "result_summary": "confirmed: The file imports TypeVar from typing_extensions on line\u202f9 but there is no reference to TypeVar anywhere else in the file, so the import is unnecessary and adds noise.",
+     "tokens_in": 3045,
+     "tokens_out": 165,
+     "latency_ms": 1347
+    }
+   ]
+  },
+  {
+   "id": 42,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 75,
+   "line_end": 75,
+   "category": "readability",
+   "severity": "low",
+   "title": "Ambiguous class inheritance order",
+   "explanation": "`HTTPConnection` inherits from `Mapping[str, Any]` before `Generic[StateT]`. While functionally equivalent, the typical idiom is to inherit from `Generic` first to make the generic nature clear. This can reduce confusion for future readers.",
+   "suggested_fix": "Reorder inheritance to `class HTTPConnection(Generic[StateT], Mapping[str, Any]):`",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 43,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 179,
+   "line_end": 186,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unnecessary cast in state property",
+   "explanation": "The property returns `cast(StateT, self._state)` but `self._state` is already of type `State`, which matches the return type. Using `cast` adds no value and can mislead readers into thinking a type mismatch exists.",
+   "suggested_fix": "Replace `return cast(StateT, self._state)` with `return self._state`.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 44,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 72,
+   "line_end": 72,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Unconventional TypeVar definition",
+   "explanation": "The TypeVar `StateT` is defined with `bound=Mapping[str, Any] | State, default=State`. The `default` argument is not part of the standard `TypeVar` signature, and using the union `|` operator for the bound may raise a `TypeError` on older Python versions. This could lead to a runtime failure when the module is imported on environments that do not support the union syntax for bounds or do not recognize the `default` keyword.",
+   "suggested_fix": "Use a standard bound without the union or remove the default: `StateT = TypeVar(\"StateT\", bound=State)` or separate bounds with a Protocol.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 39,
+   "agent_steps": []
+  },
+  {
+   "id": 45,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": ".github/workflows/main.yml",
+   "line_start": 17,
+   "line_end": 17,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Hardcoded Python version list includes unreleased versions",
+   "explanation": "The workflow matrix lists Python 3.13 and 3.14, which are not yet released, making the matrix confusing and potentially causing build failures if the runner does not support them.",
+   "suggested_fix": "Replace with only released versions or use a dynamic matrix that queries supported Python versions.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 37,
+   "agent_steps": []
+  },
+  {
+   "id": 46,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": ".github/workflows/main.yml",
+   "line_start": 33,
+   "line_end": 33,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Conditional linting check uses string comparison instead of matrix inclusion",
+   "explanation": "The lint step skips Python 3.14 by comparing the string value of matrix.python-version. This is brittle; adding more versions would require updating the condition. Using matrix inclusion or a separate strategy would be clearer.",
+   "suggested_fix": "Use if: ${{ !contains('3.14', matrix.python-version) }} or separate a dedicated job for unsupported versions.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 47,
+   "run_id": 8,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 97,
+   "line_end": 98,
+   "category": "readability",
+   "severity": "low",
+   "title": "Redundant explicit `__eq__` and `__hash__` assignments",
+   "explanation": "Assigning `__eq__ = object.__eq__` and `__hash__ = object.__hash__` is unnecessary because these are the default implementations for new-style classes. While it documents intent, it adds noise to the code.",
+   "suggested_fix": "Remove the explicit assignments and keep the default behavior.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-17T15:53:44Z",
+ "review": {
+  "id": 5942068145,
+  "url": "https://github.com/amn-00/starlette/pull/4#pullrequestreview-5942068145",
+  "submitted_at": "2026-11-17T16:10:22Z",
+  "body": "<!-- pr-review-agent run:8 -->\n### Automated review of `e9f85cb`\nFound 1 confirmed issue(s): 1 medium. 1 style suggestion(s) below.\nReviewed 3 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 2 dropped, 1 uncertain, 2 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0056 at list prices (free tier; agent $0.0053); 14 of 15 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `starlette/requests.py:9` Unnecessary TypeVar import: The TypeVar imported from typing_extensions is not used anywhere in the file, adding noise to the imports. It also suggests the intent to create a type variable that never gets defined, which can mislead future readers.\n\n</details>\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `starlette/requests.py:72` **medium** Unsupported `default` argument in TypeVar declaration \u2014 agent error: Groq 400: {\"error\":{\"message\":\"Failed to validate JSON. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"json_validate_failed\",\"failed_gener\n\n</details>\n\n<details><summary>Not verified (not posted): 2</summary>\n\n- `starlette/requests.py:75` **low** Ambiguous class inheritance order \u2014 agent PR token budget\n- `starlette/requests.py:179` **low** Unnecessary cast in state property \u2014 agent PR token budget\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4602292126,
+   "url": "https://github.com/amn-00/starlette/pull/4#discussion_r4602292126",
+   "file": ".github/workflows/main.yml",
+   "line": 17,
+   "start_line": 17,
+   "body": "**medium** \u00b7 bug \u00b7 Unsupported Python version may cause workflow failures\n\nThe matrix includes Python 3.14, which at the time of execution may not be available in the GitHub Actions runner images, leading to job failures when installing uv or running scripts. Only linting is conditionally skipped, but other steps will still attempt to use this version.\n\n**Suggested fix:** Remove \"3.14\" from the python-version list until the version is supported by the runner, or add a conditional to skip the entire job for unsupported versions.\n\n_Checked against `.github/workflows/main.yml:17`_"
+  }
+ ]
+}

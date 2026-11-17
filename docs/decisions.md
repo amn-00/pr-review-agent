@@ -1768,3 +1768,11 @@ down. That still holds: only `/runs` opens a session, and it only reads.
   the App on a private repo, the page would need a filter or a login.
 - "Review time" is the last attempt's, from claiming the run to finishing it.
 - The free instance sleeps, so the first visit after a quiet spell takes up to a minute.
+
+**The first automatic retry in production (replay 7, 2026-11-17).**
+One lane call failed after its own retries, so the job posted nothing and failed the run as
+`transient` (Phase 6c fix 3(b)). The reconciler retried it once (`auto_retries` = 1), the other
+lane calls came from the cache (14 cached calls on the run), and the review was posted 16.6
+minutes after the PR was opened. It's the path the failure tests covered with fakes, now seen
+on real traffic. The replay script stopped after the failure, as designed, and the run counts
+as scored: it completed, and only the per-PR agent budget limited it (2 findings not verified).

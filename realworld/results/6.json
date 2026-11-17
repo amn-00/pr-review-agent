@@ -1,0 +1,463 @@
+{
+ "k": 6,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 843,
+  "replay_sha": "d4c4e3da53611b54c9315a37874b8045526ba750",
+  "merge_base_sha": "577c05f7e8ac25904da2381db51ed4ddd4b3e4fe"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 3,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/3",
+  "head_sha": "76becfb62d1938b5e8005a8275abc35e7c116cbf"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 7,
+  "pr_id": 7,
+  "head_sha": "76becfb62d1938b5e8005a8275abc35e7c116cbf",
+  "status": "completed",
+  "started_at": "2026-11-17 15:48:19.226626+00:00",
+  "finished_at": "2026-11-17 15:53:26.055080+00:00",
+  "tokens_in": 54726,
+  "tokens_out": 5428,
+  "cost_usd": "0.010065225",
+  "llm_calls": 28,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5941789588
+ },
+ "findings": [
+  {
+   "id": 32,
+   "run_id": 7,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/cli.py",
+   "line_start": 100,
+   "line_end": 100,
+   "category": "bug",
+   "severity": "high",
+   "title": "NameError due to missing import for dedent",
+   "explanation": "The function _get_model_description uses dedent() to strip indentation from the model's __doc__, but dedent is not imported in this module. At runtime this will raise a NameError, causing settings loading to fail.",
+   "suggested_fix": "Add `from textwrap import dedent` at the top of the file (or use an existing import) so that dedent is defined.",
+   "verdict": "dropped",
+   "verdict_reason": "The module already imports dedent from textwrap, so the function can call dedent without error.",
+   "evidence": [
+    {
+     "why": "dedent is imported, so using it later will not raise NameError",
+     "line": 24,
+     "path": "pydantic_settings/sources/providers/cli.py",
+     "quote": "from textwrap import dedent"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 72,
+     "finding_id": 32,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "dedent"
+     },
+     "result_chars": 329,
+     "result_summary": "Lines containing 'dedent':\npydantic_settings/sources/providers/cli.py:24: from textwrap import dedent\npydantic_settings/sources/providers/cli.py:101: return dedent(model_cls.__doc__)\npydantic_settings/sources/providers/cli.py:1277: model_group_kwargs['description'] = dedent(f'{desc_header}\\n{model_g",
+     "tokens_in": 2302,
+     "tokens_out": 37,
+     "latency_ms": 47988
+    },
+    {
+     "id": 74,
+     "finding_id": 32,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The module already imports dedent from textwrap, so the function can call dedent without error.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "dedent is imported, so using it later will not raise NameError",
+        "line": 24,
+        "path": "pydantic_settings/sources/providers/cli.py",
+        "quote": "from textwrap import dedent"
+       }
+      ]
+     },
+     "result_chars": 104,
+     "result_summary": "dropped: The module already imports dedent from textwrap, so the function can call dedent without error.",
+     "tokens_in": 2445,
+     "tokens_out": 139,
+     "latency_ms": 573
+    }
+   ]
+  },
+  {
+   "id": 33,
+   "run_id": 7,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/cli.py",
+   "line_start": 110,
+   "line_end": 116,
+   "category": "security",
+   "severity": "high",
+   "title": "Calling untrusted callable from model configuration",
+   "explanation": "The code retrieves `json_schema_extra` from the model configuration and, if it is callable, invokes it (lines 110-116). If an attacker can influence the model class or its configuration, they could supply a malicious callable that executes arbitrary code, leading to a potential code execution vulnerability.",
+   "suggested_fix": "Validate that `json_schema_extra` is a safe, non-callable value before invoking, or avoid calling it altogether. For example, only accept a dict and ignore callables, or restrict callables to a whitelist.",
+   "verdict": "dropped",
+   "verdict_reason": "The code only checks if json_schema_extra is callable but never calls it; it calls model_json_schema instead, so there is no arbitrary code execution risk here.",
+   "evidence": [
+    {
+     "why": "Checks if json_schema_extra is callable but does not invoke it",
+     "line": 110,
+     "path": "pydantic_settings/sources/providers/cli.py",
+     "quote": "if callable(json_schema_extra):"
+    },
+    {
+     "why": "Enters branch that calls model_cls.model_json_schema(), not json_schema_extra",
+     "line": 112,
+     "path": "pydantic_settings/sources/providers/cli.py",
+     "quote": "if is_model_class(model_cls):"
+    },
+    {
+     "why": "Calls model_json_schema, not the untrusted callable",
+     "line": 113,
+     "path": "pydantic_settings/sources/providers/cli.py",
+     "quote": "return model_cls.model_json_schema().get('description')"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 73,
+     "finding_id": 33,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The code only checks if json_schema_extra is callable but never calls it; it calls model_json_schema instead, so there is no arbitrary code execution risk here.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Checks if json_schema_extra is callable but does not invoke it",
+        "line": 110,
+        "path": "pydantic_settings/sources/providers/cli.py",
+        "quote": "if callable(json_schema_extra):"
+       },
+       {
+        "why": "Enters branch that calls model_cls.model_json_schema(), not json_schema_extra",
+        "line": 112,
+        "path": "pydantic_settings/sources/providers/cli.py",
+        "quote": "if is_model_class(model_cls):"
+       },
+       {
+        "why": "Calls model_json_schema, not the untrusted callable",
+        "line": 113,
+        "path": "pydantic_settings/sources/providers/cli.py",
+        "quote": "return model_cls.model_json_schema().get('description')"
+       }
+      ]
+     },
+     "result_chars": 169,
+     "result_summary": "dropped: The code only checks if json_schema_extra is callable but never calls it; it calls model_json_schema instead, so there is no arbitrary code execution risk here.",
+     "tokens_in": 2400,
+     "tokens_out": 372,
+     "latency_ms": 48780
+    }
+   ]
+  },
+  {
+   "id": 34,
+   "run_id": 7,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/cli.py",
+   "line_start": 1032,
+   "line_end": 1035,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Redundant and potentially confusing help/description assignments",
+   "explanation": "The code sets a 'description' and later sets 'help' to the same value, but also assigns 'help' again in a conditional block. This duplication makes it unclear which value is intended and can confuse future readers. The logic could be simplified to a single assignment.",
+   "suggested_fix": "Remove the redundant assignment or consolidate logic: e.g. compute the description once and set both 'description' and 'help' from that variable, ensuring only one source of truth.",
+   "verdict": "confirmed",
+   "verdict_reason": "The code assigns a description and then sets help twice, once unconditionally and again conditionally, which is redundant and potentially confusing.",
+   "evidence": [
+    {
+     "why": "sets description",
+     "line": 1032,
+     "path": "pydantic_settings/sources/providers/cli.py",
+     "quote": "subcommand_arg.kwargs['description'] = _get_model_description(sub_model)"
+    },
+    {
+     "why": "initial help assignment",
+     "line": 1033,
+     "path": "pydantic_settings/sources/providers/cli.py",
+     "quote": "subcommand_arg.kwargs['help'] = None if len(arg.sub_models) > 1 else field_info.description"
+    },
+    {
+     "why": "overwrites help in conditional, causing redundancy",
+     "line": 1035,
+     "path": "pydantic_settings/sources/providers/cli.py",
+     "quote": "subcommand_arg.kwargs['help'] = _get_model_description(sub_model)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 76,
+     "finding_id": 34,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The code assigns a description and then sets help twice, once unconditionally and again conditionally, which is redundant and potentially confusing.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "sets description",
+        "line": 1032,
+        "path": "pydantic_settings/sources/providers/cli.py",
+        "quote": "subcommand_arg.kwargs['description'] = _get_model_description(sub_model)"
+       },
+       {
+        "why": "initial help assignment",
+        "line": 1033,
+        "path": "pydantic_settings/sources/providers/cli.py",
+        "quote": "subcommand_arg.kwargs['help'] = None if len(arg.sub_models) > 1 else field_info.description"
+       },
+       {
+        "why": "overwrites help in conditional, causing redundancy",
+        "line": 1035,
+        "path": "pydantic_settings/sources/providers/cli.py",
+        "quote": "subcommand_arg.kwargs['help'] = _get_model_description(sub_model)"
+       }
+      ]
+     },
+     "result_chars": 159,
+     "result_summary": "confirmed: The code assigns a description and then sets help twice, once unconditionally and again conditionally, which is redundant and potentially confusing.",
+     "tokens_in": 2373,
+     "tokens_out": 350,
+     "latency_ms": 55921
+    }
+   ]
+  },
+  {
+   "id": 35,
+   "run_id": 7,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_source_cli.py",
+   "line_start": 3474,
+   "line_end": 3475,
+   "category": "readability",
+   "severity": "low",
+   "title": "Unnecessary blank lines added",
+   "explanation": "Two consecutive blank lines are added before the first test function, which adds no value and can clutter the file.",
+   "suggested_fix": "Remove the extraneous blank lines.",
+   "verdict": "uncertain",
+   "verdict_reason": "dropped without evidence from code it read (the quote for tests/test_source_cli.py:3473 isn't on that line): PEP8 recommends two blank lines before top-level function definitions, so the blank lines are appropriate and not an unnecessary readability issue.",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 75,
+     "finding_id": 35,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_source_cli.py",
+      "line_end": 3480,
+      "line_start": 3470
+     },
+     "result_chars": 364,
+     "result_summary": "tests/test_source_cli.py, lines 3470-3480 of 3669:\n 3470              'baz': {'name': 'Hello world'},\n 3471          },\n 3472      }\n 3473  \n 3474  \n 3475  def test_get_model_description_returns_docstring():\n 3476      class MyModel(BaseModel):\n 3477          \"\"\"My docstring.\"\"\"\n 3478  \n 3479      a",
+     "tokens_in": 2217,
+     "tokens_out": 153,
+     "latency_ms": 55479
+    },
+    {
+     "id": 78,
+     "finding_id": 35,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "PEP8 recommends two blank lines before top-level function definitions, so the blank lines are appropriate and not an unnecessary readability issue.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "first blank line before function",
+        "line": 3473,
+        "path": "tests/test_source_cli.py",
+        "quote": ""
+       },
+       {
+        "why": "second blank line before function",
+        "line": 3474,
+        "path": "tests/test_source_cli.py",
+        "quote": ""
+       },
+       {
+        "why": "function definition follows two blank lines as per PEP8",
+        "line": 3475,
+        "path": "tests/test_source_cli.py",
+        "quote": "def test_get_model_description_returns_docstring():"
+       }
+      ]
+     },
+     "result_chars": 267,
+     "result_summary": "uncertain: dropped without evidence from code it read (the quote for tests/test_source_cli.py:3473 isn't on that line): PEP8 recommends two blank lines before top-level function definitions, so the blank lines are appropriate and not an unnecessary readability issue.",
+     "tokens_in": 2399,
+     "tokens_out": 352,
+     "latency_ms": 40576
+    }
+   ]
+  },
+  {
+   "id": 36,
+   "run_id": 7,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_source_cli.py",
+   "line_start": 3491,
+   "line_end": 3511,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Repeated test patterns could be parameterized",
+   "explanation": "Several test functions differ only in the model configuration or description source. They could be combined into a single parameterized test to reduce duplication and improve maintainability.",
+   "suggested_fix": "Use pytest.mark.parametrize to iterate over different model configurations and expected descriptions.",
+   "verdict": "confirmed",
+   "verdict_reason": "The file contains many test functions that differ only in the model configuration or description source but follow the same structure, confirming the suggestion to parameterize them.",
+   "evidence": [
+    {
+     "why": "test function defined",
+     "line": 3475,
+     "path": "tests/test_source_cli.py",
+     "quote": "def test_get_model_description_returns_docstring():"
+    },
+    {
+     "why": "another similar test",
+     "line": 3482,
+     "path": "tests/test_source_cli.py",
+     "quote": "def test_get_model_description_returns_none_when_no_doc_and_no_schema_extra():"
+    },
+    {
+     "why": "similar pattern repeated",
+     "line": 3490,
+     "path": "tests/test_source_cli.py",
+     "quote": "def test_get_model_description_json_schema_extra_fallback():"
+    },
+    {
+     "why": "similar pattern repeated",
+     "line": 3498,
+     "path": "tests/test_source_cli.py",
+     "quote": "def test_get_model_description_docstring_takes_precedence():"
+    },
+    {
+     "why": "similar pattern repeated",
+     "line": 3507,
+     "path": "tests/test_source_cli.py",
+     "quote": "def test_get_model_description_callable_json_schema_extra():"
+    },
+    {
+     "why": "similar pattern repeated",
+     "line": 3518,
+     "path": "tests/test_source_cli.py",
+     "quote": "def test_get_model_description_pydantic_dataclass():"
+    },
+    {
+     "why": "similar pattern repeated",
+     "line": 3527,
+     "path": "tests/test_source_cli.py",
+     "quote": "def test_get_model_description_base_settings():"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 77,
+     "finding_id": 36,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The file contains many test functions that differ only in the model configuration or description source but follow the same structure, confirming the suggestion to parameterize them.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "test function defined",
+        "line": 3475,
+        "path": "tests/test_source_cli.py",
+        "quote": "def test_get_model_description_returns_docstring():"
+       },
+       {
+        "why": "another similar test",
+        "line": 3482,
+        "path": "tests/test_source_cli.py",
+        "quote": "def test_get_model_description_returns_none_when_no_doc_and_no_schema_extra():"
+       },
+       {
+        "why": "similar pattern repeated",
+        "line": 3490,
+        "path": "tests/test_source_cli.py",
+        "quote": "def test_get_model_description_json_schema_extra_fallback():"
+       },
+       {
+        "why": "similar pattern repeated",
+        "line": 3498,
+        "path": "tests/test_source_cli.py",
+        "quote": "def test_get_model_description_docstring_takes_precedence():"
+       },
+       {
+        "why": "similar pattern repeated",
+        "line": 3507,
+        "path": "tests/test_source_cli.py",
+        "quote": "def test_get_model_description_callable_json_schema_extra():"
+       },
+       {
+        "why": "similar pattern repeated",
+        "line": 3518,
+        "path": "tests/test_source_cli.py",
+        "quote": "def test_get_model_description_pydantic_dataclass():"
+       },
+       {
+        "why": "similar pattern repeated",
+        "line": 3527,
+        "path": "tests/test_source_cli.py",
+        "quote": "def test_get_model_description_base_settings():"
+       }
+      ]
+     },
+     "result_chars": 193,
+     "result_summary": "confirmed: The file contains many test functions that differ only in the model configuration or description source but follow the same structure, confirming the suggestion to parameterize them.",
+     "tokens_in": 2464,
+     "tokens_out": 483,
+     "latency_ms": 1617
+    }
+   ]
+  }
+ ],
+ "pr_created_at": "2026-11-17T15:48:13Z",
+ "review": {
+  "id": 5941789588,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/3#pullrequestreview-5941789588",
+  "submitted_at": "2026-11-17T15:53:25Z",
+  "body": "<!-- pr-review-agent run:7 -->\n### Automated review of `76becfb`\nNo confirmed issues found. 2 style suggestion(s) below.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 2 dropped, 1 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0101 at list prices (free tier; agent $0.0036); 0 of 21 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 2</summary>\n\n- `pydantic_settings/sources/providers/cli.py:1032` Redundant and potentially confusing help/description assignments: The code sets a 'description' and later sets 'help' to the same value, but also assigns 'help' again in a conditional block. This duplication makes it unclear which value is intended and can confuse future readers. The logic could be simplified to a single assignment.\n- `tests/test_source_cli.py:3491` Repeated test patterns could be parameterized: Several test functions differ only in the model configuration or description source. They could be combined into a single parameterized test to reduce duplication and improve maintainability.\n\n</details>\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `tests/test_source_cli.py:3474` **low** Unnecessary blank lines added \u2014 dropped without evidence from code it read (the quote for tests/test_source_cli.py:3473 isn't on that line): PEP8 recommends two blank lines before top-level function definitions, so the blank lines are appropriate and not an unnecessary readability issue.\n\n</details>"
+ },
+ "comments": []
+}

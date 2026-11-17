@@ -85,7 +85,11 @@ def git(work: Path, *args: str, env: dict | None = None) -> str:
     result = subprocess.run(
         ["git", "-C", str(work), *args],
         capture_output=True,
-        text=True,
+        # Git prints file contents (in diffs) as they are, which is UTF-8 in these repos. Without
+        # this, Windows decodes with its locale's code page (cp1252) and fails on some bytes.
+        # "replace": a stray byte in some file can't crash the run.
+        encoding="utf-8",
+        errors="replace",
         env={**os.environ, **(env or {})},
     )
     if result.returncode != 0:
