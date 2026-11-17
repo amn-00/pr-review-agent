@@ -87,7 +87,7 @@ def test_a_row_shows_the_review_with_a_link_to_its_pr():
 
     assert "<td>2026-11-16 17:42</td>" in page
     assert '<a href="https://github.com/octo/hello/pull/7">#7</a> Add feature</td>' in page
-    assert "<td>3m 49s</td><td>2</td><td>2 confirmed, 1 dropped, 0 uncertain</td>" in page
+    assert "<td>3m 49s</td><td>2</td><td>2 confirmed, 1 dropped</td>" in page
     assert "<td>$0.0059</td>" in page
     assert f'<a href="{REPO_URL}">' in page
 
@@ -131,5 +131,5 @@ async def test_the_page_is_served_from_the_database_and_the_root_leads_to_it(ses
         f'<a href="https://github.com/{REPO}/pull/7">#7</a> Fix &lt;b&gt;bold&lt;/b&gt; claims'
         in page.text
     )
-    assert "<td>1</td><td>1 confirmed, 0 dropped, 0 uncertain</td><td>$0.0059</td>" in page.text
+    assert "<td>1</td><td>1 confirmed</td><td>$0.0059</td>" in page.text
     assert (root.status_code, root.headers["location"]) == (307, "/runs")

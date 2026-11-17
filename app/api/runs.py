@@ -21,14 +21,14 @@ PAGE = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PR Review Agent: recent reviews</title>
 <style>
-  body {{ font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 70rem;
+  body {{ font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 82rem;
          padding: 0 1rem; color: #1f2328; }}
   p {{ max-width: 46rem; line-height: 1.5; }}
   .scroll {{ overflow-x: auto; }}
   table {{ border-collapse: collapse; width: 100%; font-size: 0.9rem; }}
   th, td {{ text-align: left; padding: 0.4rem 0.7rem; border-bottom: 1px solid #d0d7de;
             white-space: nowrap; }}
-  td.title {{ white-space: normal; min-width: 14rem; }}
+  td.title {{ white-space: normal; min-width: 12rem; }}
   th {{ background: #f6f8fa; }}
   a {{ color: #0969da; }}
 </style>
@@ -40,12 +40,14 @@ a tool-using agent checks each one against the repository before anything is pos
 confirmed findings become inline comments.</p>
 <p>Code, design decisions and evaluation results: <a href="{repo}">{repo}</a></p>
 <h2>Latest reviews</h2>
+<p>Comments are the inline comments posted on the PR. Cost is at the LLM provider's list
+prices; the service itself runs on free tiers.</p>
 {body}
 </body>
 </html>
 """
 HEADERS = ["Started (UTC)", "Repository", "Pull request", "Status", "Review time"]
-HEADERS += ["Inline comments", "Agent verdicts", "Cost (list prices)"]
+HEADERS += ["Comments", "Agent verdicts", "Cost"]
 
 
 def _review_time(started: datetime, finished: datetime | None) -> str:
@@ -56,9 +58,9 @@ def _review_time(started: datetime, finished: datetime | None) -> str:
 
 
 def _verdicts(run) -> str:
-    if not (run.confirmed or run.dropped or run.uncertain):
-        return "—"
-    return f"{run.confirmed} confirmed, {run.dropped} dropped, {run.uncertain} uncertain"
+    """Only the verdicts that occurred, e.g. "2 confirmed, 1 dropped": the column stays narrow."""
+    counts = [(run.confirmed, "confirmed"), (run.dropped, "dropped"), (run.uncertain, "uncertain")]
+    return ", ".join(f"{count} {name}" for count, name in counts if count) or "—"
 
 
 def render(runs: list) -> str:
