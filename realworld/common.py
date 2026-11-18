@@ -75,11 +75,18 @@ def iter_items(http: httpx.Client, url: str, params: dict | None = None) -> Iter
 
 def prod_database_url() -> str:
     """The Neon URL, from PROD_DATABASE_URL only: never from .env, which is the local stack's."""
-    url = os.environ.get("PROD_DATABASE_URL")
+    url = os.environ.get("PROD_DATABASE_URL", "")
     if not url:
         sys.exit(
             "Set PROD_DATABASE_URL to the rewritten Neon URL (docs/deploy.md, step 1), and "
             "PGSSLROOTCERT to a CA bundle."
+        )
+    # The value is read from the clipboard, which may hold something else by then (it happened:
+    # the commands themselves). Say so plainly, and never print the value: it has the password.
+    if not url.startswith("postgresql+asyncpg://"):
+        sys.exit(
+            "PROD_DATABASE_URL isn't a database URL: it should start with postgresql+asyncpg://. "
+            "Copy DATABASE_URL from Render again, then run the Get-Clipboard line on its own."
         )
     return url
 

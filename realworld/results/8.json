@@ -1,0 +1,786 @@
+{
+ "k": 8,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 749,
+  "replay_sha": "a3767124b972a0b85146331f1ca1e2ff54eac0c1",
+  "merge_base_sha": "7d4273edee47e1a37705c691e87cecfdf7659b42"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 4,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/4",
+  "head_sha": "ef3e815f6c2b418026bda151d629c64f6e1b057e"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [
+  "25 lane call(s) not run (PR token budget)",
+  "finding 53 not verified (agent PR token budget)",
+  "finding 54 not verified (agent PR token budget)",
+  "finding 55 not verified (agent PR token budget)",
+  "finding 56 not verified (agent PR token budget)",
+  "finding 57 not verified (agent PR token budget)",
+  "finding 58 not verified (agent PR token budget)"
+ ],
+ "issue_links": [],
+ "run": {
+  "id": 10,
+  "pr_id": 10,
+  "head_sha": "ef3e815f6c2b418026bda151d629c64f6e1b057e",
+  "status": "completed",
+  "started_at": "2026-11-18 15:18:49.864248+00:00",
+  "finished_at": "2026-11-18 15:27:58.799513+00:00",
+  "tokens_in": 86867,
+  "tokens_out": 7180,
+  "cost_usd": "0.015471225",
+  "llm_calls": 39,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5959625409
+ },
+ "findings": [
+  {
+   "id": 48,
+   "run_id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 131,
+   "line_end": 131,
+   "category": "bug",
+   "severity": "high",
+   "title": "Undeclared type `EnvPrefixTarget` in docstring parameter",
+   "explanation": "The added docstring line references a type `EnvPrefixTarget` that is not imported or defined in this module, which will cause a NameError when type checking or at runtime if annotations are evaluated.",
+   "suggested_fix": "Import `EnvPrefixTarget` from its defining module or replace it with a valid type.",
+   "verdict": "dropped",
+   "verdict_reason": "The type EnvPrefixTarget is defined in pydantic_settings/sources/types.py, so the docstring reference does not cause a NameError.",
+   "evidence": [
+    {
+     "why": "EnvPrefixTarget is defined in the repository",
+     "line": 34,
+     "path": "pydantic_settings/sources/types.py",
+     "quote": "EnvPrefixTarget = Literal['variable', 'alias', 'all']"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 97,
+     "finding_id": 48,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "EnvPrefixTarget"
+     },
+     "result_chars": 1386,
+     "result_summary": "Lines containing 'EnvPrefixTarget':\npydantic_settings/main.py:26: EnvPrefixTarget,\npydantic_settings/main.py:48: env_prefix_target: EnvPrefixTarget\npydantic_settings/main.py:176: _env_prefix_target: EnvPrefixTarget | None = None,\npydantic_settings/main.py:265: _env_prefix_target: EnvPrefixTarget | N",
+     "tokens_in": 2586,
+     "tokens_out": 38,
+     "latency_ms": 39108
+    },
+    {
+     "id": 100,
+     "finding_id": 48,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The type EnvPrefixTarget is defined in pydantic_settings/sources/types.py, so the docstring reference does not cause a NameError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "EnvPrefixTarget is defined in the repository",
+        "line": 34,
+        "path": "pydantic_settings/sources/types.py",
+        "quote": "EnvPrefixTarget = Literal['variable', 'alias', 'all']"
+       }
+      ]
+     },
+     "result_chars": 138,
+     "result_summary": "dropped: The type EnvPrefixTarget is defined in pydantic_settings/sources/types.py, so the docstring reference does not cause a NameError.",
+     "tokens_in": 3013,
+     "tokens_out": 154,
+     "latency_ms": 54101
+    }
+   ]
+  },
+  {
+   "id": 49,
+   "run_id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 176,
+   "line_end": 176,
+   "category": "bug",
+   "severity": "high",
+   "title": "New constructor argument `_env_prefix_target` not validated or stored",
+   "explanation": "The new parameter is added to `__init__` and forwarded to `_settings_build_values`, but there is no handling for it elsewhere in the class, which may cause unexpected behavior or errors if the underlying method does not expect this argument.",
+   "suggested_fix": "Ensure `_env_prefix_target` is accepted and processed by the settings building logic, or remove it if not needed.",
+   "verdict": "confirmed",
+   "verdict_reason": "The new constructor argument `_env_prefix_target` is passed to `_settings_build_values` but there is no handling for it elsewhere in the class, so the argument is effectively ignored, matching the finding.",
+   "evidence": [
+    {
+     "why": "Defines the new constructor parameter",
+     "line": 176,
+     "path": "pydantic_settings/main.py",
+     "quote": "_env_prefix_target: EnvPrefixTarget | None = None,"
+    },
+    {
+     "why": "Forwards the parameter to _settings_build_values",
+     "line": 208,
+     "path": "pydantic_settings/main.py",
+     "quote": "_env_prefix_target=_env_prefix_target,"
+    },
+    {
+     "why": "Signature of _settings_build_values shows it expects the argument but no further handling is visible",
+     "line": 265,
+     "path": "pydantic_settings/main.py",
+     "quote": "_env_prefix_target: EnvPrefixTarget | None = None,"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 98,
+     "finding_id": 49,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_env_prefix_target"
+     },
+     "result_chars": 636,
+     "result_summary": "Lines containing '_env_prefix_target':\npydantic_settings/main.py:131: _env_prefix_target: Targets to which `_env_prefix` is applied. Default: `variable`.\npydantic_settings/main.py:176: _env_prefix_target: EnvPrefixTarget | None = None,\npydantic_settings/main.py:208: _env_prefix_target=_env_prefix_ta",
+     "tokens_in": 2526,
+     "tokens_out": 43,
+     "latency_ms": 39143
+    },
+    {
+     "id": 99,
+     "finding_id": 49,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/main.py",
+      "line_end": 220,
+      "line_start": 190
+     },
+     "result_chars": 1858,
+     "result_summary": "pydantic_settings/main.py, lines 190-220 of 760:\n  190          _cli_enforce_required: bool | None = None,\n  191          _cli_use_class_docs_for_groups: bool | None = None,\n  192          _cli_exit_on_error: bool | None = None,\n  193          _cli_prefix: str | None = None,\n  194          _cli_flag",
+     "tokens_in": 2740,
+     "tokens_out": 52,
+     "latency_ms": 53826
+    },
+    {
+     "id": 102,
+     "finding_id": 49,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 44458
+    },
+    {
+     "id": 103,
+     "finding_id": 49,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need see handling of _env_prefix_target later.",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 43163
+    },
+    {
+     "id": 105,
+     "finding_id": 49,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The new constructor argument `_env_prefix_target` is passed to `_settings_build_values` but there is no handling for it elsewhere in the class, so the argument is effectively ignored, matching the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Defines the new constructor parameter",
+        "line": 176,
+        "path": "pydantic_settings/main.py",
+        "quote": "_env_prefix_target: EnvPrefixTarget | None = None,"
+       },
+       {
+        "why": "Forwards the parameter to _settings_build_values",
+        "line": 208,
+        "path": "pydantic_settings/main.py",
+        "quote": "_env_prefix_target=_env_prefix_target,"
+       },
+       {
+        "why": "Signature of _settings_build_values shows it expects the argument but no further handling is visible",
+        "line": 265,
+        "path": "pydantic_settings/main.py",
+        "quote": "_env_prefix_target: EnvPrefixTarget | None = None,"
+       }
+      ]
+     },
+     "result_chars": 216,
+     "result_summary": "confirmed: The new constructor argument `_env_prefix_target` is passed to `_settings_build_values` but there is no handling for it elsewhere in the class, so the argument is effectively ignored, matching the finding.",
+     "tokens_in": 3077,
+     "tokens_out": 235,
+     "latency_ms": 943
+    }
+   ]
+  },
+  {
+   "id": 50,
+   "run_id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 208,
+   "line_end": 208,
+   "category": "bug",
+   "severity": "high",
+   "title": "`_env_prefix_target` passed to `_settings_build_values` without support",
+   "explanation": "The call forwards `_env_prefix_target` to `_settings_build_values`, but the target method's signature likely does not include this parameter, leading to a TypeError at runtime.",
+   "suggested_fix": "Update `_settings_build_values` to accept `_env_prefix_target` or omit the argument when calling.",
+   "verdict": "dropped",
+   "verdict_reason": "The called method _settings_build_values includes _env_prefix_target in its signature, so the call will not raise TypeError.",
+   "evidence": [
+    {
+     "why": "Method _settings_build_values defines this parameter, so passing it is supported",
+     "line": 265,
+     "path": "pydantic_settings/main.py",
+     "quote": "_env_prefix_target: EnvPrefixTarget | None = None,"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 101,
+     "finding_id": 50,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_settings_build_values"
+     },
+     "result_chars": 176,
+     "result_summary": "Lines containing '_settings_build_values':\npydantic_settings/main.py:203: **__pydantic_self__._settings_build_values(\npydantic_settings/main.py:259: def _settings_build_values(",
+     "tokens_in": 2246,
+     "tokens_out": 48,
+     "latency_ms": 44006
+    },
+    {
+     "id": 104,
+     "finding_id": 50,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/main.py",
+      "line_end": 280,
+      "line_start": 250
+     },
+     "result_chars": 1733,
+     "result_summary": "pydantic_settings/main.py, lines 250-280 of 760:\n  250              env_settings: The `EnvSettingsSource` instance.\n  251              dotenv_settings: The `DotEnvSettingsSource` instance.\n  252              file_secret_settings: The `SecretsSettingsSource` instance.\n  253  \n  254          Returns:\n",
+     "tokens_in": 2352,
+     "tokens_out": 58,
+     "latency_ms": 43343
+    },
+    {
+     "id": 107,
+     "finding_id": 50,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The called method _settings_build_values includes _env_prefix_target in its signature, so the call will not raise TypeError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Method _settings_build_values defines this parameter, so passing it is supported",
+        "line": 265,
+        "path": "pydantic_settings/main.py",
+        "quote": "_env_prefix_target: EnvPrefixTarget | None = None,"
+       }
+      ]
+     },
+     "result_chars": 133,
+     "result_summary": "dropped: The called method _settings_build_values includes _env_prefix_target in its signature, so the call will not raise TypeError.",
+     "tokens_in": 2888,
+     "tokens_out": 142,
+     "latency_ms": 60081
+    }
+   ]
+  },
+  {
+   "id": 51,
+   "run_id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 265,
+   "line_end": 265,
+   "category": "bug",
+   "severity": "high",
+   "title": "Undefined name 'EnvPrefixTarget' causes NameError",
+   "explanation": "The new parameter `_env_prefix_target` is annotated with the type `EnvPrefixTarget`, but this name is not imported or defined in the module. At runtime, Python will raise a NameError when the function is defined, breaking import of the module.",
+   "suggested_fix": "Import `EnvPrefixTarget` from its defining module or replace the annotation with a forward reference string, e.g., `'_env_prefix_target: \"EnvPrefixTarget\" | None = None'`.",
+   "verdict": "dropped",
+   "verdict_reason": "The module imports EnvPrefixTarget, so the annotation does not cause NameError.",
+   "evidence": [
+    {
+     "why": "EnvPrefixTarget is imported from .sources, so the type name is defined",
+     "line": 26,
+     "path": "pydantic_settings/main.py",
+     "quote": "EnvPrefixTarget,"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 106,
+     "finding_id": 51,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "EnvPrefixTarget"
+     },
+     "result_chars": 1386,
+     "result_summary": "Lines containing 'EnvPrefixTarget':\npydantic_settings/main.py:26: EnvPrefixTarget,\npydantic_settings/main.py:48: env_prefix_target: EnvPrefixTarget\npydantic_settings/main.py:176: _env_prefix_target: EnvPrefixTarget | None = None,\npydantic_settings/main.py:265: _env_prefix_target: EnvPrefixTarget | N",
+     "tokens_in": 2390,
+     "tokens_out": 44,
+     "latency_ms": 58655
+    },
+    {
+     "id": 109,
+     "finding_id": 51,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/main.py",
+      "line_end": 40,
+      "line_start": 1
+     },
+     "result_chars": 1434,
+     "result_summary": "pydantic_settings/main.py, lines 1-40 of 760:\n    1  from __future__ import annotations as _annotations\n    2  \n    3  import asyncio\n    4  import inspect\n    5  import threading\n    6  import warnings\n    7  from argparse import Namespace\n    8  from collections.abc import Mapping\n    9  from type",
+     "tokens_in": 2815,
+     "tokens_out": 68,
+     "latency_ms": 40865
+    },
+    {
+     "id": 111,
+     "finding_id": 51,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The module imports EnvPrefixTarget, so the annotation does not cause NameError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "EnvPrefixTarget is imported from .sources, so the type name is defined",
+        "line": 26,
+        "path": "pydantic_settings/main.py",
+        "quote": "EnvPrefixTarget,"
+       }
+      ]
+     },
+     "result_chars": 88,
+     "result_summary": "dropped: The module imports EnvPrefixTarget, so the annotation does not cause NameError.",
+     "tokens_in": 3297,
+     "tokens_out": 129,
+     "latency_ms": 37035
+    }
+   ]
+  },
+  {
+   "id": 52,
+   "run_id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/env.py",
+   "line_start": 51,
+   "line_end": 58,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect arguments passed to superclass initializer",
+   "explanation": "The added `env_prefix_target` argument is inserted into the `super().__init__` call without confirming that `PydanticBaseEnvSettingsSource.__init__` accepts it in that position. If the base class signature does not include this parameter, the arguments will be misaligned, causing fields like `case_sensitive` or `env_prefix` to receive incorrect values, leading to runtime errors or wrong behavior.",
+   "suggested_fix": "Update the superclass `__init__` signature to accept `env_prefix_target` in the correct position, or pass it as a keyword argument matching the base class definition.",
+   "verdict": "dropped",
+   "verdict_reason": "The base class PydanticBaseEnvSettingsSource defines an __init__ with env_prefix_target as a parameter, and its own super only takes settings_cls, so EnvSettingsSource's super call correctly aligns arguments. The added argument is valid, so the finding is incorrect.",
+   "evidence": [
+    {
+     "why": "defines the base class",
+     "line": 327,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "class PydanticBaseEnvSettingsSource(PydanticBaseSettingsSource):"
+    },
+    {
+     "why": "parameter before env_prefix_target",
+     "line": 332,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "env_prefix: str | None = None,"
+    },
+    {
+     "why": "base class __init__ expects env_prefix_target at this position",
+     "line": 333,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "env_prefix_target: EnvPrefixTarget | None = None,"
+    },
+    {
+     "why": "base class init only takes settings_cls, subclass handles other args",
+     "line": 338,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "super().__init__(settings_cls)"
+    },
+    {
+     "why": "shows that subclass passes extra args to its own super which only expects settings_cls",
+     "line": 338,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "super().__init__(settings_cls)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 108,
+     "finding_id": 52,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class PydanticBaseEnvSettingsSource"
+     },
+     "result_chars": 159,
+     "result_summary": "Lines containing 'class PydanticBaseEnvSettingsSource':\npydantic_settings/sources/base.py:327: class PydanticBaseEnvSettingsSource(PydanticBaseSettingsSource):",
+     "tokens_in": 2391,
+     "tokens_out": 48,
+     "latency_ms": 40424
+    },
+    {
+     "id": 110,
+     "finding_id": 52,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/base.py",
+      "line_end": 380,
+      "line_start": 300
+     },
+     "result_chars": 2473,
+     "result_summary": "pydantic_settings/sources/base.py, lines 300-379 of 574:\n  300          # Include any remaining init kwargs (e.g., extras) unchanged\n  301          # Note: If populate_by_name is True and the provided key is the field name, but\n  302          # no alias exists, we keep it as-is so it can be processe",
+     "tokens_in": 2498,
+     "tokens_out": 49,
+     "latency_ms": 678
+    },
+    {
+     "id": 112,
+     "finding_id": 52,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The base class PydanticBaseEnvSettingsSource defines an __init__ with env_prefix_target as a parameter, and its own super only takes settings_cls, so EnvSettingsSource's super call correctly aligns arguments. The added argument is valid, so the finding is incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "defines the base class",
+        "line": 327,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "class PydanticBaseEnvSettingsSource(PydanticBaseSettingsSource):"
+       },
+       {
+        "why": "parameter before env_prefix_target",
+        "line": 332,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "env_prefix: str | None = None,"
+       },
+       {
+        "why": "base class __init__ expects env_prefix_target at this position",
+        "line": 333,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "env_prefix_target: EnvPrefixTarget | None = None,"
+       },
+       {
+        "why": "base class init only takes settings_cls, subclass handles other args",
+        "line": 338,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "super().__init__(settings_cls)"
+       },
+       {
+        "why": "shows that subclass passes extra args to its own super which only expects settings_cls",
+        "line": 338,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "super().__init__(settings_cls)"
+       }
+      ]
+     },
+     "result_chars": 275,
+     "result_summary": "dropped: The base class PydanticBaseEnvSettingsSource defines an __init__ with env_prefix_target as a parameter, and its own super only takes settings_cls, so EnvSettingsSource's super call correctly aligns arguments. The added argument is valid, so the finding is incorrect.",
+     "tokens_in": 3205,
+     "tokens_out": 396,
+     "latency_ms": 36803
+    }
+   ]
+  },
+  {
+   "id": 53,
+   "run_id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/secrets.py",
+   "line_start": 42,
+   "line_end": 48,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect arguments passed to superclass initializer",
+   "explanation": "The added `env_prefix_target` argument is forwarded to `super().__init__`, but the parent class `PydanticBaseEnvSettingsSource` does not define a parameter for it. This will raise a TypeError at runtime when initializing `SecretsSettingsSource`.",
+   "suggested_fix": null,
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 54,
+   "run_id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 293,
+   "line_end": 295,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential missing handling for None when accessing model_config key",
+   "explanation": "The code retrieves `env_prefix_target` from `self.model_config` without a default, so if the key is absent it returns `None`. If later code assumes a non\u2011None value, it may cause unexpected errors.",
+   "suggested_fix": "Provide a sensible default, e.g., `self.model_config.get('env_prefix_target', default_value)` or add validation for the retrieved value.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 55,
+   "run_id": 10,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 381,
+   "line_end": 381,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Unexpected keyword argument passed to settings source constructors",
+   "explanation": "The added keyword `env_prefix_target` is supplied to `EnvSettingsSource`, `DotEnvSettingsSource`, and `SecretsSettingsSource`. If these classes do not define a corresponding parameter, Python will raise a `TypeError` at runtime, breaking settings initialization.",
+   "suggested_fix": "Verify that the constructors of `EnvSettingsSource`, `DotEnvSettingsSource`, and `SecretsSettingsSource` accept `env_prefix_target`. If not, remove the argument or update the classes to handle it appropriately.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 56,
+   "run_id": 10,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/base.py",
+   "line_start": 384,
+   "line_end": 384,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Redundant boolean expression",
+   "explanation": "The expression `True if len(alias) > 1 else False` is equivalent to `len(alias) > 1` and adds unnecessary verbosity.",
+   "suggested_fix": "Replace the expression with `len(alias) > 1`.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 57,
+   "run_id": 10,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/base.py",
+   "line_start": 392,
+   "line_end": 392,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Redundant boolean expression",
+   "explanation": "The expression `True if len(alias) > 1 else False` is equivalent to `len(alias) > 1` and adds unnecessary verbosity.",
+   "suggested_fix": "Replace the expression with `len(alias) > 1`.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 58,
+   "run_id": 10,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 403,
+   "line_end": 408,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Mixing positional and keyword arguments in constructor calls",
+   "explanation": "The call to\u202fSecretsSettingsSource\u202fuses positional arguments for the class and the secrets_dir while later arguments are passed as keywords, which is inconsistent with the surrounding code and can lead to confusion when reading the arguments\u2019 order.",
+   "suggested_fix": "Use keyword arguments for all parameters, e.g.\n```\nfile_secret_settings = SecretsSettingsSource(\n    cls=self.__class__,\n    secrets_dir=secrets_dir,\n    case_sensitive=case_sensitive,\n    env_prefix=env_prefix,\n    env_prefix_target=env_prefix_target,\n)\n```",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 59,
+   "run_id": 10,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/secrets.py",
+   "line_start": 41,
+   "line_end": 49,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Use keyword arguments in super constructor",
+   "explanation": "The `super().__init__` call passes many positional arguments, which makes it hard to match the parameters to their meanings and increases the risk of passing them in the wrong order, especially if the signature of the parent changes.",
+   "suggested_fix": "Use keyword arguments: `super().__init__(settings_cls=settings_cls, case_sensitive=case_sensitive, env_prefix=env_prefix, env_prefix_target=env_prefix_target, env_ignore_empty=env_ignore_empty, env_parse_none_str=env_parse_none_str, env_parse_enums=env_parse_enums)`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 53,
+   "agent_steps": []
+  },
+  {
+   "id": 60,
+   "run_id": 10,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 265,
+   "line_end": 265,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Unclear parameter name _env_prefix_target",
+   "explanation": "The added parameter name starts with an underscore and includes a suffix that may not be immediately clear to readers. It is used only to retrieve a value from the model config, but the name does not convey its purpose, making the code harder to understand when reading the signature.",
+   "suggested_fix": "Rename the parameter to a clearer name such as env_prefix_target and remove the leading underscore, e.g. `env_prefix_target: EnvPrefixTarget | None = None`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 51,
+   "agent_steps": []
+  },
+  {
+   "id": 61,
+   "run_id": 10,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 176,
+   "line_end": 176,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Parameter _env_prefix_target placement and naming may confuse readers",
+   "explanation": "The new keyword argument `_env_prefix_target` is inserted between `_env_prefix` and `_env_file` in the constructor signature, breaking the typical grouping of environment\u2011related parameters. Its name is also less intuitive than the other flags, making it harder to discover and remember during use or maintenance.",
+   "suggested_fix": "Place `_env_prefix_target` among the other environment\u2011related parameters (e.g., immediately after `_env_file`), and consider renaming it to a more descriptive name such as `env_prefix_target` or adding a short comment explaining its purpose.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 49,
+   "agent_steps": []
+  },
+  {
+   "id": 62,
+   "run_id": 10,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 381,
+   "line_end": 381,
+   "category": "readability",
+   "severity": "low",
+   "title": "Redundant repetition of env_prefix_target in multiple sources",
+   "explanation": "`env_prefix_target` is passed to both\u202fEnvSettingsSource\u202fand\u202fDotEnvSettingsSource\u202feven though it is already supplied to\u202fDefaults and the same value is used for the secrets source. This repetition can make the code harder to maintain and may confuse readers about the purpose of the parameter.",
+   "suggested_fix": "Consider extracting the value into a variable or document why it is needed for each source. Alternatively, remove the duplicate if it is unnecessary.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 55,
+   "agent_steps": []
+  },
+  {
+   "id": 63,
+   "run_id": 10,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 293,
+   "line_end": 295,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Redundant parenthesized assignment for env_prefix_target",
+   "explanation": "The assignment for env_prefix_target uses parentheses to wrap the expression, which is unnecessary for a simple conditional assignment and adds visual noise. It is also inconsistent with the style of similar assignments above.",
+   "suggested_fix": "Remove the parentheses: `env_prefix_target = _env_prefix_target if _env_prefix_target is not None else self.model_config.get('env_prefix_target')`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 54,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-18T15:17:57Z",
+ "review": {
+  "id": 5959625409,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/4#pullrequestreview-5959625409",
+  "submitted_at": "2026-11-18T15:27:58Z",
+  "body": "<!-- pr-review-agent run:10 -->\n### Automated review of `ef3e815`\nFound 1 confirmed issue(s): 1 high.\nReviewed 9 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 1 confirmed, 4 dropped, 0 uncertain, 6 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0155 at list prices (free tier; agent $0.0066); 0 of 23 lane call(s) answered from cache.\n\n<details><summary>Not verified (not posted): 6</summary>\n\n- `pydantic_settings/sources/providers/secrets.py:42` **high** Incorrect arguments passed to superclass initializer \u2014 agent PR token budget\n- `pydantic_settings/main.py:293` **medium** Potential missing handling for None when accessing model_config key \u2014 agent PR token budget\n- `pydantic_settings/main.py:381` **medium** Unexpected keyword argument passed to settings source constructors \u2014 agent PR token budget\n- `pydantic_settings/sources/base.py:384` **medium** Redundant boolean expression \u2014 agent PR token budget\n- `pydantic_settings/sources/base.py:392` **medium** Redundant boolean expression \u2014 agent PR token budget\n- `pydantic_settings/main.py:403` **low** Mixing positional and keyword arguments in constructor calls \u2014 agent PR token budget\n\n</details>\n\n<details><summary>Not fully reviewed</summary>\n\n- 25 lane call(s) not run (PR token budget), in: `docs/index.md`, `pydantic_settings/main.py`, `pydantic_settings/sources/base.py`, `pydantic_settings/sources/providers/dotenv.py`, `pydantic_settings/sources/types.py`, `tests/test_settings.py`\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4616448122,
+   "url": "https://github.com/amn-00/pydantic-settings/pull/4#discussion_r4616448122",
+   "file": "pydantic_settings/main.py",
+   "line": 176,
+   "start_line": 176,
+   "body": "**high** \u00b7 bug \u00b7 New constructor argument `_env_prefix_target` not validated or stored\n\nThe new parameter is added to `__init__` and forwarded to `_settings_build_values`, but there is no handling for it elsewhere in the class, which may cause unexpected behavior or errors if the underlying method does not expect this argument.\n\n**Suggested fix:** Ensure `_env_prefix_target` is accepted and processed by the settings building logic, or remove it if not needed.\n\n_Checked against `pydantic_settings/main.py:176`, `pydantic_settings/main.py:208`, `pydantic_settings/main.py:265`_"
+  }
+ ]
+}

@@ -310,3 +310,19 @@ def test_a_host_the_local_dns_refuses_is_looked_up_over_https(monkeypatch):
     # The refused name now resolves to the A record (not the CNAME); other names are untouched.
     assert socket.getaddrinfo("db.example.test", 5432)[0][4] == ("203.0.113.7", 5432)
     assert socket.getaddrinfo("other.example.test", 5432)[0][4] == ("other.example.test", 5432)
+
+
+def test_a_clipboard_that_held_something_else_is_named_without_echoing_it(monkeypatch):
+    pasted = '$env:Path += ";C:\GitHub CLI\bin" secret-looking-text'
+    monkeypatch.setenv("PROD_DATABASE_URL", pasted)
+    with pytest.raises(SystemExit) as stopped:
+        common.prod_database_url()
+    assert "isn't a database URL" in str(stopped.value)
+    assert "secret-looking-text" not in str(stopped.value)
+
+    monkeypatch.delenv("PROD_DATABASE_URL")
+    with pytest.raises(SystemExit, match="Set PROD_DATABASE_URL"):
+        common.prod_database_url()
+
+    monkeypatch.setenv("PROD_DATABASE_URL", "postgresql+asyncpg://u:p@db.example.test/neondb")
+    assert common.prod_database_url() == "postgresql+asyncpg://u:p@db.example.test/neondb"
