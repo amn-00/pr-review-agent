@@ -61,5 +61,19 @@
   "url": "https://github.com/amn-00/starlette/pull/5",
   "head_sha": "1d96262dfaee6ec3de36bbbbeea3017e061a26e5",
   "opened_at": "2026-11-18T15:28:18+00:00"
+ },
+ "10": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 5,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/5",
+  "head_sha": "6f67fec225c5917d31c183f8e13a6deb0bba693a",
+  "opened_at": "2026-11-19T15:13:58+00:00"
+ },
+ "11": {
+  "repo": "amn-00/starlette",
+  "pull": 6,
+  "url": "https://github.com/amn-00/starlette/pull/6",
+  "head_sha": "727bfc70950bb53a2398347bcaa6c91e5fb6b414",
+  "opened_at": "2026-11-19T15:20:18+00:00"
  }
 }

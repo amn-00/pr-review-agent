@@ -1,0 +1,522 @@
+{
+ "k": 10,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 878,
+  "replay_sha": "a7f97e3fdfea9aba1aeba29dc2a798b01ac845a3",
+  "merge_base_sha": "e20044d155ad86d047a004dbccef4a7aa6532a03"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 5,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/5",
+  "head_sha": "6f67fec225c5917d31c183f8e13a6deb0bba693a"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 12,
+  "pr_id": 12,
+  "head_sha": "6f67fec225c5917d31c183f8e13a6deb0bba693a",
+  "status": "completed",
+  "started_at": "2026-11-19 15:14:35.219789+00:00",
+  "finished_at": "2026-11-19 15:20:00.955684+00:00",
+  "tokens_in": 57016,
+  "tokens_out": 5957,
+  "cost_usd": "0.010784100",
+  "llm_calls": 25,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5977814310
+ },
+ "findings": [
+  {
+   "id": 66,
+   "run_id": 12,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/gcp.py",
+   "line_start": 280,
+   "line_end": 284,
+   "category": "security",
+   "severity": "high",
+   "title": "Unvalidated project_id from prior settings can lead to unauthorized secret access",
+   "explanation": "The method `_resolve_gcp_project` falls back to a `project_id` value obtained from `self.current_state` (a previous settings source) without validating that the value is trusted or correctly formatted. An attacker who can influence prior settings could inject an arbitrary project ID, causing the client to access secrets in an unintended GCP project.",
+   "suggested_fix": "Validate the `project_id` obtained from `self.current_state` against an allow\u2011list or ensure it matches the expected pattern before using it to create the Secret Manager client.",
+   "verdict": "uncertain",
+   "verdict_reason": "dropped without evidence from code it read (the quote for pydantic_settings/sources/providers/gcp.py:273 isn't on that line): The code deliberately falls back to a project_id obtained from previous settings without additional validation, as documented. This behavior is by design for configurability, not an unchecked security flaw, so the finding is dropped.",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 120,
+     "finding_id": 66,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "project_id"
+     },
+     "result_chars": 1772,
+     "result_summary": "Lines containing 'project_id':\ndocs/index.md:2543: # to get project_id from the environemnt\ndocs/index.md:2544: project_id='your-gcp-project-id',\ndocs/index.md:2570: The `project_id` is resolved lazily when the source is read, in the following order of precedence:\ndocs/index.md:2572: 1. the explicit",
+     "tokens_in": 2475,
+     "tokens_out": 55,
+     "latency_ms": 56839
+    },
+    {
+     "id": 122,
+     "finding_id": 66,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/providers/gcp.py",
+      "line_end": 340,
+      "line_start": 150
+     },
+     "result_chars": 2501,
+     "result_summary": "pydantic_settings/sources/providers/gcp.py, lines 150-229 of 338:\n  150  \n  151      def __iter__(self) -> Iterator[str]:\n  152          return iter(self._secret_names)\n  153  \n  154  \n  155  class GoogleSecretManagerSettingsSource(EnvSettingsSource):\n  156      _credentials: Credentials | None\n  15",
+     "tokens_in": 2977,
+     "tokens_out": 50,
+     "latency_ms": 603
+    },
+    {
+     "id": 126,
+     "finding_id": 66,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need assess if unvalidated project_id is secur",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 89819
+    },
+    {
+     "id": 128,
+     "finding_id": 66,
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The code deliberately falls back to a project_id obtained from previous settings without additional validation, as documented. This behavior is by design for configurability, not an unchecked security flaw, so the finding is dropped.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "checks if explicit project_id missing",
+        "line": 280,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "if project_id is None:"
+       },
+       {
+        "why": "retrieves project_id from previous settings source",
+        "line": 281,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "state_project_id = self.current_state.get(self._project_id_field)"
+       },
+       {
+        "why": "accepts any string without further validation",
+        "line": 282,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "if isinstance(state_project_id, str):"
+       },
+       {
+        "why": "docstring explains intended fallback behavior",
+        "line": 273,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "project_id is resolved, in order of precedence, from: the explicit"
+       }
+      ]
+     },
+     "result_chars": 370,
+     "result_summary": "uncertain: dropped without evidence from code it read (the quote for pydantic_settings/sources/providers/gcp.py:273 isn't on that line): The code deliberately falls back to a project_id obtained from previous settings without additional validation, as documented. This behavior is by design for confi",
+     "tokens_in": 3683,
+     "tokens_out": 398,
+     "latency_ms": 50547
+    }
+   ]
+  },
+  {
+   "id": 67,
+   "run_id": 12,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/gcp.py",
+   "line_start": 318,
+   "line_end": 318,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect indentation leads to SyntaxError or misplaced return",
+   "explanation": "The `return GoogleSecretManagerMapping(...)` statement (line 318) is indented less than the preceding `assert` line, breaking the method block structure. Python will raise an `IndentationError` or the return will exit the wrong scope, causing the provider to malfunction.",
+   "suggested_fix": "        return GoogleSecretManagerMapping(\n            self._secret_client, project_id=self._project_id, case_sensitive=self.case_sensitive\n        )",
+   "verdict": "dropped",
+   "verdict_reason": "The return statement is properly aligned with the assert line inside the method, so there is no syntax or block error.",
+   "evidence": [
+    {
+     "why": "assert line is at same indentation as following return",
+     "line": 317,
+     "path": "pydantic_settings/sources/providers/gcp.py",
+     "quote": "assert self._project_id is not None and self._secret_client is not None"
+    },
+    {
+     "why": "return is indented correctly within method, no indentation error",
+     "line": 318,
+     "path": "pydantic_settings/sources/providers/gcp.py",
+     "quote": "return GoogleSecretManagerMapping("
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 119,
+     "finding_id": 67,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/providers/gcp.py",
+      "line_end": 330,
+      "line_start": 300
+     },
+     "result_chars": 1776,
+     "result_summary": "pydantic_settings/sources/providers/gcp.py, lines 300-330 of 338:\n  300                  'project_id is required to be specified either as an argument, via a previous '\n  301                  'settings source, or from google.auth.default. See '\n  302                  'https://google-auth.readthedocs",
+     "tokens_in": 2402,
+     "tokens_out": 93,
+     "latency_ms": 471
+    },
+    {
+     "id": 121,
+     "finding_id": 67,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The return statement is properly aligned with the assert line inside the method, so there is no syntax or block error.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "assert line is at same indentation as following return",
+        "line": 317,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "assert self._project_id is not None and self._secret_client is not None"
+       },
+       {
+        "why": "return is indented correctly within method, no indentation error",
+        "line": 318,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "return GoogleSecretManagerMapping("
+       }
+      ]
+     },
+     "result_chars": 127,
+     "result_summary": "dropped: The return statement is properly aligned with the assert line inside the method, so there is no syntax or block error.",
+     "tokens_in": 2911,
+     "tokens_out": 219,
+     "latency_ms": 56441
+    }
+   ]
+  },
+  {
+   "id": 68,
+   "run_id": 12,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/gcp.py",
+   "line_start": 317,
+   "line_end": 317,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Using assert after resolving project and credentials",
+   "explanation": "`assert` is typically used for debugging checks and may be stripped in optimized runs. The code relies on it to guarantee that project_id and secret_client are set before constructing the mapping. This could lead to silent failures in production.",
+   "suggested_fix": "Replace the assert with an explicit check and raise a more descriptive exception, e.g., `if self._project_id is None or self._secret_client is None: raise RuntimeError(\"...\")`",
+   "verdict": "confirmed",
+   "verdict_reason": "The added line relies on an assert statement for runtime validation, which may be stripped in optimized runs, making the code unsafe in production.",
+   "evidence": [
+    {
+     "why": "Uses assert to enforce non\u2011None values before constructing mapping; asserts can be disabled with -O, leading to silent failures",
+     "line": 317,
+     "path": "pydantic_settings/sources/providers/gcp.py",
+     "quote": "assert self._project_id is not None and self._secret_client is not None"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 123,
+     "finding_id": 68,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The added line relies on an assert statement for runtime validation, which may be stripped in optimized runs, making the code unsafe in production.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Uses assert to enforce non\u2011None values before constructing mapping; asserts can be disabled with -O, leading to silent failures",
+        "line": 317,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "assert self._project_id is not None and self._secret_client is not None"
+       }
+      ]
+     },
+     "result_chars": 158,
+     "result_summary": "confirmed: The added line relies on an assert statement for runtime validation, which may be stripped in optimized runs, making the code unsafe in production.",
+     "tokens_in": 2366,
+     "tokens_out": 269,
+     "latency_ms": 41987
+    }
+   ]
+  },
+  {
+   "id": 69,
+   "run_id": 12,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "docs/index.md",
+   "line_start": 2572,
+   "line_end": 2574,
+   "category": "readability",
+   "severity": "low",
+   "title": "Imprecise list item wording",
+   "explanation": "The list items describe precedence but lack a verb; e.g., \"the explicit `project_id` argument if it was passed\" reads awkwardly and can confuse readers.",
+   "suggested_fix": "Rephrase as \"1. The explicit `project_id` argument, if provided.\"",
+   "verdict": "confirmed",
+   "verdict_reason": "The listed items are phrased as noun phrases without verbs, matching the finding's claim of imprecise wording.",
+   "evidence": [
+    {
+     "why": "List item lacks a verb, making wording imprecise",
+     "line": 2572,
+     "path": "docs/index.md",
+     "quote": "1. the explicit `project_id` argument if it was passed"
+    },
+    {
+     "why": "List item is a noun phrase without a verb",
+     "line": 2573,
+     "path": "docs/index.md",
+     "quote": "2. the value resolved by a previous (higher priority) settings source - by default the `project_id` field, configurable via the `project_id_field` argument"
+    },
+    {
+     "why": "List item is just a reference, no verb",
+     "line": 2574,
+     "path": "docs/index.md",
+     "quote": "3. [`google.auth.default()`](https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.default)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 124,
+     "finding_id": 69,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The listed items are phrased as noun phrases without verbs, matching the finding's claim of imprecise wording.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "List item lacks a verb, making wording imprecise",
+        "line": 2572,
+        "path": "docs/index.md",
+        "quote": "1. the explicit `project_id` argument if it was passed"
+       },
+       {
+        "why": "List item is a noun phrase without a verb",
+        "line": 2573,
+        "path": "docs/index.md",
+        "quote": "2. the value resolved by a previous (higher priority) settings source - by default the `project_id` field, configurable via the `project_id_field` argument"
+       },
+       {
+        "why": "List item is just a reference, no verb",
+        "line": 2574,
+        "path": "docs/index.md",
+        "quote": "3. [`google.auth.default()`](https://google-auth.readthedocs.io/en/master/reference/google.auth.html#google.auth.default)"
+       }
+      ]
+     },
+     "result_chars": 121,
+     "result_summary": "confirmed: The listed items are phrased as noun phrases without verbs, matching the finding's claim of imprecise wording.",
+     "tokens_in": 2549,
+     "tokens_out": 354,
+     "latency_ms": 987
+    }
+   ]
+  },
+  {
+   "id": 70,
+   "run_id": 12,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "docs/index.md",
+   "line_start": 2578,
+   "line_end": 2579,
+   "category": "readability",
+   "severity": "low",
+   "title": "Potentially confusing alias description",
+   "explanation": "The sentence mixes model field names with alias terminology, which may be unclear to newcomers. Mentioning `validation_alias` without context can be confusing.",
+   "suggested_fix": "Add a brief explanation or example, e.g., \"`validation_alias` refers to the alias defined in the Pydantic field; use it when the alias is the key that previous settings sources provide.\"",
+   "verdict": "confirmed",
+   "verdict_reason": "The excerpt contains the described confusing sentence, confirming the readability issue.",
+   "evidence": [
+    {
+     "why": "The sentence mixes field name and alias terminology and mentions validation_alias without explanation, matching the finding's claim.",
+     "line": 2578,
+     "path": "docs/index.md",
+     "quote": "`project_id_field` matches a *model field name* (or its preferred alias when a `validation_alias` is set), not an environment variable name. If your settings model has `gcp_project: str = Field(alias='GCP_PROJECT')` and the project is provided via the `GCP_PROJECT` env var, set `project_id_field='GCP_PROJECT'` (the alias the earlier source uses as a key), not `'gcp_project'`."
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 125,
+     "finding_id": 70,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The excerpt contains the described confusing sentence, confirming the readability issue.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "The sentence mixes field name and alias terminology and mentions validation_alias without explanation, matching the finding's claim.",
+        "line": 2578,
+        "path": "docs/index.md",
+        "quote": "`project_id_field` matches a *model field name* (or its preferred alias when a `validation_alias` is set), not an environment variable name. If your settings model has `gcp_project: str = Field(alias='GCP_PROJECT')` and the project is provided via the `GCP_PROJECT` env var, set `project_id_field='GCP_PROJECT'` (the alias the earlier source uses as a key), not `'gcp_project'`."
+       }
+      ]
+     },
+     "result_chars": 99,
+     "result_summary": "confirmed: The excerpt contains the described confusing sentence, confirming the readability issue.",
+     "tokens_in": 2548,
+     "tokens_out": 472,
+     "latency_ms": 45096
+    }
+   ]
+  },
+  {
+   "id": 71,
+   "run_id": 12,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/gcp.py",
+   "line_start": 310,
+   "line_end": 314,
+   "category": "readability",
+   "severity": "low",
+   "title": "Ambiguous comment about deferred env vars loading",
+   "explanation": "The comment explains that the mapping is deferred until __call__, but the code returns an empty dict when not loaded. This can confuse readers who may think the mapping is empty rather than pending.",
+   "suggested_fix": "Add a comment clarifying that the empty dict is a placeholder and the real mapping is built in __call__ or change the method to return a lazy mapping.",
+   "verdict": "dropped",
+   "verdict_reason": "The comment accurately describes that the environment variable mapping is deferred until __call__, and the code returns an empty dict when not yet loaded, which is consistent and not misleading.",
+   "evidence": [
+    {
+     "why": "Comment explains deferral",
+     "line": 311,
+     "path": "pydantic_settings/sources/providers/gcp.py",
+     "quote": "# During __init__ the previous sources have not run yet, so defer building the"
+    },
+    {
+     "why": "Continues explanation of deferral",
+     "line": 312,
+     "path": "pydantic_settings/sources/providers/gcp.py",
+     "quote": "# mapping until __call__, where current_state (and thus project_id) is available."
+    },
+    {
+     "why": "Guard that checks if loading deferred",
+     "line": 313,
+     "path": "pydantic_settings/sources/providers/gcp.py",
+     "quote": "if not self._env_vars_loaded:"
+    },
+    {
+     "why": "Returns empty dict when not yet loaded, matching comment",
+     "line": 314,
+     "path": "pydantic_settings/sources/providers/gcp.py",
+     "quote": "return {}"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 127,
+     "finding_id": 71,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The comment accurately describes that the environment variable mapping is deferred until __call__, and the code returns an empty dict when not yet loaded, which is consistent and not misleading.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Comment explains deferral",
+        "line": 311,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "# During __init__ the previous sources have not run yet, so defer building the"
+       },
+       {
+        "why": "Continues explanation of deferral",
+        "line": 312,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "# mapping until __call__, where current_state (and thus project_id) is available."
+       },
+       {
+        "why": "Guard that checks if loading deferred",
+        "line": 313,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "if not self._env_vars_loaded:"
+       },
+       {
+        "why": "Returns empty dict when not yet loaded, matching comment",
+        "line": 314,
+        "path": "pydantic_settings/sources/providers/gcp.py",
+        "quote": "return {}"
+       }
+      ]
+     },
+     "result_chars": 203,
+     "result_summary": "dropped: The comment accurately describes that the environment variable mapping is deferred until __call__, and the code returns an empty dict when not yet loaded, which is consistent and not misleading.",
+     "tokens_in": 2444,
+     "tokens_out": 422,
+     "latency_ms": 50237
+    }
+   ]
+  },
+  {
+   "id": 72,
+   "run_id": 12,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_source_gcp_secret_manager.py",
+   "line_start": 300,
+   "line_end": 305,
+   "category": "readability",
+   "severity": "high",
+   "title": "Missing expected settings source in customisation",
+   "explanation": "The custom source tuple omits the GoogleSecretManagerSettingsSource that is instantiated on line 300, making the function return incomplete settings sources and likely confusing future readers about intended behavior.",
+   "suggested_fix": "Add the missing source to the returned tuple, e.g. return (init_settings, env_settings, dotenv_settings, google_secret_manager_settings, file_secret_settings).",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-19T15:14:03Z",
+ "review": {
+  "id": 5977814310,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/5#pullrequestreview-5977814310",
+  "submitted_at": "2026-11-19T15:20:00Z",
+  "body": "<!-- pr-review-agent run:12 -->\n### Automated review of `6f67fec`\nNo confirmed issues found. 3 style suggestion(s) below.\nReviewed 3 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 3 confirmed, 2 dropped, 1 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0108 at list prices (free tier; agent $0.0051); 0 of 15 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 3</summary>\n\n- `pydantic_settings/sources/providers/gcp.py:317` Using assert after resolving project and credentials: `assert` is typically used for debugging checks and may be stripped in optimized runs. The code relies on it to guarantee that project_id and secret_client are set before constructing the mapping. This could lead to silent failures in production.\n- `docs/index.md:2572` Imprecise list item wording: The list items describe precedence but lack a verb; e.g., \"the explicit `project_id` argument if it was passed\" reads awkwardly and can confuse readers.\n- `docs/index.md:2578` Potentially confusing alias description: The sentence mixes model field names with alias terminology, which may be unclear to newcomers. Mentioning `validation_alias` without context can be confusing.\n\n</details>\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `pydantic_settings/sources/providers/gcp.py:280` **high** Unvalidated project_id from prior settings can lead to unauthorized secret access \u2014 dropped without evidence from code it read (the quote for pydantic_settings/sources/providers/gcp.py:273 isn't on that line): The code deliberately falls back to a project_id obtained from previous settings without additional validation, as documented. This behavior is by design for configurability, not an unchecked security flaw, so the finding is dropped.\n\n</details>"
+ },
+ "comments": []
+}

@@ -1,0 +1,502 @@
+{
+ "k": 11,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 2949,
+  "replay_sha": "eada435ae41ad50fd8f8fdb59bf7b56dd73c5f67",
+  "merge_base_sha": "739321d719db5b6e3fff9ccca9a2ccc7c2e07f18"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 6,
+  "url": "https://github.com/amn-00/starlette/pull/6",
+  "head_sha": "727bfc70950bb53a2398347bcaa6c91e5fb6b414"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 13,
+  "pr_id": 13,
+  "head_sha": "727bfc70950bb53a2398347bcaa6c91e5fb6b414",
+  "status": "completed",
+  "started_at": "2026-11-19 15:20:27.800595+00:00",
+  "finished_at": "2026-11-19 15:27:39.315806+00:00",
+  "tokens_in": 61534,
+  "tokens_out": 5049,
+  "cost_usd": "0.010876500",
+  "llm_calls": 38,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5977954251
+ },
+ "findings": [
+  {
+   "id": 73,
+   "run_id": 13,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/exceptions.py",
+   "line_start": 22,
+   "line_end": 22,
+   "category": "security",
+   "severity": "medium",
+   "title": "Unvalidated exception handlers may allow execution of attacker-controlled code",
+   "explanation": "The constructor now accepts a Mapping of arbitrary keys to ExceptionHandler callables without validation. If an attacker can supply a handler, they could execute malicious code when an exception occurs.",
+   "suggested_fix": "Validate or restrict the supplied handlers to trusted callables, or document that handlers must be from trusted sources.",
+   "verdict": "confirmed",
+   "verdict_reason": "The middleware now accepts an arbitrary mapping of exception handlers and adds them without validating the handler callables, allowing attacker-controlled code to be executed when an exception occurs.",
+   "evidence": [
+    {
+     "why": "Constructor accepts arbitrary mapping of handlers without validation",
+     "line": 22,
+     "path": "starlette/middleware/exceptions.py",
+     "quote": "handlers: Mapping[Any, ExceptionHandler] | None = None,"
+    },
+    {
+     "why": "Iterates over provided handlers",
+     "line": 33,
+     "path": "starlette/middleware/exceptions.py",
+     "quote": "for key, value in handlers.items():"
+    },
+    {
+     "why": "Adds each handler without checking its safety",
+     "line": 34,
+     "path": "starlette/middleware/exceptions.py",
+     "quote": "self.add_exception_handler(key, value)"
+    },
+    {
+     "why": "Only validates key type, not the handler itself",
+     "line": 44,
+     "path": "starlette/middleware/exceptions.py",
+     "quote": "assert issubclass(exc_class_or_status_code, Exception)"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 130,
+     "finding_id": 73,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class ExceptionMiddleware"
+     },
+     "result_chars": 111,
+     "result_summary": "Lines containing 'class ExceptionMiddleware':\nstarlette/middleware/exceptions.py:18: class ExceptionMiddleware:",
+     "tokens_in": 2234,
+     "tokens_out": 116,
+     "latency_ms": 680
+    },
+    {
+     "id": 131,
+     "finding_id": 73,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/middleware/exceptions.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 2496,
+     "result_summary": "starlette/middleware/exceptions.py, lines 1-73 of 73:\n    1  from __future__ import annotations\n    2  \n    3  from collections.abc import Mapping\n    4  from typing import Any\n    5  \n    6  from starlette._exception_handler import (\n    7      ExceptionHandlers,\n    8      StatusHandlers,\n    9   ",
+     "tokens_in": 2319,
+     "tokens_out": 52,
+     "latency_ms": 49585
+    },
+    {
+     "id": 134,
+     "finding_id": 73,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The middleware now accepts an arbitrary mapping of exception handlers and adds them without validating the handler callables, allowing attacker-controlled code to be executed when an exception occurs.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Constructor accepts arbitrary mapping of handlers without validation",
+        "line": 22,
+        "path": "starlette/middleware/exceptions.py",
+        "quote": "handlers: Mapping[Any, ExceptionHandler] | None = None,"
+       },
+       {
+        "why": "Iterates over provided handlers",
+        "line": 33,
+        "path": "starlette/middleware/exceptions.py",
+        "quote": "for key, value in handlers.items():"
+       },
+       {
+        "why": "Adds each handler without checking its safety",
+        "line": 34,
+        "path": "starlette/middleware/exceptions.py",
+        "quote": "self.add_exception_handler(key, value)"
+       },
+       {
+        "why": "Only validates key type, not the handler itself",
+        "line": 44,
+        "path": "starlette/middleware/exceptions.py",
+        "quote": "assert issubclass(exc_class_or_status_code, Exception)"
+       }
+      ]
+     },
+     "result_chars": 211,
+     "result_summary": "confirmed: The middleware now accepts an arbitrary mapping of exception handlers and adds them without validating the handler callables, allowing attacker-controlled code to be executed when an exception occurs.",
+     "tokens_in": 3038,
+     "tokens_out": 461,
+     "latency_ms": 40033
+    }
+   ]
+  },
+  {
+   "id": 74,
+   "run_id": 13,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/routing.py",
+   "line_start": 68,
+   "line_end": 68,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Unclear function name for async check",
+   "explanation": "The code uses an undefined helper `is_async_callable` to determine if `func` is async, which is not imported or defined in the snippet. Future readers may be confused about its origin and behavior.",
+   "suggested_fix": "Import or define the helper, e.g. `from starlette.utils import is_async_callable` or replace with `inspect.iscoroutinefunction(func)` if appropriate.",
+   "verdict": "uncertain",
+   "verdict_reason": "agent error: Groq 400: {\"error\":{\"message\":\"Failed to generate JSON. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"json_validate_failed\",\"failed_gener",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 129,
+     "finding_id": 74,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def is_async_callable"
+     },
+     "result_chars": 310,
+     "result_summary": "Lines containing 'def is_async_callable':\nstarlette/_utils.py:29: def is_async_callable(obj: AwaitableCallable[T]) -> TypeIs[AwaitableCallable[T]]: ...\nstarlette/_utils.py:33: def is_async_callable(obj: Any) -> TypeIs[AwaitableCallable[Any]]: ...\nstarlette/_utils.py:36: def is_async_callable(obj: An",
+     "tokens_in": 2220,
+     "tokens_out": 46,
+     "latency_ms": 581
+    },
+    {
+     "id": 132,
+     "finding_id": 74,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "import is_async_callable"
+     },
+     "result_chars": 509,
+     "result_summary": "Lines containing 'import is_async_callable':\nstarlette/_exception_handler.py:5: from starlette._utils import is_async_callable\nstarlette/authentication.py:15: from starlette._utils import is_async_callable\nstarlette/background.py:12: from starlette._utils import is_async_callable\nstarlette/endpoints",
+     "tokens_in": 2367,
+     "tokens_out": 43,
+     "latency_ms": 49777
+    },
+    {
+     "id": 133,
+     "finding_id": 74,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 38476
+    },
+    {
+     "id": 136,
+     "finding_id": 74,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 46131
+    }
+   ]
+  },
+  {
+   "id": 75,
+   "run_id": 13,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_exceptions.py",
+   "line_start": 51,
+   "line_end": 56,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Catch-all handlers raise NotImplementedError instead of returning a response",
+   "explanation": "The newly added async_catch_all_handler and sync_catch_all_handler are registered to handle any Exception, but they raise NotImplementedError rather than returning a JSONResponse. When an exception occurs, the middleware will invoke these handlers, resulting in another exception and a 500 error instead of the intended custom handling.",
+   "suggested_fix": "Return an appropriate JSONResponse (or other response) instead of raising NotImplementedError, e.g.,\n```python\nasync def async_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:\n    return JSONResponse(status_code=500, content={\"detail\": str(exc)})\n\ndef sync_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:\n    return JSONResponse(status_code=500, content={\"detail\": str(exc)})\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The catch\u2011all exception handlers are registered but they raise NotImplementedError instead of returning a response, so any exception will trigger another exception leading to a 500 error.",
+   "evidence": [
+    {
+     "why": "Defines async handler for all exceptions",
+     "line": 51,
+     "path": "tests/test_exceptions.py",
+     "quote": "async def async_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:"
+    },
+    {
+     "why": "Handler raises NotImplementedError instead of returning response",
+     "line": 52,
+     "path": "tests/test_exceptions.py",
+     "quote": "raise NotImplementedError"
+    },
+    {
+     "why": "Defines sync handler for all exceptions",
+     "line": 55,
+     "path": "tests/test_exceptions.py",
+     "quote": "def sync_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:"
+    },
+    {
+     "why": "Sync handler also raises NotImplementedError",
+     "line": 56,
+     "path": "tests/test_exceptions.py",
+     "quote": "raise NotImplementedError"
+    },
+    {
+     "why": "Registers the async handler as catch-all, causing the raised NotImplementedError to be invoked on any exception",
+     "line": 86,
+     "path": "tests/test_exceptions.py",
+     "quote": "async_catch_all = ExceptionMiddleware(router, handlers={Exception: async_catch_all_handler})"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 135,
+     "finding_id": 75,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "async_catch_all_handler"
+     },
+     "result_chars": 279,
+     "result_summary": "Lines containing 'async_catch_all_handler':\ntests/test_exceptions.py:51: async def async_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:\ntests/test_exceptions.py:86: async_catch_all = ExceptionMiddleware(router, handlers={Exception: async_catch_all_handler})",
+     "tokens_in": 2325,
+     "tokens_out": 44,
+     "latency_ms": 561
+    },
+    {
+     "id": 137,
+     "finding_id": 75,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_exceptions.py",
+      "line_end": 100,
+      "line_start": 80
+     },
+     "result_chars": 863,
+     "result_summary": "tests/test_exceptions.py, lines 80-100 of 218:\n   80  app = ExceptionMiddleware(\n   81      router,\n   82      handlers={BadBodyException: handler_that_reads_body},  # type: ignore[dict-item]\n   83  )\n   84  \n   85  sync_catch_all = ExceptionMiddleware(router, handlers={Exception: sync_catch_all_han",
+     "tokens_in": 2446,
+     "tokens_out": 50,
+     "latency_ms": 54015
+    },
+    {
+     "id": 140,
+     "finding_id": 75,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 56758
+    },
+    {
+     "id": 142,
+     "finding_id": 75,
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The catch\u2011all exception handlers are registered but they raise NotImplementedError instead of returning a response, so any exception will trigger another exception leading to a 500 error.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Defines async handler for all exceptions",
+        "line": 51,
+        "path": "tests/test_exceptions.py",
+        "quote": "async def async_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:"
+       },
+       {
+        "why": "Handler raises NotImplementedError instead of returning response",
+        "line": 52,
+        "path": "tests/test_exceptions.py",
+        "quote": "raise NotImplementedError"
+       },
+       {
+        "why": "Defines sync handler for all exceptions",
+        "line": 55,
+        "path": "tests/test_exceptions.py",
+        "quote": "def sync_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:"
+       },
+       {
+        "why": "Sync handler also raises NotImplementedError",
+        "line": 56,
+        "path": "tests/test_exceptions.py",
+        "quote": "raise NotImplementedError"
+       },
+       {
+        "why": "Registers the async handler as catch-all, causing the raised NotImplementedError to be invoked on any exception",
+        "line": 86,
+        "path": "tests/test_exceptions.py",
+        "quote": "async_catch_all = ExceptionMiddleware(router, handlers={Exception: async_catch_all_handler})"
+       }
+      ]
+     },
+     "result_chars": 198,
+     "result_summary": "confirmed: The catch\u2011all exception handlers are registered but they raise NotImplementedError instead of returning a response, so any exception will trigger another exception leading to a 500 error.",
+     "tokens_in": 2759,
+     "tokens_out": 389,
+     "latency_ms": 41560
+    }
+   ]
+  },
+  {
+   "id": 76,
+   "run_id": 13,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/_exception_handler.py",
+   "line_start": 61,
+   "line_end": 61,
+   "category": "readability",
+   "severity": "low",
+   "title": "Missing explanation for thread\u2011pool handling of sync handlers",
+   "explanation": "The added line dispatches a sync handler via run_in_threadpool, but the surrounding code offers no comment explaining why this special case is needed, making it harder for future maintainers to understand the intent.",
+   "suggested_fix": "Add a short comment such as: \"# Run sync handlers in a threadpool to avoid blocking the event loop.\"",
+   "verdict": "confirmed",
+   "verdict_reason": "The added line invokes run_in_threadpool for sync handlers but there is no comment explaining this special case, matching the finding's claim.",
+   "evidence": [
+    {
+     "why": "Line adds call without any explanatory comment",
+     "line": 61,
+     "path": "starlette/_exception_handler.py",
+     "quote": "response = await run_in_threadpool(handler, conn, exc)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 138,
+     "finding_id": 76,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/_exception_handler.py",
+      "line_end": 65,
+      "line_start": 55
+     },
+     "result_chars": 565,
+     "result_summary": "starlette/_exception_handler.py, lines 55-65 of 65:\n   55              if response_started:\n   56                  raise RuntimeError(\"Caught handled exception, but response already started.\") from exc\n   57  \n   58              if is_async_callable(handler):\n   59                  response = await ",
+     "tokens_in": 2019,
+     "tokens_out": 91,
+     "latency_ms": 45472
+    },
+    {
+     "id": 139,
+     "finding_id": 76,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "run_in_threadpool"
+     },
+     "result_chars": 1405,
+     "result_summary": "Lines containing 'run_in_threadpool':\ndocs/release-notes.md:315: * Use `ParamSpec` for `run_in_threadpool` [#2375](https://github.com/encode/starlette/pull/2375).\ndocs/release-notes.md:969: * Add `starlette.concurrency.run_in_threadpool`. Now handles `contextvar` support.\nstarlette/_exception_handle",
+     "tokens_in": 2223,
+     "tokens_out": 46,
+     "latency_ms": 481
+    },
+    {
+     "id": 141,
+     "finding_id": 76,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The added line invokes run_in_threadpool for sync handlers but there is no comment explaining this special case, matching the finding's claim.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Line adds call without any explanatory comment",
+        "line": 61,
+        "path": "starlette/_exception_handler.py",
+        "quote": "response = await run_in_threadpool(handler, conn, exc)"
+       }
+      ]
+     },
+     "result_chars": 171,
+     "result_summary": "called as 'json': confirmed: The added line invokes run_in_threadpool for sync handlers but there is no comment explaining this special case, matching the finding's claim.",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 53372
+    }
+   ]
+  },
+  {
+   "id": 77,
+   "run_id": 13,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/routing.py",
+   "line_start": 74,
+   "line_end": 74,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Shadowed inner function name",
+   "explanation": "An inner function named `app` shadows the outer `app` defined earlier, making the code harder to follow and potentially confusing when debugging. Renaming the inner function clarifies intent.",
+   "suggested_fix": "Rename the inner function to something like `inner_app` or `response_app`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-19T15:20:23Z",
+ "review": {
+  "id": 5977954251,
+  "url": "https://github.com/amn-00/starlette/pull/6#pullrequestreview-5977954251",
+  "submitted_at": "2026-11-19T15:27:38Z",
+  "body": "<!-- pr-review-agent run:13 -->\n### Automated review of `727bfc7`\nFound 2 confirmed issue(s): 2 medium. 1 style suggestion(s) below.\nReviewed 7 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 3 confirmed, 0 dropped, 1 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0109 at list prices (free tier; agent $0.0044); 0 of 24 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `starlette/_exception_handler.py:61` Missing explanation for thread\u2011pool handling of sync handlers: The added line dispatches a sync handler via run_in_threadpool, but the surrounding code offers no comment explaining why this special case is needed, making it harder for future maintainers to understand the intent.\n\n</details>\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `starlette/routing.py:68` **medium** Unclear function name for async check \u2014 agent error: Groq 400: {\"error\":{\"message\":\"Failed to generate JSON. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"json_validate_failed\",\"failed_gener\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4630912292,
+   "url": "https://github.com/amn-00/starlette/pull/6#discussion_r4630912292",
+   "file": "starlette/middleware/exceptions.py",
+   "line": 22,
+   "start_line": 22,
+   "body": "**medium** \u00b7 security \u00b7 Unvalidated exception handlers may allow execution of attacker-controlled code\n\nThe constructor now accepts a Mapping of arbitrary keys to ExceptionHandler callables without validation. If an attacker can supply a handler, they could execute malicious code when an exception occurs.\n\n**Suggested fix:** Validate or restrict the supplied handlers to trusted callables, or document that handlers must be from trusted sources.\n\n_Checked against `starlette/middleware/exceptions.py:22`, `starlette/middleware/exceptions.py:33`, `starlette/middleware/exceptions.py:34`_"
+  },
+  {
+   "id": 4630912305,
+   "url": "https://github.com/amn-00/starlette/pull/6#discussion_r4630912305",
+   "file": "tests/test_exceptions.py",
+   "line": 56,
+   "start_line": 51,
+   "body": "**medium** \u00b7 bug \u00b7 Catch-all handlers raise NotImplementedError instead of returning a response\n\nThe newly added async_catch_all_handler and sync_catch_all_handler are registered to handle any Exception, but they raise NotImplementedError rather than returning a JSONResponse. When an exception occurs, the middleware will invoke these handlers, resulting in another exception and a 500 error instead of the intended custom handling.\n\n**Suggested fix:** Return an appropriate JSONResponse (or other response) instead of raising NotImplementedError, e.g.,\n```python\nasync def async_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:\n    return JSONResponse(status_code=500, content={\"detail\": str(exc)})\n\ndef sync_catch_all_handler(request: Request, exc: Exception) -> JSONResponse:\n    return JSONResponse(status_code=500, content={\"detail\": str(exc)})\n```\n\n_Checked against `tests/test_exceptions.py:51`, `tests/test_exceptions.py:52`, `tests/test_exceptions.py:55`_"
+  }
+ ]
+}
