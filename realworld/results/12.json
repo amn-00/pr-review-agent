@@ -1,0 +1,501 @@
+{
+ "k": 12,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 680,
+  "replay_sha": "81cff9d8abeacd37ba264dadf6b62dc4547aab63",
+  "merge_base_sha": "9c6c9b55e27ab78e48eaa570965c6e52c32c9f38"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 6,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/6",
+  "head_sha": "fb916924c4d5c5802842725ca29b8b0742b3336c"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 14,
+  "pr_id": 14,
+  "head_sha": "fb916924c4d5c5802842725ca29b8b0742b3336c",
+  "status": "completed",
+  "started_at": "2026-11-20 13:08:58.815170+00:00",
+  "finished_at": "2026-11-20 13:13:46.828227+00:00",
+  "tokens_in": 45545,
+  "tokens_out": 4003,
+  "cost_usd": "0.008506425",
+  "llm_calls": 22,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5993246106
+ },
+ "findings": [
+  {
+   "id": 78,
+   "run_id": 14,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/azure.py",
+   "line_start": 108,
+   "line_end": 108,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect field info extraction overrides field name",
+   "explanation": "The overridden _extract_field_info replaces the original field name with the environment variable name for both positions, which can break mapping of settings fields to their values. This may cause settings to be populated with wrong keys or miss values.",
+   "suggested_fix": "Preserve the original field name when constructing the tuple, e.g., `return list((x[0], field_name, x[2]) for x in super()._extract_field_info(field, field_name))`.",
+   "verdict": "uncertain",
+   "verdict_reason": "The change makes _extract_field_info return tuples where the field name is replaced by the environment variable name, matching the finding\u2019s claim, but without reviewing the base implementation we cannot confirm this breaks functionality or is mitigated elsewhere.",
+   "evidence": [
+    {
+     "why": "Shows the overridden method replaces the second element (original field name) with x[0] (env var name)",
+     "line": 108,
+     "path": "pydantic_settings/sources/providers/azure.py",
+     "quote": "return list((x[0], x[0], x[2]) for x in super()._extract_field_info(field, field_name))"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 143,
+     "finding_id": 78,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class .*SettingsSource"
+     },
+     "result_chars": 54,
+     "result_summary": "Lines containing 'class .*SettingsSource': no matches.",
+     "tokens_in": 2154,
+     "tokens_out": 47,
+     "latency_ms": 452
+    },
+    {
+     "id": 144,
+     "finding_id": 78,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_extract_field_info"
+     },
+     "result_chars": 1226,
+     "result_summary": "Lines containing '_extract_field_info':\npydantic_settings/sources/base.py:321: def _extract_field_info(self, field: FieldInfo, field_name: str) -> list[tuple[str, str, bool]]:\npydantic_settings/sources/base.py:478: field_infos = self._extract_field_info(field, field_name)\npydantic_settings/sources/p",
+     "tokens_in": 2226,
+     "tokens_out": 44,
+     "latency_ms": 48108
+    },
+    {
+     "id": 146,
+     "finding_id": 78,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 514
+    },
+    {
+     "id": 149,
+     "finding_id": 78,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'read_file' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"read_file\\\", \\\"arguments\\\"",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 40086
+    },
+    {
+     "id": 151,
+     "finding_id": 78,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The change makes _extract_field_info return tuples where the field name is replaced by the environment variable name, matching the finding\u2019s claim, but without reviewing the base implementation we cannot confirm this breaks functionality or is mitigated elsewhere.",
+      "verdict": "uncertain",
+      "evidence": [
+       {
+        "why": "Shows the overridden method replaces the second element (original field name) with x[0] (env var name)",
+        "line": 108,
+        "path": "pydantic_settings/sources/providers/azure.py",
+        "quote": "return list((x[0], x[0], x[2]) for x in super()._extract_field_info(field, field_name))"
+       }
+      ]
+     },
+     "result_chars": 275,
+     "result_summary": "uncertain: The change makes _extract_field_info return tuples where the field name is replaced by the environment variable name, matching the finding\u2019s claim, but without reviewing the base implementation we cannot confirm this breaks functionality or is mitigated elsewhere.",
+     "tokens_in": 2403,
+     "tokens_out": 199,
+     "latency_ms": 60549
+    }
+   ]
+  },
+  {
+   "id": 79,
+   "run_id": 14,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_source_azure_key_vault.py",
+   "line_start": 167,
+   "line_end": 171,
+   "category": "bug",
+   "severity": "high",
+   "title": "Indentation errors in test class definitions cause SyntaxError",
+   "explanation": "The added lines defining `AzureKeyVaultSettings` and its fields have inconsistent indentation (mix of spaces and misaligned blocks). Python will raise an IndentationError when parsing the test file, preventing the tests from running.",
+   "suggested_fix": "Align the class and field definitions with proper indentation, e.g.:\n\n```python\nclass AzureKeyVaultSettings(BaseSettings):\n    my_field: str\n    alias_field: str = Field(alias='Secret-Alias')\n    alias_field_2: str = Field(alias='another-SECRET-AliaS')\n    nested_model: NestedModel\n```",
+   "verdict": "dropped",
+   "verdict_reason": "The lines defining AzureKeyVaultSettings and its fields are uniformly indented with spaces; there is no mixed or misaligned indentation that would cause an IndentationError.",
+   "evidence": [
+    {
+     "why": "Method definition aligned with class indentation",
+     "line": 161,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "def test_snake_case_translation(self, mocker: MockerFixture) -> None:"
+    },
+    {
+     "why": "Nested class indented correctly under method",
+     "line": 164,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "class NestedModel(BaseModel):"
+    },
+    {
+     "why": "Class definition aligned with other top-level definitions",
+     "line": 167,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "class AzureKeyVaultSettings(BaseSettings):"
+    },
+    {
+     "why": "Field line indented consistently",
+     "line": 168,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "my_field: str"
+    },
+    {
+     "why": "Consistent indentation, no mix of spaces/tabs",
+     "line": 169,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "alias_field: str = Field(alias='Secret-Alias')"
+    },
+    {
+     "why": "Consistent indentation",
+     "line": 170,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "alias_field_2: str = Field(alias='another-SECRET-AliaS')"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 145,
+     "finding_id": 79,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_source_azure_key_vault.py",
+      "line_end": 180,
+      "line_start": 150
+     },
+     "result_chars": 1534,
+     "result_summary": "tests/test_source_azure_key_vault.py, lines 150-180 of 212:\n  150          assert settings.sql_server.password == expected_secret_value\n  151  \n  152      def _raise_resource_not_found_when_getting_parent_secret_name(self, secret_name: str):\n  153          expected_secret_value = 'SecretValue'\n  154",
+     "tokens_in": 2305,
+     "tokens_out": 140,
+     "latency_ms": 49200
+    },
+    {
+     "id": 147,
+     "finding_id": 79,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The lines defining AzureKeyVaultSettings and its fields are uniformly indented with spaces; there is no mixed or misaligned indentation that would cause an IndentationError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Method definition aligned with class indentation",
+        "line": 161,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "def test_snake_case_translation(self, mocker: MockerFixture) -> None:"
+       },
+       {
+        "why": "Nested class indented correctly under method",
+        "line": 164,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "class NestedModel(BaseModel):"
+       },
+       {
+        "why": "Class definition aligned with other top-level definitions",
+        "line": 167,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "class AzureKeyVaultSettings(BaseSettings):"
+       },
+       {
+        "why": "Field line indented consistently",
+        "line": 168,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "my_field: str"
+       },
+       {
+        "why": "Consistent indentation, no mix of spaces/tabs",
+        "line": 169,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "alias_field: str = Field(alias='Secret-Alias')"
+       },
+       {
+        "why": "Consistent indentation",
+        "line": 170,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "alias_field_2: str = Field(alias='another-SECRET-AliaS')"
+       }
+      ]
+     },
+     "result_chars": 182,
+     "result_summary": "dropped: The lines defining AzureKeyVaultSettings and its fields are uniformly indented with spaces; there is no mixed or misaligned indentation that would cause an IndentationError.",
+     "tokens_in": 2750,
+     "tokens_out": 427,
+     "latency_ms": 37683
+    }
+   ]
+  },
+  {
+   "id": 80,
+   "run_id": 14,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_source_azure_key_vault.py",
+   "line_start": 211,
+   "line_end": 211,
+   "category": "bug",
+   "severity": "high",
+   "title": "AttributeError risk for undefined alias_field_2",
+   "explanation": "The test asserts that `settings.alias_field_2` exists, but the `AzureKeyVaultSettings` class does not define this attribute, causing an AttributeError and test failure.",
+   "suggested_fix": "Add a definition for `alias_field_2` in `AzureKeyVaultSettings` (e.g., a field or alias mapping) so the attribute is populated from the secret store.",
+   "verdict": "dropped",
+   "verdict_reason": "The test accesses settings.alias_field_2, and the AzureKeyVaultSettings class in the test file defines alias_field_2 as a field, so no AttributeError will occur.",
+   "evidence": [
+    {
+     "why": "class defines alias_field_2 attribute",
+     "line": 170,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "alias_field_2: str = Field(alias='another-SECRET-AliaS')"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 148,
+     "finding_id": 80,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class AzureKeyVaultSettings"
+     },
+     "result_chars": 698,
+     "result_summary": "Lines containing 'class AzureKeyVaultSettings':\ndocs/index.md:1945: class AzureKeyVaultSettings(BaseSettings):\ndocs/index.md:1992: class AzureKeyVaultSettings(BaseSettings):\npydantic_settings/sources/providers/azure.py:77: class AzureKeyVaultSettingsSource(EnvSettingsSource):\ntests/test_source_azure",
+     "tokens_in": 2027,
+     "tokens_out": 39,
+     "latency_ms": 396
+    },
+    {
+     "id": 150,
+     "finding_id": 80,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_source_azure_key_vault.py",
+      "line_end": 190,
+      "line_start": 150
+     },
+     "result_chars": 1958,
+     "result_summary": "tests/test_source_azure_key_vault.py, lines 150-190 of 212:\n  150          assert settings.sql_server.password == expected_secret_value\n  151  \n  152      def _raise_resource_not_found_when_getting_parent_secret_name(self, secret_name: str):\n  153          expected_secret_value = 'SecretValue'\n  154",
+     "tokens_in": 2256,
+     "tokens_out": 53,
+     "latency_ms": 41132
+    },
+    {
+     "id": 153,
+     "finding_id": 80,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The test accesses settings.alias_field_2, and the AzureKeyVaultSettings class in the test file defines alias_field_2 as a field, so no AttributeError will occur.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "class defines alias_field_2 attribute",
+        "line": 170,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "alias_field_2: str = Field(alias='another-SECRET-AliaS')"
+       }
+      ]
+     },
+     "result_chars": 170,
+     "result_summary": "dropped: The test accesses settings.alias_field_2, and the AzureKeyVaultSettings class in the test file defines alias_field_2 as a field, so no AttributeError will occur.",
+     "tokens_in": 2781,
+     "tokens_out": 163,
+     "latency_ms": 40376
+    }
+   ]
+  },
+  {
+   "id": 81,
+   "run_id": 14,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_source_azure_key_vault.py",
+   "line_start": 212,
+   "line_end": 212,
+   "category": "bug",
+   "severity": "high",
+   "title": "AttributeError risk for undefined nested_model.nested_field",
+   "explanation": "The test accesses `settings.nested_model.nested_field`, but `nested_model` (and its `nested_field`) are not defined in `AzureKeyVaultSettings`, leading to an AttributeError at runtime.",
+   "suggested_fix": "Define a `nested_model` attribute with a `nested_field` in `AzureKeyVaultSettings`, possibly using a nested pydantic model that maps to the secret value.",
+   "verdict": "dropped",
+   "verdict_reason": "The test defines a NestedModel with a nested_field and declares a nested_model field of that type in AzureKeyVaultSettings, so settings.nested_model.nested_field is valid and will not raise AttributeError.",
+   "evidence": [
+    {
+     "why": "Defines nested model type",
+     "line": 164,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "class NestedModel(BaseModel):"
+    },
+    {
+     "why": "Nested model has nested_field attribute",
+     "line": 165,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "nested_field: str"
+    },
+    {
+     "why": "Settings class declares nested_model field",
+     "line": 167,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "class AzureKeyVaultSettings(BaseSettings):"
+    },
+    {
+     "why": "Settings includes nested_model, so attribute exists",
+     "line": 171,
+     "path": "tests/test_source_azure_key_vault.py",
+     "quote": "nested_model: NestedModel"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 152,
+     "finding_id": 81,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class AzureKeyVaultSettings"
+     },
+     "result_chars": 698,
+     "result_summary": "Lines containing 'class AzureKeyVaultSettings':\ndocs/index.md:1945: class AzureKeyVaultSettings(BaseSettings):\ndocs/index.md:1992: class AzureKeyVaultSettings(BaseSettings):\npydantic_settings/sources/providers/azure.py:77: class AzureKeyVaultSettingsSource(EnvSettingsSource):\ntests/test_source_azure",
+     "tokens_in": 2032,
+     "tokens_out": 38,
+     "latency_ms": 408
+    },
+    {
+     "id": 154,
+     "finding_id": 81,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_source_azure_key_vault.py",
+      "line_end": 230,
+      "line_start": 150
+     },
+     "result_chars": 2401,
+     "result_summary": "tests/test_source_azure_key_vault.py, lines 150-212 of 212:\n  150          assert settings.sql_server.password == expected_secret_value\n  151  \n  152      def _raise_resource_not_found_when_getting_parent_secret_name(self, secret_name: str):\n  153          expected_secret_value = 'SecretValue'\n  154",
+     "tokens_in": 2261,
+     "tokens_out": 45,
+     "latency_ms": 51655
+    },
+    {
+     "id": 155,
+     "finding_id": 81,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The test defines a NestedModel with a nested_field and declares a nested_model field of that type in AzureKeyVaultSettings, so settings.nested_model.nested_field is valid and will not raise AttributeError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Defines nested model type",
+        "line": 164,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "class NestedModel(BaseModel):"
+       },
+       {
+        "why": "Nested model has nested_field attribute",
+        "line": 165,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "nested_field: str"
+       },
+       {
+        "why": "Settings class declares nested_model field",
+        "line": 167,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "class AzureKeyVaultSettings(BaseSettings):"
+       },
+       {
+        "why": "Settings includes nested_model, so attribute exists",
+        "line": 171,
+        "path": "tests/test_source_azure_key_vault.py",
+        "quote": "nested_model: NestedModel"
+       }
+      ]
+     },
+     "result_chars": 214,
+     "result_summary": "dropped: The test defines a NestedModel with a nested_field and declares a nested_model field of that type in AzureKeyVaultSettings, so settings.nested_model.nested_field is valid and will not raise AttributeError.",
+     "tokens_in": 2906,
+     "tokens_out": 388,
+     "latency_ms": 1213
+    }
+   ]
+  },
+  {
+   "id": 82,
+   "run_id": 14,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/azure.py",
+   "line_start": 108,
+   "line_end": 108,
+   "category": "readability",
+   "severity": "low",
+   "title": "Ambiguous tuple construction in _extract_field_info",
+   "explanation": "The comprehension uses `x[0]` twice to construct a tuple `(x[0], x[0], x[2])`. This duplication is confusing and makes it hard to understand what the tuple elements represent. It also obscures the intent of the returned data structure, potentially leading to maintenance errors.",
+   "suggested_fix": "Rename the tuple elements with meaningful names or use a namedtuple/class to clarify the structure, e.g. `return [(name, name, is_sensitive) for name, _, is_sensitive in super()._extract_field_info(field, field_name)]`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 78,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-20T13:05:50Z",
+ "review": {
+  "id": 5993246106,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/6#pullrequestreview-5993246106",
+  "submitted_at": "2026-11-20T13:13:46Z",
+  "body": "<!-- pr-review-agent run:14 -->\n### Automated review of `fb91692`\nNo confirmed issues found.\nReviewed 2 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 0 confirmed, 3 dropped, 1 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0085 at list prices (free tier; agent $0.0049); 0 of 9 lane call(s) answered from cache.\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `pydantic_settings/sources/providers/azure.py:108` **high** Incorrect field info extraction overrides field name \u2014 The change makes _extract_field_info return tuples where the field name is replaced by the environment variable name, matching the finding\u2019s claim, but without reviewing the base implementation we cannot confirm this breaks functionality or is mitigated elsewhere.\n\n</details>"
+ },
+ "comments": []
+}

@@ -1,0 +1,199 @@
+{
+ "k": 13,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 2939,
+  "replay_sha": "db042b16bce1c37ecd5e4ad616d4df27543915aa",
+  "merge_base_sha": "4acf1d1ca3e8aa767567cb4e6e12f093f066553b"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 7,
+  "url": "https://github.com/amn-00/starlette/pull/7",
+  "head_sha": "d67b0d224071d4cdd205f81e79a6f43b7715a72d"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 15,
+  "pr_id": 15,
+  "head_sha": "d67b0d224071d4cdd205f81e79a6f43b7715a72d",
+  "status": "completed",
+  "started_at": "2026-11-20 13:14:36.177737+00:00",
+  "finished_at": "2026-11-20 13:15:30.509460+00:00",
+  "tokens_in": 15236,
+  "tokens_out": 1205,
+  "cost_usd": "0.002672475",
+  "llm_calls": 6,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5993266698
+ },
+ "findings": [
+  {
+   "id": 83,
+   "run_id": 15,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/status.py",
+   "line_start": 75,
+   "line_end": 79,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Inconsistent naming of backward\u2011compatibility aliases",
+   "explanation": "The aliases use names such as HTTP_413_REQUEST_ENTITY_TOO_LARGE while the primary constants are named HTTP_413_CONTENT_TOO_LARGE, which can be confusing for future maintainers. The mismatch between the wording in the constant names may lead to incorrect assumptions about which constant should be used in a given context.",
+   "suggested_fix": "Rename the aliases to match the primary constant names, e.g. HTTP_413_CONTENT_TOO_LARGE_ALIAS = HTTP_413_CONTENT_TOO_LARGE, or remove the aliases if they are no longer needed. Alternatively add a comment clarifying why the names differ.",
+   "verdict": "confirmed",
+   "verdict_reason": "The added alias lines use different phrasing than the primary constants they map to, confirming the inconsistency noted in the finding.",
+   "evidence": [
+    {
+     "why": "introduces alias definitions",
+     "line": 75,
+     "path": "starlette/status.py",
+     "quote": "# for backwards compatibility"
+    },
+    {
+     "why": "alias uses different wording than primary constant",
+     "line": 76,
+     "path": "starlette/status.py",
+     "quote": "HTTP_413_REQUEST_ENTITY_TOO_LARGE = HTTP_413_CONTENT_TOO_LARGE"
+    },
+    {
+     "why": "alias uses different wording than primary constant",
+     "line": 77,
+     "path": "starlette/status.py",
+     "quote": "HTTP_414_REQUEST_URI_TOO_LONG = HTTP_414_URI_TOO_LONG"
+    },
+    {
+     "why": "alias uses different wording than primary constant",
+     "line": 78,
+     "path": "starlette/status.py",
+     "quote": "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE = HTTP_416_RANGE_NOT_SATISFIABLE"
+    },
+    {
+     "why": "alias uses different wording than primary constant",
+     "line": 79,
+     "path": "starlette/status.py",
+     "quote": "HTTP_422_UNPROCESSABLE_ENTITY = HTTP_422_UNPROCESSABLE_CONTENT"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 156,
+     "finding_id": 83,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "HTTP_413_CONTENT_TOO_LARGE"
+     },
+     "result_chars": 190,
+     "result_summary": "Lines containing 'HTTP_413_CONTENT_TOO_LARGE':\nstarlette/status.py:47: HTTP_413_CONTENT_TOO_LARGE = 413\nstarlette/status.py:76: HTTP_413_REQUEST_ENTITY_TOO_LARGE = HTTP_413_CONTENT_TOO_LARGE",
+     "tokens_in": 2501,
+     "tokens_out": 68,
+     "latency_ms": 621
+    },
+    {
+     "id": 157,
+     "finding_id": 83,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/status.py",
+      "line_end": 48,
+      "line_start": 44
+     },
+     "result_chars": 222,
+     "result_summary": "starlette/status.py, lines 44-48 of 100:\n   44  HTTP_410_GONE = 410\n   45  HTTP_411_LENGTH_REQUIRED = 411\n   46  HTTP_412_PRECONDITION_FAILED = 412\n   47  HTTP_413_CONTENT_TOO_LARGE = 413\n   48  HTTP_414_URI_TOO_LONG = 414",
+     "tokens_in": 2622,
+     "tokens_out": 111,
+     "latency_ms": 42448
+    },
+    {
+     "id": 158,
+     "finding_id": 83,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The added alias lines use different phrasing than the primary constants they map to, confirming the inconsistency noted in the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "introduces alias definitions",
+        "line": 75,
+        "path": "starlette/status.py",
+        "quote": "# for backwards compatibility"
+       },
+       {
+        "why": "alias uses different wording than primary constant",
+        "line": 76,
+        "path": "starlette/status.py",
+        "quote": "HTTP_413_REQUEST_ENTITY_TOO_LARGE = HTTP_413_CONTENT_TOO_LARGE"
+       },
+       {
+        "why": "alias uses different wording than primary constant",
+        "line": 77,
+        "path": "starlette/status.py",
+        "quote": "HTTP_414_REQUEST_URI_TOO_LONG = HTTP_414_URI_TOO_LONG"
+       },
+       {
+        "why": "alias uses different wording than primary constant",
+        "line": 78,
+        "path": "starlette/status.py",
+        "quote": "HTTP_416_REQUESTED_RANGE_NOT_SATISFIABLE = HTTP_416_RANGE_NOT_SATISFIABLE"
+       },
+       {
+        "why": "alias uses different wording than primary constant",
+        "line": 79,
+        "path": "starlette/status.py",
+        "quote": "HTTP_422_UNPROCESSABLE_ENTITY = HTTP_422_UNPROCESSABLE_CONTENT"
+       }
+      ]
+     },
+     "result_chars": 146,
+     "result_summary": "confirmed: The added alias lines use different phrasing than the primary constants they map to, confirming the inconsistency noted in the finding.",
+     "tokens_in": 2781,
+     "tokens_out": 371,
+     "latency_ms": 1035
+    }
+   ]
+  },
+  {
+   "id": 84,
+   "run_id": 15,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/status.py",
+   "line_start": 75,
+   "line_end": 79,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unnecessary duplicate constants for backward compatibility",
+   "explanation": "Defining multiple constants that reference the same integer value increases the namespace and can lead to accidental misuse. In Python, it is idiomatic to expose a single name and provide deprecation warnings if old names are still required.",
+   "suggested_fix": "Keep only one constant (e.g., HTTP_413_CONTENT_TOO_LARGE) and use the `warnings` module to emit a DeprecationWarning when the old alias is accessed, or remove the aliases entirely if they are no longer used.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 83,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-20T13:14:11Z",
+ "review": {
+  "id": 5993266698,
+  "url": "https://github.com/amn-00/starlette/pull/7#pullrequestreview-5993266698",
+  "submitted_at": "2026-11-20T13:15:30Z",
+  "body": "<!-- pr-review-agent run:15 -->\n### Automated review of `d67b0d2`\nNo confirmed issues found. 1 style suggestion(s) below.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 1 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0027 at list prices (free tier; agent $0.0015); 0 of 3 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `starlette/status.py:75` Inconsistent naming of backward\u2011compatibility aliases: The aliases use names such as HTTP_413_REQUEST_ENTITY_TOO_LARGE while the primary constants are named HTTP_413_CONTENT_TOO_LARGE, which can be confusing for future maintainers. The mismatch between the wording in the constant names may lead to incorrect assumptions about which constant should be used in a given context.\n\n</details>"
+ },
+ "comments": []
+}

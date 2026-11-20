@@ -1,0 +1,277 @@
+{
+ "k": 14,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 708,
+  "replay_sha": "922c819c4a21baf88bc6a7f5957b1b7177738595",
+  "merge_base_sha": "61e0b46eb96e2f67f390b0371c4297f2d6b24573"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 7,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/7",
+  "head_sha": "7f6c7b5889eeb3993dfe1d6da82c30976ae6845e"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 16,
+  "pr_id": 16,
+  "head_sha": "7f6c7b5889eeb3993dfe1d6da82c30976ae6845e",
+  "status": "completed",
+  "started_at": "2026-11-20 13:15:43.796695+00:00",
+  "finished_at": "2026-11-20 13:17:58.637004+00:00",
+  "tokens_in": 18143,
+  "tokens_out": 1846,
+  "cost_usd": "0.003614400",
+  "llm_calls": 10,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 5993298952
+ },
+ "findings": [
+  {
+   "id": 85,
+   "run_id": 16,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/aws.py",
+   "line_start": 70,
+   "line_end": 70,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Assumes 'SecretString' key always present in AWS Secrets Manager response",
+   "explanation": "The added code calls `self._secretsmanager_client.get_secret_value(**request)` and directly accesses `response['SecretString']`. If the secret is stored as binary data or the response does not contain the `SecretString` key, a `KeyError` will be raised, causing a crash at runtime.",
+   "suggested_fix": "Check for the presence of the `SecretString` key (or handle `SecretBinary`) before accessing it, e.g.,\n```python\nif 'SecretString' in response:\n    secret_data = response['SecretString']\nelif 'SecretBinary' in response:\n    secret_data = base64.b64decode(response['SecretBinary']).decode()\nelse:\n    raise ValueError('No secret data returned')\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The implementation directly accesses `response['SecretString']` after calling AWS Secrets Manager, without checking whether the response contains that key. If the secret is stored as binary data, the response will include `SecretBinary` instead, causing a KeyError at runtime.",
+   "evidence": [
+    {
+     "why": "Calls AWS Secrets Manager and stores the raw response.",
+     "line": 70,
+     "path": "pydantic_settings/sources/providers/aws.py",
+     "quote": "response = self._secretsmanager_client.get_secret_value(**request)  # type: ignore"
+    },
+    {
+     "why": "Directly accesses the 'SecretString' key without checking for its presence, which will raise KeyError if the secret is binary.",
+     "line": 73,
+     "path": "pydantic_settings/sources/providers/aws.py",
+     "quote": "json.loads(response['SecretString']),"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 160,
+     "finding_id": 85,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "AWSSecretsManagerSettingsSource"
+     },
+     "result_chars": 1360,
+     "result_summary": "Lines containing 'AWSSecretsManagerSettingsSource':\ndocs/index.md:2122: AWSSecretsManagerSettingsSource,\ndocs/index.md:2146: aws_secrets_manager_settings = AWSSecretsManagerSettingsSource(\npydantic_settings/__init__.py:5: AWSSecretsManagerSettingsSource,\npydantic_settings/__init__.py:34: 'AWSSecrets",
+     "tokens_in": 2213,
+     "tokens_out": 49,
+     "latency_ms": 43054
+    },
+    {
+     "id": 162,
+     "finding_id": 85,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_source_aws_secrets_manager.py",
+      "line_end": 200,
+      "line_start": 1
+     },
+     "result_chars": 2503,
+     "result_summary": "tests/test_source_aws_secrets_manager.py, lines 1-80 of 160:\n    1  \"\"\"\n    2  Test pydantic_settings.AWSSecretsManagerSettingsSource.\n    3  \"\"\"\n    4  \n    5  import json\n    6  import os\n    7  \n    8  import pytest\n    9  \n   10  try:\n   11      import yaml\n   12      from moto import mock_aws\n ",
+     "tokens_in": 2596,
+     "tokens_out": 47,
+     "latency_ms": 45924
+    },
+    {
+     "id": 163,
+     "finding_id": 85,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need see handling of binary secret. Search tes",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 522
+    },
+    {
+     "id": 164,
+     "finding_id": 85,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need see handling of binary secret. Search tes",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 36936
+    },
+    {
+     "id": 165,
+     "finding_id": 85,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The implementation directly accesses `response['SecretString']` after calling AWS Secrets Manager, without checking whether the response contains that key. If the secret is stored as binary data, the response will include `SecretBinary` instead, causing a KeyError at runtime.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Calls AWS Secrets Manager and stores the raw response.",
+        "line": 70,
+        "path": "pydantic_settings/sources/providers/aws.py",
+        "quote": "response = self._secretsmanager_client.get_secret_value(**request)  # type: ignore"
+       },
+       {
+        "why": "Directly accesses the 'SecretString' key without checking for its presence, which will raise KeyError if the secret is binary.",
+        "line": 73,
+        "path": "pydantic_settings/sources/providers/aws.py",
+        "quote": "json.loads(response['SecretString']),"
+       }
+      ]
+     },
+     "result_chars": 287,
+     "result_summary": "confirmed: The implementation directly accesses `response['SecretString']` after calling AWS Secrets Manager, without checking whether the response contains that key. If the secret is stored as binary data, the response will include `SecretBinary` instead, causing a KeyError at runtime.",
+     "tokens_in": 3194,
+     "tokens_out": 438,
+     "latency_ms": 1376
+    }
+   ]
+  },
+  {
+   "id": 86,
+   "run_id": 16,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/aws.py",
+   "line_start": 46,
+   "line_end": 51,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Missing attribute declaration for _version_id",
+   "explanation": "The class defines _secret_id and _secretsmanager_client but does not declare _version_id as a class attribute. This implicit attribute creation in __init__ can confuse future readers and may lead to static analysis warnings.",
+   "suggested_fix": "Add a class attribute declaration: _version_id: str | None = None",
+   "verdict": "confirmed",
+   "verdict_reason": "The class declares _secret_id and _secretsmanager_client as annotated class attributes but does not declare _version_id, yet assigns to self._version_id in __init__. This matches the finding.",
+   "evidence": [
+    {
+     "why": "class attribute declared",
+     "line": 32,
+     "path": "pydantic_settings/sources/providers/aws.py",
+     "quote": "_secret_id: str"
+    },
+    {
+     "why": "class attribute declared",
+     "line": 33,
+     "path": "pydantic_settings/sources/providers/aws.py",
+     "quote": "_secretsmanager_client: SecretsManagerClient  # type: ignore"
+    },
+    {
+     "why": "parameter introduced",
+     "line": 46,
+     "path": "pydantic_settings/sources/providers/aws.py",
+     "quote": "version_id: str | None = None,"
+    },
+    {
+     "why": "instance attribute set without class declaration",
+     "line": 51,
+     "path": "pydantic_settings/sources/providers/aws.py",
+     "quote": "self._version_id = version_id"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 159,
+     "finding_id": 86,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_version_id"
+     },
+     "result_chars": 263,
+     "result_summary": "Lines containing '_version_id':\npydantic_settings/sources/providers/aws.py:51: self._version_id = version_id\npydantic_settings/sources/providers/aws.py:67: if self._version_id:\npydantic_settings/sources/providers/aws.py:68: request['VersionId'] = self._version_id",
+     "tokens_in": 2341,
+     "tokens_out": 139,
+     "latency_ms": 42750
+    },
+    {
+     "id": 161,
+     "finding_id": 86,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The class declares _secret_id and _secretsmanager_client as annotated class attributes but does not declare _version_id, yet assigns to self._version_id in __init__. This matches the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "class attribute declared",
+        "line": 32,
+        "path": "pydantic_settings/sources/providers/aws.py",
+        "quote": "_secret_id: str"
+       },
+       {
+        "why": "class attribute declared",
+        "line": 33,
+        "path": "pydantic_settings/sources/providers/aws.py",
+        "quote": "_secretsmanager_client: SecretsManagerClient  # type: ignore"
+       },
+       {
+        "why": "parameter introduced",
+        "line": 46,
+        "path": "pydantic_settings/sources/providers/aws.py",
+        "quote": "version_id: str | None = None,"
+       },
+       {
+        "why": "instance attribute set without class declaration",
+        "line": 51,
+        "path": "pydantic_settings/sources/providers/aws.py",
+        "quote": "self._version_id = version_id"
+       }
+      ]
+     },
+     "result_chars": 202,
+     "result_summary": "confirmed: The class declares _secret_id and _secretsmanager_client as annotated class attributes but does not declare _version_id, yet assigns to self._version_id in __init__. This matches the finding.",
+     "tokens_in": 2470,
+     "tokens_out": 454,
+     "latency_ms": 1270
+    }
+   ]
+  }
+ ],
+ "pr_created_at": "2026-11-20T13:15:40Z",
+ "review": {
+  "id": 5993298952,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/7#pullrequestreview-5993298952",
+  "submitted_at": "2026-11-20T13:17:57Z",
+  "body": "<!-- pr-review-agent run:16 -->\n### Automated review of `7f6c7b5`\nFound 1 confirmed issue(s): 1 medium. 1 style suggestion(s) below.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0036 at list prices (free tier; agent $0.0026); 0 of 3 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `pydantic_settings/sources/providers/aws.py:46` Missing attribute declaration for _version_id: The class defines _secret_id and _secretsmanager_client but does not declare _version_id as a class attribute. This implicit attribute creation in __init__ can confuse future readers and may lead to static analysis warnings.\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4642891802,
+   "url": "https://github.com/amn-00/pydantic-settings/pull/7#discussion_r4642891802",
+   "file": "pydantic_settings/sources/providers/aws.py",
+   "line": 70,
+   "start_line": 70,
+   "body": "**medium** \u00b7 bug \u00b7 Assumes 'SecretString' key always present in AWS Secrets Manager response\n\nThe added code calls `self._secretsmanager_client.get_secret_value(**request)` and directly accesses `response['SecretString']`. If the secret is stored as binary data or the response does not contain the `SecretString` key, a `KeyError` will be raised, causing a crash at runtime.\n\n**Suggested fix:** Check for the presence of the `SecretString` key (or handle `SecretBinary`) before accessing it, e.g.,\n```python\nif 'SecretString' in response:\n    secret_data = response['SecretString']\nelif 'SecretBinary' in response:\n    secret_data = base64.b64decode(response['SecretBinary']).decode()\nelse:\n    raise ValueError('No secret data returned')\n```\n\n_Checked against `pydantic_settings/sources/providers/aws.py:70`, `pydantic_settings/sources/providers/aws.py:73`_"
+  }
+ ]
+}
