@@ -1,0 +1,69 @@
+{
+ "k": 15,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 2903,
+  "replay_sha": "202c45c21be53b68c95d9cf001bc38f56e25d1a8",
+  "merge_base_sha": "c8a46925366361e40b65b117473db1342895b904"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 8,
+  "url": "https://github.com/amn-00/starlette/pull/8",
+  "head_sha": "4750acf10185d48ff54e5d3b440cae2395dc7651"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 17,
+  "pr_id": 17,
+  "head_sha": "4750acf10185d48ff54e5d3b440cae2395dc7651",
+  "status": "completed",
+  "started_at": "2026-11-21 14:40:01.886328+00:00",
+  "finished_at": "2026-11-21 14:40:06.055812+00:00",
+  "tokens_in": 10192,
+  "tokens_out": 936,
+  "cost_usd": "0.001742250",
+  "llm_calls": 6,
+  "cached_calls": 5,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 1,
+  "agent_enabled": true,
+  "github_review_id": 6006039177
+ },
+ "findings": [
+  {
+   "id": 87,
+   "run_id": 17,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/routing.py",
+   "line_start": 231,
+   "line_end": 233,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential NoneType usage for 'methods' on class endpoints",
+   "explanation": "When the endpoint is a class (treated as ASGI), the code does not assign a default value to the `methods` variable, leaving it as `None`. Subsequent logic that expects `methods` to be an iterable (e.g., iterating or checking membership) could raise a TypeError at runtime.",
+   "suggested_fix": "Assign a sensible default (e.g., an empty list or a set of allowed methods) when `methods` is None for class endpoints, or ensure later code handles the None case.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-21T14:31:57Z",
+ "review": {
+  "id": 6006039177,
+  "url": "https://github.com/amn-00/starlette/pull/8#pullrequestreview-6006039177",
+  "submitted_at": "2026-11-21T14:40:05Z",
+  "body": "<!-- pr-review-agent run:17 -->\n### Automated review of `4750acf`\nNo issues found.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nCost \u2248 $0.0002 at list prices (free tier); 5 of 6 lane call(s) answered from cache."
+ },
+ "comments": []
+}

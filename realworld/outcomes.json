@@ -141,5 +141,31 @@
     "reviewer_comment_ids": []
    }
   }
+ },
+ "15": {
+  "added": 3,
+  "added_changed": 3,
+  "flagged": 0,
+  "flagged_changed": 0,
+  "comments": {}
+ },
+ "16": {
+  "added": 40,
+  "added_changed": 9,
+  "flagged": 0,
+  "flagged_changed": 0,
+  "comments": {}
+ },
+ "17": {
+  "added": 9,
+  "added_changed": 7,
+  "flagged": 1,
+  "flagged_changed": 1,
+  "comments": {
+   "4653274335": {
+    "changed_before_merge": true,
+    "reviewer_comment_ids": []
+   }
+  }
  }
 }

@@ -1,0 +1,703 @@
+{
+ "k": 17,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 2810,
+  "replay_sha": "d6b8106a40c188fd53d475c48adfbed100533789",
+  "merge_base_sha": "4e625bb9793f36a1ff9d30f935d7bc83513c71fe"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 9,
+  "url": "https://github.com/amn-00/starlette/pull/9",
+  "head_sha": "aa066e9e902548ec887447f35d46ab28d85a472e"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 20,
+  "pr_id": 20,
+  "head_sha": "aa066e9e902548ec887447f35d46ab28d85a472e",
+  "status": "completed",
+  "started_at": "2026-11-21 14:55:23.241692+00:00",
+  "finished_at": "2026-11-21 15:00:21.344129+00:00",
+  "tokens_in": 41788,
+  "tokens_out": 4110,
+  "cost_usd": "0.008163675",
+  "llm_calls": 21,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 6006154804
+ },
+ "findings": [
+  {
+   "id": 92,
+   "run_id": 20,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 237,
+   "line_end": 238,
+   "category": "bug",
+   "severity": "high",
+   "title": "__init__ signature change breaks existing callers",
+   "explanation": "The added required parameters `client` and `port` are inserted without default values, so any existing code that constructs `_TestClientTransport` without supplying them will raise a `TypeError`. This will cause runtime failures in normal usage.",
+   "suggested_fix": "Provide default values (e.g., `client: str = \"testclient\"`, `port: int = 50000`) or keep the parameters optional to maintain backward compatibility.",
+   "verdict": "dropped",
+   "verdict_reason": "The added parameters are supplied by the caller in this file, so existing usage within the repository is updated and no TypeError will occur.",
+   "evidence": [
+    {
+     "why": "calls constructor with required args client and port",
+     "line": 427,
+     "path": "starlette/testclient.py",
+     "quote": "transport = _TestClientTransport("
+    },
+    {
+     "why": "provides client argument",
+     "line": 433,
+     "path": "starlette/testclient.py",
+     "quote": "client=client,"
+    },
+    {
+     "why": "provides port argument",
+     "line": 434,
+     "path": "starlette/testclient.py",
+     "quote": "port=port,"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 180,
+     "finding_id": 92,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_TestClientTransport"
+     },
+     "result_chars": 181,
+     "result_summary": "Lines containing '_TestClientTransport':\nstarlette/testclient.py:229: class _TestClientTransport(httpx.BaseTransport):\nstarlette/testclient.py:427: transport = _TestClientTransport(",
+     "tokens_in": 2255,
+     "tokens_out": 40,
+     "latency_ms": 42330
+    },
+    {
+     "id": 182,
+     "finding_id": 92,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/testclient.py",
+      "line_end": 440,
+      "line_start": 420
+     },
+     "result_chars": 948,
+     "result_summary": "starlette/testclient.py, lines 420-440 of 766:\n  420          if _is_asgi3(app):\n  421              asgi_app = app\n  422          else:\n  423              app = typing.cast(ASGI2App, app)  # type: ignore[assignment]\n  424              asgi_app = _WrapASGI2(app)  # type: ignore[arg-type]\n  425       ",
+     "tokens_in": 2358,
+     "tokens_out": 44,
+     "latency_ms": 46741
+    },
+    {
+     "id": 185,
+     "finding_id": 92,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 38717
+    },
+    {
+     "id": 186,
+     "finding_id": 92,
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The added parameters are supplied by the caller in this file, so existing usage within the repository is updated and no TypeError will occur.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "calls constructor with required args client and port",
+        "line": 427,
+        "path": "starlette/testclient.py",
+        "quote": "transport = _TestClientTransport("
+       },
+       {
+        "why": "provides client argument",
+        "line": 433,
+        "path": "starlette/testclient.py",
+        "quote": "client=client,"
+       },
+       {
+        "why": "provides port argument",
+        "line": 434,
+        "path": "starlette/testclient.py",
+        "quote": "port=port,"
+       }
+      ]
+     },
+     "result_chars": 150,
+     "result_summary": "dropped: The added parameters are supplied by the caller in this file, so existing usage within the repository is updated and no TypeError will occur.",
+     "tokens_in": 2676,
+     "tokens_out": 166,
+     "latency_ms": 695
+    }
+   ]
+  },
+  {
+   "id": 93,
+   "run_id": 20,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 433,
+   "line_end": 434,
+   "category": "bug",
+   "severity": "high",
+   "title": "Passing unsupported arguments to _TestClientTransport",
+   "explanation": "The added `client` and `port` arguments are forwarded to the `_TestClientTransport` constructor, but the original transport class does not define parameters with those names. This will raise a TypeError at runtime when initializing the TestClient.",
+   "suggested_fix": null,
+   "verdict": "dropped",
+   "verdict_reason": "The _TestClientTransport constructor includes client and port parameters, so forwarding those arguments will not raise a TypeError.",
+   "evidence": [
+    {
+     "why": "transport __init__ defines a client parameter",
+     "line": 237,
+     "path": "starlette/testclient.py",
+     "quote": "client: str,"
+    },
+    {
+     "why": "transport __init__ defines a port parameter",
+     "line": 238,
+     "path": "starlette/testclient.py",
+     "quote": "port: int,"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 178,
+     "finding_id": 93,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class _TestClientTransport"
+     },
+     "result_chars": 124,
+     "result_summary": "Lines containing 'class _TestClientTransport':\nstarlette/testclient.py:229: class _TestClientTransport(httpx.BaseTransport):",
+     "tokens_in": 2277,
+     "tokens_out": 39,
+     "latency_ms": 630
+    },
+    {
+     "id": 179,
+     "finding_id": 93,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/testclient.py",
+      "line_end": 260,
+      "line_start": 220
+     },
+     "result_chars": 1650,
+     "result_summary": "starlette/testclient.py, lines 220-260 of 766:\n  220          message = self.receive()\n  221          self._raise_on_close(message)\n  222          if mode == \"text\":\n  223              text = message[\"text\"]\n  224          else:\n  225              text = message[\"bytes\"].decode(\"utf-8\")\n  226       ",
+     "tokens_in": 2368,
+     "tokens_out": 45,
+     "latency_ms": 41307
+    },
+    {
+     "id": 181,
+     "finding_id": 93,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The _TestClientTransport constructor includes client and port parameters, so forwarding those arguments will not raise a TypeError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "transport __init__ defines a client parameter",
+        "line": 237,
+        "path": "starlette/testclient.py",
+        "quote": "client: str,"
+       },
+       {
+        "why": "transport __init__ defines a port parameter",
+        "line": 238,
+        "path": "starlette/testclient.py",
+        "quote": "port: int,"
+       }
+      ]
+     },
+     "result_chars": 140,
+     "result_summary": "dropped: The _TestClientTransport constructor includes client and port parameters, so forwarding those arguments will not raise a TypeError.",
+     "tokens_in": 2894,
+     "tokens_out": 179,
+     "latency_ms": 642
+    }
+   ]
+  },
+  {
+   "id": 94,
+   "run_id": 20,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 246,
+   "line_end": 247,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Unnecessary use of list for client and port",
+   "explanation": "The code stores client and port in a list, which is mutable and non\u2011standard for immutable values; a tuple would be more appropriate and idiomatic.",
+   "suggested_fix": "Change to `self.client = (client, port)` and use a tuple when accessing the pair.",
+   "verdict": "dropped",
+   "verdict_reason": "The code defines separate parameters for client and port and assigns them directly to attributes; there is no list creation or usage, so the claim of unnecessary list usage is incorrect.",
+   "evidence": [
+    {
+     "why": "parameter is a string, not a list",
+     "line": 237,
+     "path": "starlette/testclient.py",
+     "quote": "client: str,"
+    },
+    {
+     "why": "parameter is an int, not a list",
+     "line": 238,
+     "path": "starlette/testclient.py",
+     "quote": "port: int,"
+    },
+    {
+     "why": "assigns string directly, no list used",
+     "line": 246,
+     "path": "starlette/testclient.py",
+     "quote": "self.client = client"
+    },
+    {
+     "why": "assigns int directly, no list used",
+     "line": 247,
+     "path": "starlette/testclient.py",
+     "quote": "self.port = port"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 183,
+     "finding_id": 94,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The code defines separate parameters for client and port and assigns them directly to attributes; there is no list creation or usage, so the claim of unnecessary list usage is incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "parameter is a string, not a list",
+        "line": 237,
+        "path": "starlette/testclient.py",
+        "quote": "client: str,"
+       },
+       {
+        "why": "parameter is an int, not a list",
+        "line": 238,
+        "path": "starlette/testclient.py",
+        "quote": "port: int,"
+       },
+       {
+        "why": "assigns string directly, no list used",
+        "line": 246,
+        "path": "starlette/testclient.py",
+        "quote": "self.client = client"
+       },
+       {
+        "why": "assigns int directly, no list used",
+        "line": 247,
+        "path": "starlette/testclient.py",
+        "quote": "self.port = port"
+       }
+      ]
+     },
+     "result_chars": 195,
+     "result_summary": "dropped: The code defines separate parameters for client and port and assigns them directly to attributes; there is no list creation or usage, so the claim of unnecessary list usage is incorrect.",
+     "tokens_in": 2233,
+     "tokens_out": 339,
+     "latency_ms": 46491
+    }
+   ]
+  },
+  {
+   "id": 95,
+   "run_id": 20,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 292,
+   "line_end": 292,
+   "category": "bug",
+   "severity": "medium",
+   "title": "ASGI `client` field should be a tuple, not a list",
+   "explanation": "According to the ASGI spec, the `client` entry in the scope must be a two\u2011item tuple `(host, port)`. The code adds it as a list (`[self.client, self.port]`), which can cause type errors in downstream middleware or applications that expect a tuple.",
+   "suggested_fix": "Change the value to a tuple: `\"client\": (self.client, self.port),`",
+   "verdict": "confirmed",
+   "verdict_reason": "The ASGI spec requires the 'client' entry to be a two\u2011item tuple (host, port). The test client builds the scope with a list for this field, which can cause type errors in code that expects a tuple.",
+   "evidence": [
+    {
+     "why": "adds client as a list instead of a tuple",
+     "line": 292,
+     "path": "starlette/testclient.py",
+     "quote": "\"client\": [self.client, self.port],"
+    },
+    {
+     "why": "also uses a list for client in HTTP scope",
+     "line": 311,
+     "path": "starlette/testclient.py",
+     "quote": "\"client\": [\"testclient\", 50000],"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 184,
+     "finding_id": 95,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "\"client\": ("
+     },
+     "result_chars": 99,
+     "result_summary": "Lines containing '\"client\": (':\ntests/middleware/test_wsgi.py:123: \"client\": (\"134.56.78.4\", 1453),",
+     "tokens_in": 2291,
+     "tokens_out": 56,
+     "latency_ms": 571
+    },
+    {
+     "id": 187,
+     "finding_id": 95,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The ASGI spec requires the 'client' entry to be a two\u2011item tuple (host, port). The test client builds the scope with a list for this field, which can cause type errors in code that expects a tuple.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "adds client as a list instead of a tuple",
+        "line": 292,
+        "path": "starlette/testclient.py",
+        "quote": "\"client\": [self.client, self.port],"
+       },
+       {
+        "why": "also uses a list for client in HTTP scope",
+        "line": 311,
+        "path": "starlette/testclient.py",
+        "quote": "\"client\": [\"testclient\", 50000],"
+       }
+      ]
+     },
+     "result_chars": 208,
+     "result_summary": "confirmed: The ASGI spec requires the 'client' entry to be a two\u2011item tuple (host, port). The test client builds the scope with a list for this field, which can cause type errors in code that expects a tuple.",
+     "tokens_in": 2390,
+     "tokens_out": 295,
+     "latency_ms": 55149
+    }
+   ]
+  },
+  {
+   "id": 96,
+   "run_id": 20,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 416,
+   "line_end": 418,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Unnecessary constructor parameters",
+   "explanation": "The `client` and `port` parameters are added to the constructor but are only passed to `_TestClientTransport`; they are not used elsewhere in the client. This can confuse future readers about their purpose.",
+   "suggested_fix": "Remove the unused parameters or document their intended use.",
+   "verdict": "confirmed",
+   "verdict_reason": "The `client` and `port` arguments are only accepted in the TestClient constructor and are merely forwarded to the _TestClientTransport; they are not referenced anywhere else in the class, matching the finding.",
+   "evidence": [
+    {
+     "why": "defines the client parameter",
+     "line": 416,
+     "path": "starlette/testclient.py",
+     "quote": "client: str = \"testclient\","
+    },
+    {
+     "why": "defines the port parameter",
+     "line": 417,
+     "path": "starlette/testclient.py",
+     "quote": "port: int = 5000,"
+    },
+    {
+     "why": "passes the client argument to _TestClientTransport",
+     "line": 433,
+     "path": "starlette/testclient.py",
+     "quote": "client=client,"
+    },
+    {
+     "why": "passes the port argument to _TestClientTransport",
+     "line": 434,
+     "path": "starlette/testclient.py",
+     "quote": "port=port,"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 188,
+     "finding_id": 96,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def __init__(self, app"
+     },
+     "result_chars": 1050,
+     "result_summary": "Lines containing 'def __init__(self, app':\ndocs/middleware.md:241: def __init__(self, app, header_value='Example'):\ndocs/middleware.md:282: def __init__(self, app):\ndocs/middleware.md:348: def __init__(self, app: ASGIApp) -> None:\ndocs/middleware.md:370: def __init__(self, app: ASGI3Application) -> ",
+     "tokens_in": 2296,
+     "tokens_out": 46,
+     "latency_ms": 49629
+    },
+    {
+     "id": 189,
+     "finding_id": 96,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/testclient.py",
+      "line_end": 460,
+      "line_start": 390
+     },
+     "result_chars": 2493,
+     "result_summary": "starlette/testclient.py, lines 390-460 of 766:\n  390  \n  391          raw_kwargs[\"stream\"] = httpx.ByteStream(raw_kwargs[\"stream\"].read())\n  392  \n  393          response = httpx.Response(**raw_kwargs, request=request)\n  394          if template is not None:\n  395              response.template = te",
+     "tokens_in": 2675,
+     "tokens_out": 52,
+     "latency_ms": 497
+    },
+    {
+     "id": 190,
+     "finding_id": 96,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 570
+    },
+    {
+     "id": 191,
+     "finding_id": 96,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need decide if finding correct: parameters cli",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 54147
+    },
+    {
+     "id": 192,
+     "finding_id": 96,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The `client` and `port` arguments are only accepted in the TestClient constructor and are merely forwarded to the _TestClientTransport; they are not referenced anywhere else in the class, matching the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "defines the client parameter",
+        "line": 416,
+        "path": "starlette/testclient.py",
+        "quote": "client: str = \"testclient\","
+       },
+       {
+        "why": "defines the port parameter",
+        "line": 417,
+        "path": "starlette/testclient.py",
+        "quote": "port: int = 5000,"
+       },
+       {
+        "why": "passes the client argument to _TestClientTransport",
+        "line": 433,
+        "path": "starlette/testclient.py",
+        "quote": "client=client,"
+       },
+       {
+        "why": "passes the port argument to _TestClientTransport",
+        "line": 434,
+        "path": "starlette/testclient.py",
+        "quote": "port=port,"
+       }
+      ]
+     },
+     "result_chars": 220,
+     "result_summary": "confirmed: The `client` and `port` arguments are only accepted in the TestClient constructor and are merely forwarded to the _TestClientTransport; they are not referenced anywhere else in the class, matching the finding.",
+     "tokens_in": 3214,
+     "tokens_out": 446,
+     "latency_ms": 1477
+    }
+   ]
+  },
+  {
+   "id": 97,
+   "run_id": 20,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 292,
+   "line_end": 292,
+   "category": "security",
+   "severity": "medium",
+   "title": "Arbitrary client address can be injected into ASGI scope",
+   "explanation": "The new constructor arguments `client` and `port` are taken from the caller and inserted directly into the ASGI `scope['client']` field without validation. A malicious test client could supply forged IP addresses or ports, potentially bypassing IP\u2011based access controls or influencing downstream logic that trusts the client address.",
+   "suggested_fix": "Validate that `client` is a legitimate IP address (or hostname) and that `port` is within an acceptable range before adding it to the scope, or restrict the ability to set these values.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 95,
+   "agent_steps": []
+  },
+  {
+   "id": 98,
+   "run_id": 20,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 237,
+   "line_end": 238,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Unclear parameter naming in __init__",
+   "explanation": "Parameters named `client` and `port` are ambiguous; it\u2019s unclear whether they represent a hostname, IP, or client identifier.",
+   "suggested_fix": "Rename to `client_host` and `client_port` (or similar) to make intent explicit.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 92,
+   "agent_steps": []
+  },
+  {
+   "id": 99,
+   "run_id": 20,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 237,
+   "line_end": 238,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Parameter order deviates from convention",
+   "explanation": "The `client` and `port` parameters are placed before `app_state`, breaking the typical order of positional arguments and making the signature harder to read.",
+   "suggested_fix": "Move `client` and `port` to the end of the parameter list or clearly document their position.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 92,
+   "agent_steps": []
+  },
+  {
+   "id": 100,
+   "run_id": 20,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 237,
+   "line_end": 238,
+   "category": "security",
+   "severity": "low",
+   "title": "Unvalidated `client` and `port` parameters may lead to type confusion",
+   "explanation": "The added parameters are stored as `self.client` and `self.port` and later used in the `scope['client']` list. If non\u2011string or non\u2011integer values are passed, downstream code expecting a `(str, int)` tuple may raise errors or behave unexpectedly, which could be exploitable in certain contexts.",
+   "suggested_fix": "Add type checks (e.g., `isinstance(client, str)` and `isinstance(port, int)`) and raise a clear error for invalid inputs.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 92,
+   "agent_steps": []
+  },
+  {
+   "id": 101,
+   "run_id": 20,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 311,
+   "line_end": 311,
+   "category": "readability",
+   "severity": "low",
+   "title": "Inconsistent client value in HTTP scope",
+   "explanation": "The HTTP scope hard\u2011codes the client as ['testclient', 50000] instead of using the provided `client` and `port` parameters, which is confusing for future maintainers.",
+   "suggested_fix": "Replace the hard\u2011coded list with `self.client` and `self.port` or a tuple of those values.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 102,
+   "run_id": 20,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/testclient.py",
+   "line_start": 416,
+   "line_end": 418,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Hard\u2011coded default port value",
+   "explanation": "The default `port=5000` is arbitrary and not aligned with the rest of the library\u2019s API. If the transport never uses the port, the default is misleading.",
+   "suggested_fix": "Omit the `port` parameter or make it optional only if the transport truly requires it.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 96,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-21T14:55:19Z",
+ "review": {
+  "id": 6006154804,
+  "url": "https://github.com/amn-00/starlette/pull/9#pullrequestreview-6006154804",
+  "submitted_at": "2026-11-21T15:00:20Z",
+  "body": "<!-- pr-review-agent run:20 -->\n### Automated review of `aa066e9`\nFound 1 confirmed issue(s): 1 medium. 1 style suggestion(s) below.\nReviewed 1 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 3 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0082 at list prices (free tier; agent $0.0055); 0 of 6 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `starlette/testclient.py:416` Unnecessary constructor parameters: The `client` and `port` parameters are added to the constructor but are only passed to `_TestClientTransport`; they are not used elsewhere in the client. This can confuse future readers about their purpose.\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4653274335,
+   "url": "https://github.com/amn-00/starlette/pull/9#discussion_r4653274335",
+   "file": "starlette/testclient.py",
+   "line": 292,
+   "start_line": 292,
+   "body": "**medium** \u00b7 bug \u00b7 ASGI `client` field should be a tuple, not a list\n\nAccording to the ASGI spec, the `client` entry in the scope must be a two\u2011item tuple `(host, port)`. The code adds it as a list (`[self.client, self.port]`), which can cause type errors in downstream middleware or applications that expect a tuple.\n\n**Suggested fix:** Change the value to a tuple: `\"client\": (self.client, self.port),`\n\n_Checked against `starlette/testclient.py:292`, `starlette/testclient.py:311`_"
+  }
+ ]
+}

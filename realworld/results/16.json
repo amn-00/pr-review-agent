@@ -1,0 +1,459 @@
+{
+ "k": 16,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 603,
+  "replay_sha": "3e394016c201877911da9a7051fec9108e709d06",
+  "merge_base_sha": "18747409238dbba5c4ba9779c46353648f79f7ca"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 8,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/8",
+  "head_sha": "9c8ed926da482c52dc14918647f0cca20fd04143"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 19,
+  "pr_id": 19,
+  "head_sha": "9c8ed926da482c52dc14918647f0cca20fd04143",
+  "status": "completed",
+  "started_at": "2026-11-21 14:49:52.067021+00:00",
+  "finished_at": "2026-11-21 14:55:00.128892+00:00",
+  "tokens_in": 42237,
+  "tokens_out": 3769,
+  "cost_usd": "0.007829550",
+  "llm_calls": 24,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 6006134885
+ },
+ "findings": [
+  {
+   "id": 88,
+   "run_id": 19,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/yaml.py",
+   "line_start": 55,
+   "line_end": 56,
+   "category": "idiom",
+   "severity": "high",
+   "title": "Direct dict access may raise KeyError",
+   "explanation": "The code accesses self.yaml_data[self.yaml_nested_key] without checking if the key exists. If the key is missing, this will raise a KeyError at runtime, which is a hidden failure not handled by the class.",
+   "suggested_fix": "Use self.yaml_data.get(self.yaml_nested_key, {}) or wrap in a try/except to provide a clear error message.",
+   "verdict": "confirmed",
+   "verdict_reason": "The code directly indexes the yaml_data dict with self.yaml_nested_key after only checking that the key is truthy, not that it exists in the dict, so a missing key would raise a KeyError. The finding accurately describes this issue.",
+   "evidence": [
+    {
+     "why": "Checks that a nested key is provided",
+     "line": 55,
+     "path": "pydantic_settings/sources/providers/yaml.py",
+     "quote": "if self.yaml_nested_key:"
+    },
+    {
+     "why": "Direct dictionary access without a guard; will raise KeyError if key missing",
+     "line": 56,
+     "path": "pydantic_settings/sources/providers/yaml.py",
+     "quote": "self.yaml_data = self.yaml_data[self.yaml_nested_key]"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 166,
+     "finding_id": 88,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "yaml_nested_key"
+     },
+     "result_chars": 798,
+     "result_summary": "Lines containing 'yaml_nested_key':\npydantic_settings/main.py:65: yaml_nested_key: str | None\npydantic_settings/main.py:450: yaml_nested_key=None,\npydantic_settings/sources/providers/yaml.py:42: yaml_nested_key: str | None = None,\npydantic_settings/sources/providers/yaml.py:50: self.yaml_nested_key ",
+     "tokens_in": 2201,
+     "tokens_out": 93,
+     "latency_ms": 518
+    },
+    {
+     "id": 167,
+     "finding_id": 88,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_source_yaml.py",
+      "line_end": 210,
+      "line_start": 150
+     },
+     "result_chars": 1945,
+     "result_summary": "tests/test_source_yaml.py, lines 150-199 of 199:\n  150      )\n  151  \n  152      class Settings(BaseSettings):\n  153          yaml3: int\n  154          yaml4: int\n  155  \n  156          @classmethod\n  157          def settings_customise_sources(\n  158              cls,\n  159              settings_cl",
+     "tokens_in": 2462,
+     "tokens_out": 45,
+     "latency_ms": 49085
+    },
+    {
+     "id": 169,
+     "finding_id": 88,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool choice is required, but model did not call a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\n  \\\"evidence\\\": [\\n    {\\n      \\\"line\\\": 55,\\n      \\\"path\\\": \\\"pydantic_settings/sources/providers/yaml.py\\\",\\n      \\\"quote\\\": \\\"i",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 954
+    },
+    {
+     "id": 171,
+     "finding_id": 88,
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The code directly indexes the yaml_data dict with self.yaml_nested_key after only checking that the key is truthy, not that it exists in the dict, so a missing key would raise a KeyError. The finding accurately describes this issue.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Checks that a nested key is provided",
+        "line": 55,
+        "path": "pydantic_settings/sources/providers/yaml.py",
+        "quote": "if self.yaml_nested_key:"
+       },
+       {
+        "why": "Direct dictionary access without a guard; will raise KeyError if key missing",
+        "line": 56,
+        "path": "pydantic_settings/sources/providers/yaml.py",
+        "quote": "self.yaml_data = self.yaml_data[self.yaml_nested_key]"
+       }
+      ]
+     },
+     "result_chars": 243,
+     "result_summary": "confirmed: The code directly indexes the yaml_data dict with self.yaml_nested_key after only checking that the key is truthy, not that it exists in the dict, so a missing key would raise a KeyError. The finding accurately describes this issue.",
+     "tokens_in": 3062,
+     "tokens_out": 322,
+     "latency_ms": 60128
+    }
+   ]
+  },
+  {
+   "id": 89,
+   "run_id": 19,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/yaml.py",
+   "line_start": 42,
+   "line_end": 43,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Ambiguous purpose of yaml_nested_key parameter",
+   "explanation": "The constructor accepts a yaml_nested_key argument, but its role is not clearly documented. Future maintainers may be confused about when to supply it and what the effect is.",
+   "suggested_fix": "Add a descriptive comment or docstring explaining that yaml_nested_key selects a nested dictionary key within the YAML file.",
+   "verdict": "confirmed",
+   "verdict_reason": "The constructor accepts a yaml_nested_key argument and uses it to select a nested section of the YAML data. Its purpose is documented by its usage in the code and tests, showing that it determines which top\u2011level key to extract, but the docstring does not explain this, making the purpose ambiguous for future maintainers.",
+   "evidence": [
+    {
+     "why": "Constructor defines yaml_nested_key parameter",
+     "line": 42,
+     "path": "pydantic_settings/sources/providers/yaml.py",
+     "quote": "yaml_nested_key: str | None = None,"
+    },
+    {
+     "why": "Stores the provided key (or config default) on the instance",
+     "line": 50,
+     "path": "pydantic_settings/sources/providers/yaml.py",
+     "quote": "self.yaml_nested_key = ("
+    },
+    {
+     "why": "Checks whether a nested key was supplied",
+     "line": 55,
+     "path": "pydantic_settings/sources/providers/yaml.py",
+     "quote": "if self.yaml_nested_key:"
+    },
+    {
+     "why": "Uses the key to select a nested portion of the YAML data",
+     "line": 56,
+     "path": "pydantic_settings/sources/providers/yaml.py",
+     "quote": "self.yaml_data = self.yaml_data[self.yaml_nested_key]"
+    },
+    {
+     "why": "Test demonstrates the intended use of yaml_nested_key to extract the 'nested' section",
+     "line": 185,
+     "path": "tests/test_source_yaml.py",
+     "quote": "model_config = SettingsConfigDict(yaml_file=p, yaml_nested_key='nested')"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 168,
+     "finding_id": 89,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "yaml_nested_key"
+     },
+     "result_chars": 798,
+     "result_summary": "Lines containing 'yaml_nested_key':\npydantic_settings/main.py:65: yaml_nested_key: str | None\npydantic_settings/main.py:450: yaml_nested_key=None,\npydantic_settings/sources/providers/yaml.py:42: yaml_nested_key: str | None = None,\npydantic_settings/sources/providers/yaml.py:50: self.yaml_nested_key ",
+     "tokens_in": 2273,
+     "tokens_out": 51,
+     "latency_ms": 49901
+    },
+    {
+     "id": 170,
+     "finding_id": 89,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_source_yaml.py",
+      "line_end": 200,
+      "line_start": 150
+     },
+     "result_chars": 1945,
+     "result_summary": "tests/test_source_yaml.py, lines 150-199 of 199:\n  150      )\n  151  \n  152      class Settings(BaseSettings):\n  153          yaml3: int\n  154          yaml4: int\n  155  \n  156          @classmethod\n  157          def settings_customise_sources(\n  158              cls,\n  159              settings_cl",
+     "tokens_in": 2536,
+     "tokens_out": 59,
+     "latency_ms": 60819
+    },
+    {
+     "id": 172,
+     "finding_id": 89,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 45864
+    },
+    {
+     "id": 174,
+     "finding_id": 89,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"The finding: readability, ambiguous purpose of ya",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 43165
+    },
+    {
+     "id": 177,
+     "finding_id": 89,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The constructor accepts a yaml_nested_key argument and uses it to select a nested section of the YAML data. Its purpose is documented by its usage in the code and tests, showing that it determines which top\u2011level key to extract, but the docstring does not explain this, making the purpose ambiguous for future maintainers.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Constructor defines yaml_nested_key parameter",
+        "line": 42,
+        "path": "pydantic_settings/sources/providers/yaml.py",
+        "quote": "yaml_nested_key: str | None = None,"
+       },
+       {
+        "why": "Stores the provided key (or config default) on the instance",
+        "line": 50,
+        "path": "pydantic_settings/sources/providers/yaml.py",
+        "quote": "self.yaml_nested_key = ("
+       },
+       {
+        "why": "Checks whether a nested key was supplied",
+        "line": 55,
+        "path": "pydantic_settings/sources/providers/yaml.py",
+        "quote": "if self.yaml_nested_key:"
+       },
+       {
+        "why": "Uses the key to select a nested portion of the YAML data",
+        "line": 56,
+        "path": "pydantic_settings/sources/providers/yaml.py",
+        "quote": "self.yaml_data = self.yaml_data[self.yaml_nested_key]"
+       },
+       {
+        "why": "Test demonstrates the intended use of yaml_nested_key to extract the 'nested' section",
+        "line": 185,
+        "path": "tests/test_source_yaml.py",
+        "quote": "model_config = SettingsConfigDict(yaml_file=p, yaml_nested_key='nested')"
+       }
+      ]
+     },
+     "result_chars": 333,
+     "result_summary": "confirmed: The constructor accepts a yaml_nested_key argument and uses it to select a nested section of the YAML data. Its purpose is documented by its usage in the code and tests, showing that it determines which top\u2011level key to extract, but the docstring does not explain this, making the purpose ",
+     "tokens_in": 2935,
+     "tokens_out": 383,
+     "latency_ms": 46042
+    }
+   ]
+  },
+  {
+   "id": 90,
+   "run_id": 19,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_source_yaml.py",
+   "line_start": 174,
+   "line_end": 179,
+   "category": "readability",
+   "severity": "low",
+   "title": "Unintended indentation in multiline YAML string",
+   "explanation": "The YAML content written to the temporary file is defined using a triple\u2011quoted string that is indented to match the surrounding code. This preserves leading whitespace on each line, resulting in invalid YAML that contains leading spaces before the keys. While the test may still pass due to lenient parsing, it can cause subtle bugs or misinterpretation of the data.",
+   "suggested_fix": "Dedent the string using textwrap.dedent or write the string without indentation:\n```\n    p.write_text(\n        textwrap.dedent(\"\"\"\n        foobar: \"Hello\"\n        nested:\n            nested_field: \"world!\"\n        \"\"\"\n        ))\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The test defines a multiline YAML string with indentation that will be included in the file, leading to invalid YAML keys. The lines show the extra spaces inside the triple\u2011quoted string, confirming the readability issue.",
+   "evidence": [
+    {
+     "why": "starts triple-quoted string with indentation",
+     "line": 175,
+     "path": "tests/test_source_yaml.py",
+     "quote": "\"\"\""
+    },
+    {
+     "why": "line has leading spaces preserved in string",
+     "line": 176,
+     "path": "tests/test_source_yaml.py",
+     "quote": "    foobar: \"Hello\""
+    },
+    {
+     "why": "line has leading spaces preserved",
+     "line": 177,
+     "path": "tests/test_source_yaml.py",
+     "quote": "    nested:"
+    },
+    {
+     "why": "line has extra indentation",
+     "line": 178,
+     "path": "tests/test_source_yaml.py",
+     "quote": "        nested_field: \"world!\""
+    },
+    {
+     "why": "ends triple-quoted string",
+     "line": 179,
+     "path": "tests/test_source_yaml.py",
+     "quote": "\"\"\""
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 173,
+     "finding_id": 90,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test_source_yaml.py",
+      "line_end": 182,
+      "line_start": 170
+     },
+     "result_chars": 412,
+     "result_summary": "tests/test_source_yaml.py, lines 170-182 of 199:\n  170  \n  171  @pytest.mark.skipif(yaml is None, reason='pyYAML is not installed')\n  172  def test_yaml_nested_key(tmp_path):\n  173      p = tmp_path / '.env'\n  174      p.write_text(\n  175          \"\"\"\n  176      foobar: \"Hello\"\n  177      nested:\n  ",
+     "tokens_in": 2339,
+     "tokens_out": 207,
+     "latency_ms": 45563
+    },
+    {
+     "id": 175,
+     "finding_id": 90,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "YamlConfigSettingsSource"
+     },
+     "result_chars": 1325,
+     "result_summary": "Lines containing 'YamlConfigSettingsSource':\ndocs/index.md:1992: - `YamlConfigSettingsSource` using `yaml_file` and yaml_file_encoding arguments\npydantic_settings/__init__.py:26: YamlConfigSettingsSource,\npydantic_settings/__init__.py:58: 'YamlConfigSettingsSource',\npydantic_settings/sources/__init_",
+     "tokens_in": 2539,
+     "tokens_out": 150,
+     "latency_ms": 43164
+    },
+    {
+     "id": 176,
+     "finding_id": 90,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The test defines a multiline YAML string with indentation that will be included in the file, leading to invalid YAML keys. The lines show the extra spaces inside the triple\u2011quoted string, confirming the readability issue.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "starts triple-quoted string with indentation",
+        "line": 175,
+        "path": "tests/test_source_yaml.py",
+        "quote": "\"\"\""
+       },
+       {
+        "why": "line has leading spaces preserved in string",
+        "line": 176,
+        "path": "tests/test_source_yaml.py",
+        "quote": "    foobar: \"Hello\""
+       },
+       {
+        "why": "line has leading spaces preserved",
+        "line": 177,
+        "path": "tests/test_source_yaml.py",
+        "quote": "    nested:"
+       },
+       {
+        "why": "line has extra indentation",
+        "line": 178,
+        "path": "tests/test_source_yaml.py",
+        "quote": "        nested_field: \"world!\""
+       },
+       {
+        "why": "ends triple-quoted string",
+        "line": 179,
+        "path": "tests/test_source_yaml.py",
+        "quote": "\"\"\""
+       }
+      ]
+     },
+     "result_chars": 232,
+     "result_summary": "confirmed: The test defines a multiline YAML string with indentation that will be included in the file, leading to invalid YAML keys. The lines show the extra spaces inside the triple\u2011quoted string, confirming the readability issue.",
+     "tokens_in": 2926,
+     "tokens_out": 376,
+     "latency_ms": 45601
+    }
+   ]
+  },
+  {
+   "id": 91,
+   "run_id": 19,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/yaml.py",
+   "line_start": 55,
+   "line_end": 56,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Potential KeyError or TypeError when accessing nested yaml key",
+   "explanation": "The code unconditionally indexes `self.yaml_data` with `self.yaml_nested_key` if the key is truthy. If the loaded YAML is not a dict or does not contain the specified key, a `TypeError` or `KeyError` will be raised, causing the settings source to crash at runtime.",
+   "suggested_fix": "Check that `self.yaml_data` is a dict and that the nested key exists before indexing, e.g., `if isinstance(self.yaml_data, dict) and self.yaml_nested_key in self.yaml_data: self.yaml_data = self.yaml_data[self.yaml_nested_key]`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 88,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-21T14:49:48Z",
+ "review": {
+  "id": 6006134885,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/8#pullrequestreview-6006134885",
+  "submitted_at": "2026-11-21T14:54:59Z",
+  "body": "<!-- pr-review-agent run:19 -->\n### Automated review of `9c8ed92`\nNo confirmed issues found. 3 style suggestion(s) below.\nReviewed 3 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 3 confirmed, 0 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0078 at list prices (free tier; agent $0.0045); 0 of 12 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 3</summary>\n\n- `pydantic_settings/sources/providers/yaml.py:55` Direct dict access may raise KeyError: The code accesses self.yaml_data[self.yaml_nested_key] without checking if the key exists. If the key is missing, this will raise a KeyError at runtime, which is a hidden failure not handled by the class.\n- `pydantic_settings/sources/providers/yaml.py:42` Ambiguous purpose of yaml_nested_key parameter: The constructor accepts a yaml_nested_key argument, but its role is not clearly documented. Future maintainers may be confused about when to supply it and what the effect is.\n- `tests/test_source_yaml.py:174` Unintended indentation in multiline YAML string: The YAML content written to the temporary file is defined using a triple\u2011quoted string that is indented to match the surrounding code. This preserves leading whitespace on each line, resulting in invalid YAML that contains leading spaces before the keys. While the test may still pass due to lenient parsing, it can cause subtle bugs or misinterpretation of the data.\n\n</details>"
+ },
+ "comments": []
+}
