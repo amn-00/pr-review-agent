@@ -525,6 +525,20 @@ we changed, and what the numbers were before and after. Details and reasoning ar
   the first replay session then ran from that PC: 3 PRs opened, each run read back as
   `completed`.
 
+### An upstream PR vanished from GitHub mid-evaluation
+- **Problem:** `realworld/outcomes.py` rebuilds every outcome from GitHub on each run. On
+  2026-11-24 the upstream PR behind replay 4 (pydantic-settings #1034) answered 404, on the API
+  and on the website, though the repo and its other PRs were fine. GitHub hides a PR that was
+  deleted or whose author's account was flagged; which one it was can't be seen from outside.
+  The script crashed.
+- **How we found it:** the seventh daily run. The outcome for replay 4 had been worked out on
+  five earlier runs.
+- **Fix:** a 404 for an upstream PR keeps the outcome saved by an earlier run (and says so).
+  A PR that was never worked out is left out, and other HTTP errors still stop the run.
+- **Result:** replay 4's saved outcome (57 added lines, none flagged, no bot or reviewer
+  comments) is kept. A test covers a kept outcome, a missing one and a 502; breaking either
+  rule fails it.
+
 ### The outcome script crashed on a curly quote in a diff
 - **Problem:** `realworld/outcomes.py` reads `git diff` output, which contains the files' own
   text. On Windows, Python decoded it with the locale's code page (cp1252) instead of UTF-8.

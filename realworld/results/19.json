@@ -1,0 +1,858 @@
+{
+ "k": 19,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 2830,
+  "replay_sha": "e7806503107f9b1b4f8c369ac66eb62dddfe8270",
+  "merge_base_sha": "76e053ac8221349fc068ef542fa43d20b40340d1"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 10,
+  "url": "https://github.com/amn-00/starlette/pull/10",
+  "head_sha": "3d86bc0a12c293de4e4142edc04850afa8df12f4"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [
+  "finding 117 not verified (agent PR token budget)",
+  "finding 118 not verified (agent PR token budget)",
+  "finding 119 not verified (agent PR token budget)",
+  "finding 120 not verified (agent PR token budget)",
+  "finding 121 not verified (agent PR token budget)"
+ ],
+ "issue_links": [],
+ "run": {
+  "id": 22,
+  "pr_id": 22,
+  "head_sha": "3d86bc0a12c293de4e4142edc04850afa8df12f4",
+  "status": "completed",
+  "started_at": "2026-11-24 18:15:02.555623+00:00",
+  "finished_at": "2026-11-24 18:20:49.261151+00:00",
+  "tokens_in": 94049,
+  "tokens_out": 9939,
+  "cost_usd": "0.017400300",
+  "llm_calls": 58,
+  "cached_calls": 30,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 1,
+  "agent_enabled": true,
+  "github_review_id": 6044943904
+ },
+ "findings": [
+  {
+   "id": 110,
+   "run_id": 22,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/_utils.py",
+   "line_start": 82,
+   "line_end": 84,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect exception class caught for collapsed task groups",
+   "explanation": "The code catches `BaseExceptionGroup`, but `anyio.create_task_group` raises `ExceptionGroup` (a subclass of `BaseExceptionGroup`) only on Python 3.11+. Catching the more specific `ExceptionGroup` is appropriate; catching `BaseExceptionGroup` may also catch system-exiting exceptions like `KeyboardInterrupt`, leading to unintended handling.",
+   "suggested_fix": "Replace `except BaseExceptionGroup as excs:` with `except ExceptionGroup as excs:` (import `ExceptionGroup` from `builtins` if needed).",
+   "verdict": "uncertain",
+   "verdict_reason": "dropped without evidence from code it read (the quote for starlette/_utils.py:84 isn't on that line): Catching BaseExceptionGroup does not capture system\u2011exiting exceptions like KeyboardInterrupt, which are not subclasses of BaseExceptionGroup, and it still correctly handles the ExceptionGroup raised by anyio. The finding's claim is therefore incorrect.",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 208,
+     "finding_id": 110,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "Catching BaseExceptionGroup does not capture system\u2011exiting exceptions like KeyboardInterrupt, which are not subclasses of BaseExceptionGroup, and it still correctly handles the ExceptionGroup raised by anyio. The finding's claim is therefore incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "catches BaseExceptionGroup, not broader BaseException",
+        "line": 82,
+        "path": "starlette/_utils.py",
+        "quote": "except BaseExceptionGroup as excs:"
+       },
+       {
+        "why": "re-raises unless single exception, handling only exception groups",
+        "line": 84,
+        "path": "starlette/_utils.py",
+        "quote": "if len(excs.exceptions) != 1:"
+       }
+      ]
+     },
+     "result_chars": 366,
+     "result_summary": "uncertain: dropped without evidence from code it read (the quote for starlette/_utils.py:84 isn't on that line): Catching BaseExceptionGroup does not capture system\u2011exiting exceptions like KeyboardInterrupt, which are not subclasses of BaseExceptionGroup, and it still correctly handles the Exception",
+     "tokens_in": 2299,
+     "tokens_out": 513,
+     "latency_ms": 57782
+    }
+   ]
+  },
+  {
+   "id": 111,
+   "run_id": 22,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/base.py",
+   "line_start": 176,
+   "line_end": 176,
+   "category": "bug",
+   "severity": "high",
+   "title": "Using synchronous context manager on async streams",
+   "explanation": "The `anyio.create_memory_object_stream` returns asynchronous stream objects that should be used with an `async with` block. Using a regular `with` statement (line 176) will raise a runtime error because the objects do not implement the synchronous context manager protocol.",
+   "suggested_fix": "Replace the `with` statement with `async with`:\n```python\nasync with recv_stream, send_stream:\n    ...\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "anyio.create_memory_object_stream returns asynchronous stream objects that only implement the async context manager protocol. The code uses a regular synchronous `with` statement on these objects (line 176), which will raise a runtime error.",
+   "evidence": [
+    {
+     "why": "Creates the stream objects that require async context management",
+     "line": 175,
+     "path": "starlette/middleware/base.py",
+     "quote": "send_stream, recv_stream = anyio.create_memory_object_stream[Message]()"
+    },
+    {
+     "why": "Uses a synchronous `with` on async streams, causing a runtime error",
+     "line": 176,
+     "path": "starlette/middleware/base.py",
+     "quote": "with recv_stream, send_stream:"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 206,
+     "finding_id": 111,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "create_memory_object_stream"
+     },
+     "result_chars": 787,
+     "result_summary": "Lines containing 'create_memory_object_stream':\nstarlette/middleware/base.py:175: send_stream, recv_stream = anyio.create_memory_object_stream[Message]()\nstarlette/middleware/wsgi.py:93: self.stream_send, self.stream_receive = anyio.create_memory_object_stream(math.inf)\nstarlette/testclient.py:120: ",
+     "tokens_in": 2249,
+     "tokens_out": 83,
+     "latency_ms": 898
+    },
+    {
+     "id": 207,
+     "finding_id": 111,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class MemoryObjectReceiveStream"
+     },
+     "result_chars": 63,
+     "result_summary": "Lines containing 'class MemoryObjectReceiveStream': no matches.",
+     "tokens_in": 2495,
+     "tokens_out": 136,
+     "latency_ms": 55345
+    },
+    {
+     "id": 210,
+     "finding_id": 111,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 37828
+    },
+    {
+     "id": 211,
+     "finding_id": 111,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We need see if recv_stream is async context manag",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 499
+    },
+    {
+     "id": 213,
+     "finding_id": 111,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "anyio.create_memory_object_stream returns asynchronous stream objects that only implement the async context manager protocol. The code uses a regular synchronous `with` statement on these objects (line 176), which will raise a runtime error.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Creates the stream objects that require async context management",
+        "line": 175,
+        "path": "starlette/middleware/base.py",
+        "quote": "send_stream, recv_stream = anyio.create_memory_object_stream[Message]()"
+       },
+       {
+        "why": "Uses a synchronous `with` on async streams, causing a runtime error",
+        "line": 176,
+        "path": "starlette/middleware/base.py",
+        "quote": "with recv_stream, send_stream:"
+       }
+      ]
+     },
+     "result_chars": 252,
+     "result_summary": "confirmed: anyio.create_memory_object_stream returns asynchronous stream objects that only implement the async context manager protocol. The code uses a regular synchronous `with` statement on these objects (line 176), which will raise a runtime error.",
+     "tokens_in": 2362,
+     "tokens_out": 292,
+     "latency_ms": 51973
+    }
+   ]
+  },
+  {
+   "id": 112,
+   "run_id": 22,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/responses.py",
+   "line_start": 262,
+   "line_end": 262,
+   "category": "bug",
+   "severity": "high",
+   "title": "Incorrect indentation after else statement",
+   "explanation": "The added line has an extra leading space, causing misaligned indentation under the else block. This will raise an IndentationError at runtime, preventing the response handling from working for ASGI spec versions below 2.4.",
+   "suggested_fix": "Remove the extra space so the line aligns with the other statements in the block, e.g.,\n```python\nelse:\n    async with create_collapsing_task_group() as task_group:\n        ...\n```",
+   "verdict": "dropped",
+   "verdict_reason": "The repository file shows proper indentation; there is no extra leading space causing an IndentationError.",
+   "evidence": [
+    {
+     "why": "Line is correctly indented under else without extra leading space",
+     "line": 262,
+     "path": "starlette/responses.py",
+     "quote": "async with create_collapsing_task_group() as task_group:"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 209,
+     "finding_id": 112,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/responses.py",
+      "line_end": 270,
+      "line_start": 250
+     },
+     "result_chars": 1048,
+     "result_summary": "starlette/responses.py, lines 250-270 of 538:\n  250  \n  251          await send({\"type\": \"http.response.body\", \"body\": b\"\", \"more_body\": False})\n  252  \n  253      async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:\n  254          spec_version = tuple(map(int, scope.get(\"as",
+     "tokens_in": 2255,
+     "tokens_out": 87,
+     "latency_ms": 494
+    },
+    {
+     "id": 212,
+     "finding_id": 112,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The repository file shows proper indentation; there is no extra leading space causing an IndentationError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Line is correctly indented under else without extra leading space",
+        "line": 262,
+        "path": "starlette/responses.py",
+        "quote": "async with create_collapsing_task_group() as task_group:"
+       }
+      ]
+     },
+     "result_chars": 115,
+     "result_summary": "dropped: The repository file shows proper indentation; there is no extra leading space causing an IndentationError.",
+     "tokens_in": 2598,
+     "tokens_out": 150,
+     "latency_ms": 56589
+    }
+   ]
+  },
+  {
+   "id": 113,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/middleware/test_wsgi.py",
+   "line_start": 88,
+   "line_end": 89,
+   "category": "idiom",
+   "severity": "high",
+   "title": "Incorrect indentation inside with block",
+   "explanation": "The line invoking `client.get(\"/\")` is not indented under the `with pytest.raises(RuntimeError):` block, causing a syntax error and making the test fail to run.",
+   "suggested_fix": "Indent the call so it is inside the with-block: \n    with pytest.raises(RuntimeError):\n        client.get(\"/\")",
+   "verdict": "dropped",
+   "verdict_reason": "The test code shows proper indentation of the client.get call within the pytest.raises block, so there is no syntax error.",
+   "evidence": [
+    {
+     "why": "with statement correctly starts the block",
+     "line": 88,
+     "path": "tests/middleware/test_wsgi.py",
+     "quote": "with pytest.raises(RuntimeError):"
+    },
+    {
+     "why": "call is properly indented inside the with block",
+     "line": 89,
+     "path": "tests/middleware/test_wsgi.py",
+     "quote": "client.get(\"/\")"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 214,
+     "finding_id": 113,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/middleware/test_wsgi.py",
+      "line_end": 100,
+      "line_start": 80
+     },
+     "result_chars": 1005,
+     "result_summary": "tests/middleware/test_wsgi.py, lines 80-100 of 164:\n   80      assert response.text == '{\"example\":123}'\n   81  \n   82  \n   83  def test_wsgi_exception(test_client_factory: TestClientFactory) -> None:\n   84      # Note that we're testing the WSGI app directly here.\n   85      # The HTTP protocol imp",
+     "tokens_in": 2261,
+     "tokens_out": 173,
+     "latency_ms": 52054
+    },
+    {
+     "id": 217,
+     "finding_id": 113,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The test code shows proper indentation of the client.get call within the pytest.raises block, so there is no syntax error.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "with statement correctly starts the block",
+        "line": 88,
+        "path": "tests/middleware/test_wsgi.py",
+        "quote": "with pytest.raises(RuntimeError):"
+       },
+       {
+        "why": "call is properly indented inside the with block",
+        "line": 89,
+        "path": "tests/middleware/test_wsgi.py",
+        "quote": "client.get(\"/\")"
+       }
+      ]
+     },
+     "result_chars": 149,
+     "result_summary": "called as 'json': dropped: The test code shows proper indentation of the client.get call within the pytest.raises block, so there is no syntax error.",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 38172
+    }
+   ]
+  },
+  {
+   "id": 114,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/_utils.py",
+   "line_start": 20,
+   "line_end": 24,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Stub BaseExceptionGroup defined in exception handling block",
+   "explanation": "Defining a `BaseExceptionGroup` class inside an `except ImportError` block can be confusing and may mask the real class if the import succeeds. It also lacks documentation explaining why it is defined here.",
+   "suggested_fix": "Add a comment explaining that this stub is for compatibility on Python <3.11, or move the definition to a separate compatibility module.",
+   "verdict": "dropped",
+   "verdict_reason": "Defining a fallback BaseExceptionGroup inside an ImportError block is a standard compatibility pattern and not a readability problem; the code intentionally provides a stub when the backport is unavailable.",
+   "evidence": [
+    {
+     "why": "Guard for older Python versions",
+     "line": 18,
+     "path": "starlette/_utils.py",
+     "quote": "if sys.version_info < (3, 11):  # pragma: no cover"
+    },
+    {
+     "why": "Attempt to import real BaseExceptionGroup",
+     "line": 19,
+     "path": "starlette/_utils.py",
+     "quote": "try:"
+    },
+    {
+     "why": "Import from backport when available",
+     "line": 20,
+     "path": "starlette/_utils.py",
+     "quote": "from exceptiongroup import BaseExceptionGroup"
+    },
+    {
+     "why": "Fallback if backport missing",
+     "line": 21,
+     "path": "starlette/_utils.py",
+     "quote": "except ImportError:"
+    },
+    {
+     "why": "Defines compatible stub",
+     "line": 23,
+     "path": "starlette/_utils.py",
+     "quote": "class BaseExceptionGroup(BaseException):  # type: ignore[no-redef]"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 215,
+     "finding_id": 114,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "Defining a fallback BaseExceptionGroup inside an ImportError block is a standard compatibility pattern and not a readability problem; the code intentionally provides a stub when the backport is unavailable.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Guard for older Python versions",
+        "line": 18,
+        "path": "starlette/_utils.py",
+        "quote": "if sys.version_info < (3, 11):  # pragma: no cover"
+       },
+       {
+        "why": "Attempt to import real BaseExceptionGroup",
+        "line": 19,
+        "path": "starlette/_utils.py",
+        "quote": "try:"
+       },
+       {
+        "why": "Import from backport when available",
+        "line": 20,
+        "path": "starlette/_utils.py",
+        "quote": "from exceptiongroup import BaseExceptionGroup"
+       },
+       {
+        "why": "Fallback if backport missing",
+        "line": 21,
+        "path": "starlette/_utils.py",
+        "quote": "except ImportError:"
+       },
+       {
+        "why": "Defines compatible stub",
+        "line": 23,
+        "path": "starlette/_utils.py",
+        "quote": "class BaseExceptionGroup(BaseException):  # type: ignore[no-redef]"
+       }
+      ]
+     },
+     "result_chars": 215,
+     "result_summary": "dropped: Defining a fallback BaseExceptionGroup inside an ImportError block is a standard compatibility pattern and not a readability problem; the code intentionally provides a stub when the backport is unavailable.",
+     "tokens_in": 2238,
+     "tokens_out": 405,
+     "latency_ms": 39923
+    }
+   ]
+  },
+  {
+   "id": 115,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/responses.py",
+   "line_start": 21,
+   "line_end": 21,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Unused import",
+   "explanation": "The import of create_collapsing_task_group is added but never used in the shown excerpt, increasing import overhead and potentially confusing readers.",
+   "suggested_fix": "Remove the import if it is not needed, or use the imported symbol in the code.",
+   "verdict": "dropped",
+   "verdict_reason": "The imported create_collapsing_task_group is used in the __call__ method at line 262, so the claim of an unused import is incorrect.",
+   "evidence": [
+    {
+     "why": "import statement",
+     "line": 21,
+     "path": "starlette/responses.py",
+     "quote": "from starlette._utils import create_collapsing_task_group"
+    },
+    {
+     "why": "imported name is used here",
+     "line": 262,
+     "path": "starlette/responses.py",
+     "quote": "async with create_collapsing_task_group() as task_group:"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 216,
+     "finding_id": 115,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "create_collapsing_task_group"
+     },
+     "result_chars": 968,
+     "result_summary": "Lines containing 'create_collapsing_task_group':\nstarlette/_utils.py:78: async def create_collapsing_task_group() -> typing.AsyncGenerator[anyio.abc.TaskGroup, None]:\nstarlette/middleware/base.py:7: from starlette._utils import create_collapsing_task_group\nstarlette/middleware/base.py:177: async wit",
+     "tokens_in": 2157,
+     "tokens_out": 49,
+     "latency_ms": 376
+    },
+    {
+     "id": 218,
+     "finding_id": 115,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/responses.py",
+      "line_end": 280,
+      "line_start": 250
+     },
+     "result_chars": 1380,
+     "result_summary": "starlette/responses.py, lines 250-280 of 538:\n  250  \n  251          await send({\"type\": \"http.response.body\", \"body\": b\"\", \"more_body\": False})\n  252  \n  253      async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:\n  254          spec_version = tuple(map(int, scope.get(\"as",
+     "tokens_in": 2456,
+     "tokens_out": 48,
+     "latency_ms": 42041
+    },
+    {
+     "id": 220,
+     "finding_id": 115,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The imported create_collapsing_task_group is used in the __call__ method at line 262, so the claim of an unused import is incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "import statement",
+        "line": 21,
+        "path": "starlette/responses.py",
+        "quote": "from starlette._utils import create_collapsing_task_group"
+       },
+       {
+        "why": "imported name is used here",
+        "line": 262,
+        "path": "starlette/responses.py",
+        "quote": "async with create_collapsing_task_group() as task_group:"
+       }
+      ]
+     },
+     "result_chars": 141,
+     "result_summary": "dropped: The imported create_collapsing_task_group is used in the __call__ method at line 262, so the claim of an unused import is incorrect.",
+     "tokens_in": 2888,
+     "tokens_out": 187,
+     "latency_ms": 42127
+    }
+   ]
+  },
+  {
+   "id": 116,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test__utils.py",
+   "line_start": 10,
+   "line_end": 12,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Version check imports ExceptionGroup unconditionally",
+   "explanation": "The code imports ExceptionGroup only when running on Python versions older than 3.11, but ExceptionGroup is only available starting from 3.11. On Python 3.10 or 3.9 the import will raise a ModuleNotFoundError. The check should import ExceptionGroup unconditionally or use a guard that checks for its existence.",
+   "suggested_fix": "Use importlib.util.find_spec or import ExceptionGroup directly without a version guard, or guard the import with a try/except: \n\n```python\ntry:\n    from exceptiongroup import ExceptionGroup\nexcept ImportError:\n    ExceptionGroup = None\n```",
+   "verdict": "dropped",
+   "verdict_reason": "The conditional import is correct because the `exceptiongroup` backport package provides `ExceptionGroup` on Python versions prior to 3.11, so the import will not raise a `ModuleNotFoundError` on those versions.",
+   "evidence": [
+    {
+     "why": "Guard ensures import only on older Python versions",
+     "line": 10,
+     "path": "tests/test__utils.py",
+     "quote": "if sys.version_info < (3, 11):  # pragma: no cover"
+    },
+    {
+     "why": "Conditional import uses backport package that exists on older Python versions",
+     "line": 11,
+     "path": "tests/test__utils.py",
+     "quote": "    from exceptiongroup import ExceptionGroup"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 219,
+     "finding_id": 116,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "exceptiongroup"
+     },
+     "result_chars": 387,
+     "result_summary": "Lines containing 'exceptiongroup':\ndocs/release-notes.md:287: * Fix import error when `exceptiongroup` isn't available [#2231](https://github.com/encode/starlette/pull/2231).\nstarlette/_utils.py:20: from exceptiongroup import BaseExceptionGroup\ntests/middleware/test_base.py:26: from exceptiongroup i",
+     "tokens_in": 2164,
+     "tokens_out": 127,
+     "latency_ms": 46279
+    },
+    {
+     "id": 221,
+     "finding_id": 116,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "tests/test__utils.py",
+      "line_end": 40,
+      "line_start": 1
+     },
+     "result_chars": 1385,
+     "result_summary": "tests/test__utils.py, lines 1-40 of 128:\n    1  import functools\n    2  import sys\n    3  from typing import Any\n    4  \n    5  import pytest\n    6  \n    7  from starlette._utils import create_collapsing_task_group, get_route_path, is_async_callable\n    8  from starlette.types import Scope\n    9  \n ",
+     "tokens_in": 2321,
+     "tokens_out": 49,
+     "latency_ms": 38400
+    },
+    {
+     "id": 222,
+     "finding_id": 116,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"The finding says import ExceptionGroup only when ",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 583
+    },
+    {
+     "id": 223,
+     "finding_id": 116,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 37900
+    },
+    {
+     "id": 224,
+     "finding_id": 116,
+     "step_no": 5,
+     "tool": "verdict_json",
+     "args_json": {
+      "reason": "The conditional import is correct because the `exceptiongroup` backport package provides `ExceptionGroup` on Python versions prior to 3.11, so the import will not raise a `ModuleNotFoundError` on those versions.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Guard ensures import only on older Python versions",
+        "line": 10,
+        "path": "tests/test__utils.py",
+        "quote": "if sys.version_info < (3, 11):  # pragma: no cover"
+       },
+       {
+        "why": "Conditional import uses backport package that exists on older Python versions",
+        "line": 11,
+        "path": "tests/test__utils.py",
+        "quote": "    from exceptiongroup import ExceptionGroup"
+       }
+      ]
+     },
+     "result_chars": 220,
+     "result_summary": "dropped: The conditional import is correct because the `exceptiongroup` backport package provides `ExceptionGroup` on Python versions prior to 3.11, so the import will not raise a `ModuleNotFoundError` on those versions.",
+     "tokens_in": 2621,
+     "tokens_out": 352,
+     "latency_ms": 1207
+    }
+   ]
+  },
+  {
+   "id": 117,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/_utils.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unnecessary import of asynccontextmanager",
+   "explanation": "The module imports `asynccontextmanager` from `contextlib` but never uses it in the file, which is a wasted import and may confuse readers about its purpose.",
+   "suggested_fix": "Remove the line `from contextlib import asynccontextmanager`.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 118,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/_utils.py",
+   "line_start": 9,
+   "line_end": 9,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unnecessary import of anyio.abc",
+   "explanation": "The code imports `anyio.abc` but does not reference it anywhere in the file, making the import redundant.",
+   "suggested_fix": "Delete the line `import anyio.abc`.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 119,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/base.py",
+   "line_start": 7,
+   "line_end": 7,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unused import",
+   "explanation": "The imported symbol `create_collapsing_task_group` is not referenced in the shown code, which can confuse readers and may indicate dead code.",
+   "suggested_fix": "Remove the import if it is not used elsewhere in the file.\n\n```python\n- from starlette._utils import create_collapsing_task_group\n+ # from starlette._utils import create_collapsing_task_group  # unused\n```",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 120,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/base.py",
+   "line_start": 177,
+   "line_end": 177,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unnecessary task group context manager",
+   "explanation": "The async with create_collapsing_task_group() as task_group opens a task group that is never used inside the block, making the code confusing for readers. It adds overhead and may lead to misunderstandings about concurrency intent.",
+   "suggested_fix": "Remove the task group or use it to run concurrent tasks.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 121,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/wsgi.py",
+   "line_start": 12,
+   "line_end": 12,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Importing a private module",
+   "explanation": "The code imports a symbol from starlette._utils, a private module. Relying on internal APIs can lead to breaking changes when the library is updated, making future maintenance harder.",
+   "suggested_fix": "Import the public API equivalent if available, or add a comment explaining the dependency on the internal module.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 122,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/_utils.py",
+   "line_start": 77,
+   "line_end": 99,
+   "category": "idiom",
+   "severity": "high",
+   "title": "Missing imports for anyio and asynccontextmanager",
+   "explanation": "The function create_collapsing_task_group uses the names `anyio` and `asynccontextmanager` without importing them, which will cause a NameError at runtime. This makes the code non-functional and difficult for future readers to understand where these names come from.",
+   "suggested_fix": "Add `from contextlib import asynccontextmanager` and `import anyio` at the top of the file or import the necessary symbols from anyio. For example:\n```python\nfrom contextlib import asynccontextmanager\nimport anyio\n```\n",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 110,
+   "agent_steps": []
+  },
+  {
+   "id": 123,
+   "run_id": 22,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/base.py",
+   "line_start": 181,
+   "line_end": 181,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Double-closing the receive stream",
+   "explanation": "The receive stream is entered as a context manager on line 176, which will close it automatically when exiting the block. The explicit call to `recv_stream.close()` on line 181 attempts to close it a second time, potentially raising an exception or causing undefined behavior.",
+   "suggested_fix": "Remove the explicit `recv_stream.close()` call; the context manager will handle closing.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 124,
+   "run_id": 22,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/middleware/base.py",
+   "line_start": 176,
+   "line_end": 176,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Comma-separated with statement for multiple streams",
+   "explanation": "Using a single with statement with a comma to manage recv_stream and send_stream is uncommon and may reduce readability. Splitting them into separate with statements or adding a comment clarifies intent.",
+   "suggested_fix": "Use two separate with statements:\n```\nwith recv_stream:\n    with send_stream:\n        ...\n```\nor add a comment explaining the dual context.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 111,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-24T18:05:33Z",
+ "review": {
+  "id": 6044943904,
+  "url": "https://github.com/amn-00/starlette/pull/10#pullrequestreview-6044943904",
+  "submitted_at": "2026-11-24T18:20:48Z",
+  "body": "<!-- pr-review-agent run:22 -->\n### Automated review of `3d86bc0`\nFound 1 confirmed issue(s): 1 high.\nReviewed 7 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 1 confirmed, 5 dropped, 1 uncertain, 5 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0087 at list prices (free tier; agent $0.0066); 30 of 39 lane call(s) answered from cache.\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `starlette/_utils.py:82` **high** Incorrect exception class caught for collapsed task groups \u2014 dropped without evidence from code it read (the quote for starlette/_utils.py:84 isn't on that line): Catching BaseExceptionGroup does not capture system\u2011exiting exceptions like KeyboardInterrupt, which are not subclasses of BaseExceptionGroup, and it still correctly handles the ExceptionGroup raised by anyio. The finding's claim is therefore incorrect.\n\n</details>\n\n<details><summary>Not verified (not posted): 5</summary>\n\n- `starlette/_utils.py:7` **low** Unnecessary import of asynccontextmanager \u2014 agent PR token budget\n- `starlette/_utils.py:9` **low** Unnecessary import of anyio.abc \u2014 agent PR token budget\n- `starlette/middleware/base.py:7` **low** Unused import \u2014 agent PR token budget\n- `starlette/middleware/base.py:177` **low** Unnecessary task group context manager \u2014 agent PR token budget\n- `starlette/middleware/wsgi.py:12` **low** Importing a private module \u2014 agent PR token budget\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4684585406,
+   "url": "https://github.com/amn-00/starlette/pull/10#discussion_r4684585406",
+   "file": "starlette/middleware/base.py",
+   "line": 176,
+   "start_line": 176,
+   "body": "**high** \u00b7 bug \u00b7 Using synchronous context manager on async streams\n\nThe `anyio.create_memory_object_stream` returns asynchronous stream objects that should be used with an `async with` block. Using a regular `with` statement (line 176) will raise a runtime error because the objects do not implement the synchronous context manager protocol.\n\n**Suggested fix:** Replace the `with` statement with `async with`:\n```python\nasync with recv_stream, send_stream:\n    ...\n```\n\n_Checked against `starlette/middleware/base.py:175`, `starlette/middleware/base.py:176`_"
+  }
+ ]
+}

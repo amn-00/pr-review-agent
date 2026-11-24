@@ -1,8 +1,10 @@
 """B's raw material: which lines changed before the merge, and which reviewer comments sit
 near a bot comment."""
 
+import httpx
 import pytest
 
+from realworld import outcomes as outcomes_module
 from realworld.outcomes import diff_lines, near, pull_outcome, reviewer_comments
 from realworld.replay import REPLAY_IDENTITY, git
 
@@ -160,3 +162,35 @@ def test_a_pulls_outcome_counts_lines_and_pairs_comments():
         (72, "", "", ""),
     ]
     assert rows[0] | {"k": 4, "file": "a.py", "line": 13, "text": "near the first"} == rows[0]
+
+
+def test_an_upstream_pr_that_is_gone_keeps_its_earlier_outcome(monkeypatch):
+    def outcome_for(http, result):
+        if result["upstream"]["number"] in (1034, 999):
+            request = httpx.Request("GET", "https://api.github.com/x")
+            raise httpx.HTTPStatusError(
+                "gone", request=request, response=httpx.Response(404, request=request)
+            )
+        if result["upstream"]["number"] == 500:
+            request = httpx.Request("GET", "https://api.github.com/x")
+            raise httpx.HTTPStatusError(
+                "down", request=request, response=httpx.Response(502, request=request)
+            )
+        return {"comments": {}}, [{"comment_id": 1}]
+
+    monkeypatch.setattr(outcomes_module, "outcome_for", outcome_for)
+
+    def result(k, number):
+        return {"k": k, "upstream": {"repo": "o/r", "number": number}}
+
+    earlier = {"4": {"comments": {}, "added": 12}}
+    found, rows = outcomes_module.outcomes_for(
+        None, [result(3, 926), result(4, 1034), result(5, 999)], earlier
+    )
+
+    # Replay 4 keeps what an earlier run worked out; replay 5 was never worked out.
+    assert found == {"3": {"comments": {}}, "4": {"comments": {}, "added": 12}}
+    assert rows == [{"comment_id": 1}]
+    # Any other error still stops the run: it isn't a PR that's gone.
+    with pytest.raises(httpx.HTTPStatusError):
+        outcomes_module.outcomes_for(None, [result(6, 500)], earlier)

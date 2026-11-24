@@ -9,3 +9,4 @@
 11,4630912305,https://github.com/amn-00/starlette/pull/6#discussion_r4630912305,tests/test_exceptions.py,56,medium · bug · Catch-all handlers raise NotImplementedError instead of returning a response,,
 14,4642891802,https://github.com/amn-00/pydantic-settings/pull/7#discussion_r4642891802,pydantic_settings/sources/providers/aws.py,70,medium · bug · Assumes 'SecretString' key always present in AWS Secrets Manager response,,
 17,4653274335,https://github.com/amn-00/starlette/pull/9#discussion_r4653274335,starlette/testclient.py,292,"medium · bug · ASGI `client` field should be a tuple, not a list",,
+19,4684585406,https://github.com/amn-00/starlette/pull/10#discussion_r4684585406,starlette/middleware/base.py,176,high · bug · Using synchronous context manager on async streams,,

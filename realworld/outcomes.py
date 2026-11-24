@@ -158,19 +158,46 @@ def outcome_for(http: httpx.Client, result: dict) -> tuple[dict, list[dict]]:
     return pull_outcome(result, added, changed, reviewers)
 
 
-def main() -> None:
+def outcomes_for(
+    http: httpx.Client, results: list[dict], previous: dict
+) -> tuple[dict, list[dict]]:
+    """Every collected PR's outcome and reviewer rows. An upstream PR that GitHub no longer
+    serves (404: deleted, or hidden with its author's account) keeps the outcome worked out on
+    an earlier run, from `previous`; its reviewer rows are already in the sheet. One that was
+    never worked out is left out, and said so."""
     outcomes, rows = {}, []
-    with github_client(gh_token()) as http:
-        for path in sorted(RESULTS_DIR.glob("*.json"), key=lambda p: int(p.stem)):
-            result = json.loads(path.read_text(encoding="utf-8"))
+    for result in results:
+        k = str(result["k"])
+        upstream = f"{result['upstream']['repo']}#{result['upstream']['number']}"
+        try:
             outcome, pull_rows = outcome_for(http, result)
-            outcomes[str(result["k"])] = outcome
-            rows += pull_rows
-            matched = sum(1 for c in outcome["comments"].values() if c["reviewer_comment_ids"])
-            print(
-                f"Replay {result['k']}: {len(outcome['comments'])} bot comment(s), {matched} near "
-                f"a reviewer's; {len(pull_rows)} reviewer comment(s) on the replayed version"
-            )
+        except httpx.HTTPStatusError as exc:
+            if exc.response.status_code != 404:
+                raise
+            if k in previous:
+                outcomes[k] = previous[k]
+                print(f"Replay {k}: {upstream} is gone from GitHub; kept its earlier outcome.")
+            else:
+                print(f"Replay {k}: {upstream} is gone from GitHub, and has no earlier outcome.")
+            continue
+        outcomes[k] = outcome
+        rows += pull_rows
+        matched = sum(1 for c in outcome["comments"].values() if c["reviewer_comment_ids"])
+        print(
+            f"Replay {k}: {len(outcome['comments'])} bot comment(s), {matched} near "
+            f"a reviewer's; {len(pull_rows)} reviewer comment(s) on the replayed version"
+        )
+    return outcomes, rows
+
+
+def main() -> None:
+    paths = sorted(RESULTS_DIR.glob("*.json"), key=lambda path: int(path.stem))
+    results = [json.loads(path.read_text(encoding="utf-8")) for path in paths]
+    previous = {}
+    if OUTCOMES_FILE.exists():
+        previous = json.loads(OUTCOMES_FILE.read_text(encoding="utf-8"))
+    with github_client(gh_token()) as http:
+        outcomes, rows = outcomes_for(http, results, previous)
     OUTCOMES_FILE.write_text(json.dumps(outcomes, indent=1) + "\n", encoding="utf-8")
     written = merge_rows(REVIEWER_FILE, REVIEWER_COLUMNS, rows)
     todo = sum(1 for row in written if not row["problem"].strip())

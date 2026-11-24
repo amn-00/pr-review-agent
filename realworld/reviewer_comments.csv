@@ -19,3 +19,5 @@
 16,2052196934,https://github.com/pydantic/pydantic-settings/pull/603#discussion_r2052196934,pydantic_settings/sources/providers/yaml.py,56,"Please raise a `SettingsError` when the key does not exist. Also, pelase add test for it",,,
 17,1897731036,https://github.com/Kludex/starlette/pull/2810#discussion_r1897731036,starlette/testclient.py,237,"It should be just a tuple. ```suggestion client: tuple[str, int], ```",,,
 17,1897731278,https://github.com/Kludex/starlette/pull/2810#discussion_r1897731278,starlette/testclient.py,417,"```suggestion client: tuple[str, int] = (""testclient"", 5000), ```",,,
+18,3022319044,https://github.com/pydantic/pydantic-settings/pull/832#discussion_r3022319044,docs/index.md,703,Let's call the setting `dotenv_filtering` or something else to say this is only for dotenv settings source,,,
+19,1899621900,https://github.com/Kludex/starlette/pull/2830#discussion_r1899621900,starlette/responses.py,262,Do we also have an issue with `StreamingResponse` standalone? With my comment on the other PR I was trying to avoid the changes here. 🤔,,,
