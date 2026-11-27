@@ -1,0 +1,336 @@
+{
+ "k": 20,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 533,
+  "replay_sha": "2380e975ab71008079ad2252b6db63d36f3654c5",
+  "merge_base_sha": "65929cd1f5356b967456ac1b4f78e929fe04d398"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 10,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/10",
+  "head_sha": "55bdfe6f2fdb13f6fc19e0801d0a27793d292e93"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 24,
+  "pr_id": 24,
+  "head_sha": "55bdfe6f2fdb13f6fc19e0801d0a27793d292e93",
+  "status": "completed",
+  "started_at": "2026-11-27 12:26:44.645953+00:00",
+  "finished_at": "2026-11-27 12:31:23.195091+00:00",
+  "tokens_in": 43231,
+  "tokens_out": 4368,
+  "cost_usd": "0.007846050",
+  "llm_calls": 24,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 6088177059
+ },
+ "findings": [
+  {
+   "id": 125,
+   "run_id": 24,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "docs/index.md",
+   "line_start": 1074,
+   "line_end": 1078,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Missing closing backticks for code block",
+   "explanation": "The documentation opens a fenced code block with ```py at line 1074, but never closes it before the next code block starts at line 1078. This causes the Markdown renderer to treat the rest of the document as part of the code block, leading to rendering errors and confusing readers.",
+   "suggested_fix": "Add a closing ``` after the end of the first example code, e.g. insert a line with ``` before line 1078.",
+   "verdict": "dropped",
+   "verdict_reason": "The excerpt includes a closing backticks line at 1087, so the code block is properly terminated; the finding about missing closing backticks is incorrect.",
+   "evidence": [
+    {
+     "why": "closes the previously opened fenced code block",
+     "line": 1087,
+     "path": "docs/index.md",
+     "quote": "```"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 225,
+     "finding_id": 125,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The excerpt includes a closing backticks line at 1087, so the code block is properly terminated; the finding about missing closing backticks is incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "closes the previously opened fenced code block",
+        "line": 1087,
+        "path": "docs/index.md",
+        "quote": "```"
+       }
+      ]
+     },
+     "result_chars": 163,
+     "result_summary": "dropped: The excerpt includes a closing backticks line at 1087, so the code block is properly terminated; the finding about missing closing backticks is incorrect.",
+     "tokens_in": 2423,
+     "tokens_out": 198,
+     "latency_ms": 47573
+    }
+   ]
+  },
+  {
+   "id": 126,
+   "run_id": 24,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "docs/index.md",
+   "line_start": 1093,
+   "line_end": 1126,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Missing closing backticks for second code block",
+   "explanation": "Similarly, the second example opens with ```py at line 1093 but has no closing triple backticks before the subsequent text. This breaks the Markdown formatting and can mislead future maintainers.",
+   "suggested_fix": "Insert a closing ``` after line 1126, before the following explanatory text.",
+   "verdict": "dropped",
+   "verdict_reason": "The excerpt includes a closing ``` at line 1126, so the second code block is properly terminated. The finding that closing backticks are missing is incorrect.",
+   "evidence": [
+    {
+     "why": "Closing triple backticks present, terminating the second code block",
+     "line": 1126,
+     "path": "docs/index.md",
+     "quote": "```"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 226,
+     "finding_id": 126,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The excerpt includes a closing ``` at line 1126, so the second code block is properly terminated. The finding that closing backticks are missing is incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Closing triple backticks present, terminating the second code block",
+        "line": 1126,
+        "path": "docs/index.md",
+        "quote": "```"
+       }
+      ]
+     },
+     "result_chars": 167,
+     "result_summary": "dropped: The excerpt includes a closing ``` at line 1126, so the second code block is properly terminated. The finding that closing backticks are missing is incorrect.",
+     "tokens_in": 2637,
+     "tokens_out": 221,
+     "latency_ms": 48343
+    }
+   ]
+  },
+  {
+   "id": 127,
+   "run_id": 24,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 3,
+   "line_end": 5,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unused imports increase cognitive load",
+   "explanation": "The PR adds imports for asyncio, inspect, and threading, none of which are referenced in the shown excerpt. Unused imports clutter the namespace and can mislead future maintainers into thinking these modules are required.",
+   "suggested_fix": "Remove the unused imports or add a comment explaining why they are needed.",
+   "verdict": "dropped",
+   "verdict_reason": "The added imports asyncio and inspect are referenced later in the file (inspect.iscoroutinefunction and asyncio.get_running_loop), so they are not unused. Therefore the finding is dropped.",
+   "evidence": [
+    {
+     "why": "uses inspect import",
+     "line": 459,
+     "path": "pydantic_settings/main.py",
+     "quote": "if inspect.iscoroutinefunction(command):"
+    },
+    {
+     "why": "uses asyncio import",
+     "line": 465,
+     "path": "pydantic_settings/main.py",
+     "quote": "loop = asyncio.get_running_loop()"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 228,
+     "finding_id": 127,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "import asyncio"
+     },
+     "result_chars": 121,
+     "result_summary": "Lines containing 'import asyncio':\npydantic_settings/main.py:3: import asyncio\ntests/test_source_cli.py:2: import asyncio",
+     "tokens_in": 2048,
+     "tokens_out": 47,
+     "latency_ms": 41625
+    },
+    {
+     "id": 229,
+     "finding_id": 127,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "inspect"
+     },
+     "result_chars": 143,
+     "result_summary": "Lines containing 'inspect':\npydantic_settings/main.py:4: import inspect\npydantic_settings/main.py:459: if inspect.iscoroutinefunction(command):",
+     "tokens_in": 2140,
+     "tokens_out": 37,
+     "latency_ms": 356
+    },
+    {
+     "id": 230,
+     "finding_id": 127,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"We see inspect used later line 459. So imports ar",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 52192
+    },
+    {
+     "id": 231,
+     "finding_id": 127,
+     "step_no": 4,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/main.py",
+      "line_end": 470,
+      "line_start": 440
+     },
+     "result_chars": 1653,
+     "result_summary": "pydantic_settings/main.py, lines 440-470 of 590:\n  440          enable_decoding=True,\n  441      )\n  442  \n  443  \n  444  class CliApp:\n  445      \"\"\"\n  446      A utility class for running Pydantic `BaseSettings`, `BaseModel`, or `pydantic.dataclasses.dataclass` as\n  447      CLI applications.\n  44",
+     "tokens_in": 2232,
+     "tokens_out": 65,
+     "latency_ms": 371
+    },
+    {
+     "id": 232,
+     "finding_id": 127,
+     "step_no": 5,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Parsing failed. The model generated output that could not be parsed. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"output_parse_failed\",\"failed_generation\":\"The finding says unused imports. But we see inspe",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 35926
+    },
+    {
+     "id": 233,
+     "finding_id": 127,
+     "step_no": 6,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The added imports asyncio and inspect are referenced later in the file (inspect.iscoroutinefunction and asyncio.get_running_loop), so they are not unused. Therefore the finding is dropped.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "uses inspect import",
+        "line": 459,
+        "path": "pydantic_settings/main.py",
+        "quote": "if inspect.iscoroutinefunction(command):"
+       },
+       {
+        "why": "uses asyncio import",
+        "line": 465,
+        "path": "pydantic_settings/main.py",
+        "quote": "loop = asyncio.get_running_loop()"
+       }
+      ]
+     },
+     "result_chars": 197,
+     "result_summary": "dropped: The added imports asyncio and inspect are referenced later in the file (inspect.iscoroutinefunction and asyncio.get_running_loop), so they are not unused. Therefore the finding is dropped.",
+     "tokens_in": 2713,
+     "tokens_out": 191,
+     "latency_ms": 652
+    }
+   ]
+  },
+  {
+   "id": 128,
+   "run_id": 24,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/main.py",
+   "line_start": 452,
+   "line_end": 456,
+   "category": "readability",
+   "severity": "low",
+   "title": "Ambiguous variable name for CLI method",
+   "explanation": "The local variable `command` holds a function retrieved from the model class, but the name does not convey that it represents a CLI method. This can make the code harder to understand for future readers, especially when the same name is reused elsewhere.",
+   "suggested_fix": "Rename `command` to something more descriptive, e.g., `cli_method`.",
+   "verdict": "dropped",
+   "verdict_reason": "The variable name 'command' is a common and clear name for a callable representing a CLI command; the finding is subjective and not a concrete readability issue.",
+   "evidence": [
+    {
+     "why": "variable name 'command' is used for the retrieved CLI method; naming is reasonable and not clearly ambiguous",
+     "line": 452,
+     "path": "pydantic_settings/main.py",
+     "quote": "command = getattr(type(model), cli_cmd_method_name, None)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 227,
+     "finding_id": 128,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The variable name 'command' is a common and clear name for a callable representing a CLI command; the finding is subjective and not a concrete readability issue.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "variable name 'command' is used for the retrieved CLI method; naming is reasonable and not clearly ambiguous",
+        "line": 452,
+        "path": "pydantic_settings/main.py",
+        "quote": "command = getattr(type(model), cli_cmd_method_name, None)"
+       }
+      ]
+     },
+     "result_chars": 170,
+     "result_summary": "dropped: The variable name 'command' is a common and clear name for a callable representing a CLI command; the finding is subjective and not a concrete readability issue.",
+     "tokens_in": 2367,
+     "tokens_out": 266,
+     "latency_ms": 924
+    }
+   ]
+  }
+ ],
+ "pr_created_at": "2026-11-27T12:26:14Z",
+ "review": {
+  "id": 6088177059,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/10#pullrequestreview-6088177059",
+  "submitted_at": "2026-11-27T12:31:22Z",
+  "body": "<!-- pr-review-agent run:24 -->\n### Automated review of `55bdfe6`\nNo confirmed issues found.\nReviewed 3 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 0 confirmed, 4 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0078 at list prices (free tier; agent $0.0031); 0 of 15 lane call(s) answered from cache."
+ },
+ "comments": []
+}

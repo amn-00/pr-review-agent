@@ -1,0 +1,608 @@
+{
+ "k": 21,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 2815,
+  "replay_sha": "e32c078d2d3f3a2bf0839699ae5050850eaf56c8",
+  "merge_base_sha": "ea7ce8a5b04669d02bd4911ff53ab6b4cef7c835"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 11,
+  "url": "https://github.com/amn-00/starlette/pull/11",
+  "head_sha": "aaf4370d1ca4ef5004b5ac182afb23a961e76925"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 25,
+  "pr_id": 25,
+  "head_sha": "aaf4370d1ca4ef5004b5ac182afb23a961e76925",
+  "status": "completed",
+  "started_at": "2026-11-27 12:31:58.378511+00:00",
+  "finished_at": "2026-11-27 12:37:30.251460+00:00",
+  "tokens_in": 50648,
+  "tokens_out": 5255,
+  "cost_usd": "0.009780975",
+  "llm_calls": 24,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 6088248021
+ },
+ "findings": [
+  {
+   "id": 129,
+   "run_id": 25,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_formparsers.py",
+   "line_start": 732,
+   "line_end": 733,
+   "category": "bug",
+   "severity": "high",
+   "title": "Unary plus before string literal causes TypeError in second test",
+   "explanation": "Lines 732 and 733 also prepend a '+' to string literals, resulting in the same TypeError when building multipart_data for the custom limit test.",
+   "suggested_fix": "Remove the leading '+' operators:\n```python\n(\"x\" * 1024 * 10 + \"x\")\n\"\\r\\n\"\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The test constructs multipart_data using unary plus before string literals, which raises a TypeError at runtime, confirming the bug.",
+   "evidence": [
+    {
+     "why": "Unary plus applied to a string expression causes TypeError",
+     "line": 732,
+     "path": "tests/test_formparsers.py",
+     "quote": "+ (\"x\" * 1024 * 10 + \"x\")  # 1MB + 1 byte of data"
+    },
+    {
+     "why": "Unary plus applied to a string literal causes TypeError",
+     "line": 733,
+     "path": "tests/test_formparsers.py",
+     "quote": "+ \"\\r\\n\""
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 234,
+     "finding_id": 129,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The test constructs multipart_data using unary plus before string literals, which raises a TypeError at runtime, confirming the bug.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Unary plus applied to a string expression causes TypeError",
+        "line": 732,
+        "path": "tests/test_formparsers.py",
+        "quote": "+ (\"x\" * 1024 * 10 + \"x\")  # 1MB + 1 byte of data"
+       },
+       {
+        "why": "Unary plus applied to a string literal causes TypeError",
+        "line": 733,
+        "path": "tests/test_formparsers.py",
+        "quote": "+ \"\\r\\n\""
+       }
+      ]
+     },
+     "result_chars": 143,
+     "result_summary": "confirmed: The test constructs multipart_data using unary plus before string literals, which raises a TypeError at runtime, confirming the bug.",
+     "tokens_in": 2229,
+     "tokens_out": 320,
+     "latency_ms": 1076
+    }
+   ]
+  },
+  {
+   "id": 130,
+   "run_id": 25,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "starlette/formparsers.py",
+   "line_start": 150,
+   "line_end": 151,
+   "category": "security",
+   "severity": "medium",
+   "title": "max_file_size parameter is defined but never enforced",
+   "explanation": "The constructor adds a max_file_size attribute, but the parser does not check uploaded file sizes against this limit. Attackers can upload arbitrarily large files, leading to memory or disk exhaustion.",
+   "suggested_fix": "Add a check in on_part_data (when handling file parts) to raise an exception if the accumulated file size exceeds self.max_file_size.",
+   "verdict": "dropped",
+   "verdict_reason": "The parser enforces max_file_size by passing it to SpooledTemporaryFile, so the limit is applied; the finding that it is never enforced is incorrect.",
+   "evidence": [
+    {
+     "why": "Creates temporary file with max_size limiting uploaded file size",
+     "line": 205,
+     "path": "starlette/formparsers.py",
+     "quote": "tempfile = SpooledTemporaryFile(max_size=self.max_file_size)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 235,
+     "finding_id": 130,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "max_file_size"
+     },
+     "result_chars": 843,
+     "result_summary": "Lines containing 'max_file_size':\nstarlette/formparsers.py:132: max_file_size: int = 1024 * 1024,  # 1MB\nstarlette/formparsers.py:150: self.max_file_size = max_file_size\nstarlette/formparsers.py:205: tempfile = SpooledTemporaryFile(max_size=self.max_file_size)\nstarlette/requests.py:257: max_file_siz",
+     "tokens_in": 2384,
+     "tokens_out": 45,
+     "latency_ms": 44630
+    },
+    {
+     "id": 237,
+     "finding_id": 130,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/formparsers.py",
+      "line_end": 220,
+      "line_start": 190
+     },
+     "result_chars": 1818,
+     "result_summary": "starlette/formparsers.py, lines 190-220 of 272:\n  190          self._current_part.item_headers.append((field, self._current_partial_header_value))\n  191          self._current_partial_header_name = b\"\"\n  192          self._current_partial_header_value = b\"\"\n  193  \n  194      def on_headers_finished",
+     "tokens_in": 2703,
+     "tokens_out": 53,
+     "latency_ms": 361
+    },
+    {
+     "id": 239,
+     "finding_id": 130,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The parser enforces max_file_size by passing it to SpooledTemporaryFile, so the limit is applied; the finding that it is never enforced is incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Creates temporary file with max_size limiting uploaded file size",
+        "line": 205,
+        "path": "starlette/formparsers.py",
+        "quote": "tempfile = SpooledTemporaryFile(max_size=self.max_file_size)"
+       }
+      ]
+     },
+     "result_chars": 158,
+     "result_summary": "dropped: The parser enforces max_file_size by passing it to SpooledTemporaryFile, so the limit is applied; the finding that it is never enforced is incorrect.",
+     "tokens_in": 3209,
+     "tokens_out": 162,
+     "latency_ms": 48046
+    }
+   ]
+  },
+  {
+   "id": 131,
+   "run_id": 25,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 255,
+   "line_end": 259,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Accepting float for size limits may cause type errors",
+   "explanation": "The parameters `max_files`, `max_fields`, and `max_part_size` are typed as `int | float`, but they are passed to `MultiPartParser` which expects integer limits. Supplying a float (e.g., 1000.0) can raise a `TypeError` at runtime.",
+   "suggested_fix": "Restrict the parameter types to `int` only, or explicitly cast to `int` before passing to `MultiPartParser`.",
+   "verdict": "dropped",
+   "verdict_reason": "The MultiPartParser constructor also annotates these limits as int|float, so passing a float does not cause a type error; the finding\u2019s claim of a mismatch is incorrect.",
+   "evidence": [
+    {
+     "why": "Parameter type allows float, same as request method",
+     "line": 130,
+     "path": "starlette/formparsers.py",
+     "quote": "max_files: int | float = 1000,"
+    },
+    {
+     "why": "Parameter type allows float, same as request method",
+     "line": 131,
+     "path": "starlette/formparsers.py",
+     "quote": "max_fields: int | float = 1000,"
+    },
+    {
+     "why": "Parameter type allows float, same as request method",
+     "line": 133,
+     "path": "starlette/formparsers.py",
+     "quote": "max_part_size: int | float = 1024 * 1024,"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 236,
+     "finding_id": 131,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class MultiPartParser"
+     },
+     "result_chars": 94,
+     "result_summary": "Lines containing 'class MultiPartParser':\nstarlette/formparsers.py:124: class MultiPartParser:",
+     "tokens_in": 2311,
+     "tokens_out": 51,
+     "latency_ms": 43577
+    },
+    {
+     "id": 238,
+     "finding_id": 131,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/formparsers.py",
+      "line_end": 150,
+      "line_start": 120
+     },
+     "result_chars": 1448,
+     "result_summary": "starlette/formparsers.py, lines 120-150 of 272:\n  120  \n  121          return FormData(items)\n  122  \n  123  \n  124  class MultiPartParser:\n  125      def __init__(\n  126          self,\n  127          headers: Headers,\n  128          stream: typing.AsyncGenerator[bytes, None],\n  129          *,\n  13",
+     "tokens_in": 2404,
+     "tokens_out": 43,
+     "latency_ms": 48185
+    },
+    {
+     "id": 241,
+     "finding_id": 131,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The MultiPartParser constructor also annotates these limits as int|float, so passing a float does not cause a type error; the finding\u2019s claim of a mismatch is incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Parameter type allows float, same as request method",
+        "line": 130,
+        "path": "starlette/formparsers.py",
+        "quote": "max_files: int | float = 1000,"
+       },
+       {
+        "why": "Parameter type allows float, same as request method",
+        "line": 131,
+        "path": "starlette/formparsers.py",
+        "quote": "max_fields: int | float = 1000,"
+       },
+       {
+        "why": "Parameter type allows float, same as request method",
+        "line": 133,
+        "path": "starlette/formparsers.py",
+        "quote": "max_part_size: int | float = 1024 * 1024,"
+       }
+      ]
+     },
+     "result_chars": 178,
+     "result_summary": "dropped: The MultiPartParser constructor also annotates these limits as int|float, so passing a float does not cause a type error; the finding\u2019s claim of a mismatch is incorrect.",
+     "tokens_in": 2892,
+     "tokens_out": 207,
+     "latency_ms": 48434
+    }
+   ]
+  },
+  {
+   "id": 132,
+   "run_id": 25,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/formparsers.py",
+   "line_start": 132,
+   "line_end": 133,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Repeated magic number for size limits",
+   "explanation": "The default value for `max_file_size` and `max_part_size` is written as the literal `1024 * 1024` on two separate lines. Repeating the same magic number can lead to inconsistency if one is changed and the other is not. It also makes the intent less clear. Defining a module\u2011level constant such as `DEFAULT_MAX_SIZE = 1024 * 1024` and referencing that constant for both defaults would improve maintainability.",
+   "suggested_fix": "```\n# At module level\nDEFAULT_MAX_SIZE = 1024 * 1024\n\n# In __init__\nmax_file_size: int = DEFAULT_MAX_SIZE,\nmax_part_size: int | float = DEFAULT_MAX_SIZE,\n```",
+   "verdict": "confirmed",
+   "verdict_reason": "The excerpt shows the same magic number literal used for two separate defaults, matching the finding's claim.",
+   "evidence": [
+    {
+     "why": "Uses literal 1024 * 1024 as default",
+     "line": 132,
+     "path": "starlette/formparsers.py",
+     "quote": "max_file_size: int = 1024 * 1024,  # 1MB"
+    },
+    {
+     "why": "Repeats same literal on another line",
+     "line": 133,
+     "path": "starlette/formparsers.py",
+     "quote": "max_part_size: int | float = 1024 * 1024,  # 1MB"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 240,
+     "finding_id": 132,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The excerpt shows the same magic number literal used for two separate defaults, matching the finding's claim.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Uses literal 1024 * 1024 as default",
+        "line": 132,
+        "path": "starlette/formparsers.py",
+        "quote": "max_file_size: int = 1024 * 1024,  # 1MB"
+       },
+       {
+        "why": "Repeats same literal on another line",
+        "line": 133,
+        "path": "starlette/formparsers.py",
+        "quote": "max_part_size: int | float = 1024 * 1024,  # 1MB"
+       }
+      ]
+     },
+     "result_chars": 120,
+     "result_summary": "confirmed: The excerpt shows the same magic number literal used for two separate defaults, matching the finding's claim.",
+     "tokens_in": 2380,
+     "tokens_out": 277,
+     "latency_ms": 45896
+    }
+   ]
+  },
+  {
+   "id": 133,
+   "run_id": 25,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 292,
+   "line_end": 296,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Redundant float annotations for integer limits",
+   "explanation": "The public `form` method repeats the same `int | float` annotations as `_get_form`. Since the arguments are forwarded unchanged, the extra float possibility is unnecessary and inconsistent with typical usage.",
+   "suggested_fix": "Align the annotations with `_get_form` by using `int` only, or simply remove the type hints if not needed.",
+   "verdict": "dropped",
+   "verdict_reason": "The finding asserts the float part of the type annotations is redundant, but the code intentionally allows both int and float for these limits. This is a stylistic preference, not an actual inconsistency or error, so the finding should be dropped.",
+   "evidence": [
+    {
+     "why": "annotation includes float",
+     "line": 292,
+     "path": "starlette/requests.py",
+     "quote": "max_files: int | float = 1000,"
+    },
+    {
+     "why": "annotation includes float",
+     "line": 293,
+     "path": "starlette/requests.py",
+     "quote": "max_fields: int | float = 1000,"
+    },
+    {
+     "why": "annotation includes float",
+     "line": 295,
+     "path": "starlette/requests.py",
+     "quote": "max_part_size: int | float = 1024 * 1024,"
+    },
+    {
+     "why": "same annotation repeated in _get_form",
+     "line": 255,
+     "path": "starlette/requests.py",
+     "quote": "max_files: int | float = 1000,"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 242,
+     "finding_id": 133,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def _get_form"
+     },
+     "result_chars": 81,
+     "result_summary": "Lines containing 'def _get_form':\nstarlette/requests.py:252: async def _get_form(",
+     "tokens_in": 2296,
+     "tokens_out": 46,
+     "latency_ms": 42263
+    },
+    {
+     "id": 243,
+     "finding_id": 133,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/requests.py",
+      "line_end": 280,
+      "line_start": 240
+     },
+     "result_chars": 1993,
+     "result_summary": "starlette/requests.py, lines 240-280 of 327:\n  240              chunks: list[bytes] = []\n  241              async for chunk in self.stream():\n  242                  chunks.append(chunk)\n  243              self._body = b\"\".join(chunks)\n  244          return self._body\n  245  \n  246      async def jso",
+     "tokens_in": 2381,
+     "tokens_out": 43,
+     "latency_ms": 489
+    },
+    {
+     "id": 244,
+     "finding_id": 133,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool choice is required, but model did not call a tool\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\n  \\\"evidence\\\": [\\n    {\\n      \\\"line\\\": 292,\\n      \\\"path\\\": \\\"starlette/requests.py\\\",\\n      \\\"quote\\\": \\\"max_files: int | float",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 38272
+    },
+    {
+     "id": 245,
+     "finding_id": 133,
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The finding asserts the float part of the type annotations is redundant, but the code intentionally allows both int and float for these limits. This is a stylistic preference, not an actual inconsistency or error, so the finding should be dropped.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "annotation includes float",
+        "line": 292,
+        "path": "starlette/requests.py",
+        "quote": "max_files: int | float = 1000,"
+       },
+       {
+        "why": "annotation includes float",
+        "line": 293,
+        "path": "starlette/requests.py",
+        "quote": "max_fields: int | float = 1000,"
+       },
+       {
+        "why": "annotation includes float",
+        "line": 295,
+        "path": "starlette/requests.py",
+        "quote": "max_part_size: int | float = 1024 * 1024,"
+       },
+       {
+        "why": "same annotation repeated in _get_form",
+        "line": 255,
+        "path": "starlette/requests.py",
+        "quote": "max_files: int | float = 1000,"
+       }
+      ]
+     },
+     "result_chars": 256,
+     "result_summary": "dropped: The finding asserts the float part of the type annotations is redundant, but the code intentionally allows both int and float for these limits. This is a stylistic preference, not an actual inconsistency or error, so the finding should be dropped.",
+     "tokens_in": 2922,
+     "tokens_out": 505,
+     "latency_ms": 1532
+    }
+   ]
+  },
+  {
+   "id": 134,
+   "run_id": 25,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_formparsers.py",
+   "line_start": 692,
+   "line_end": 693,
+   "category": "bug",
+   "severity": "high",
+   "title": "Unary plus before string literal causes TypeError",
+   "explanation": "Lines 692 and 693 use a leading '+' before a string expression (e.g., + (\"x\" * ... ) and + \"\\r\\n\"). In Python, the unary plus operator is not defined for strings and raises a TypeError at runtime, preventing the multipart data from being constructed.",
+   "suggested_fix": "Remove the leading '+' operators:\n```python\n(\"x\" * 1024 * 1024 + \"x\")\n\"\\r\\n\"\n```",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 135,
+   "run_id": 25,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/formparsers.py",
+   "line_start": 163,
+   "line_end": 163,
+   "category": "bug",
+   "severity": "medium",
+   "title": "File size limit not enforced",
+   "explanation": "The `max_file_size` parameter is stored but never used when handling file parts. Large file uploads can exceed the intended limit, leading to excessive memory or disk usage.",
+   "suggested_fix": "Add a size check before appending file data, e.g., track the total bytes written for the current file and raise `MultiPartException` if it exceeds `self.max_file_size`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "not_in_diff",
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 136,
+   "run_id": 25,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 257,
+   "line_end": 257,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Passing float `max_file_size` to parser may cause runtime error",
+   "explanation": "The `max_file_size` argument is annotated as `int` but the default signature allows `int | float`. If a float is provided, `MultiPartParser` may reject it or behave incorrectly.",
+   "suggested_fix": "Change the type annotation to `int` and ensure callers provide an integer, or cast to `int` before use.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 131,
+   "agent_steps": []
+  },
+  {
+   "id": 137,
+   "run_id": 25,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_formparsers.py",
+   "line_start": 732,
+   "line_end": 732,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Comment incorrectly describes data size",
+   "explanation": "The comment says \"# 1MB + 1 byte of data\" but the code actually creates 10KB + 1 byte. This misleads readers and may cause confusion when reviewing test data size.",
+   "suggested_fix": "Change the comment to \"# 10KB + 1 byte of data\" or compute the size dynamically with a variable.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 129,
+   "agent_steps": []
+  },
+  {
+   "id": 138,
+   "run_id": 25,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "starlette/requests.py",
+   "line_start": 252,
+   "line_end": 259,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unnecessary use of | float in numeric parameter types",
+   "explanation": "The parameters `max_files`, `max_fields`, and `max_part_size` are annotated as `int | float`, but they are used as integer limits throughout the method. Mixing `int` and `float` is redundant and may mislead future maintainers.",
+   "suggested_fix": "Change the annotations to `int` only, e.g., `max_files: int = 1000`.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 131,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-27T12:31:54Z",
+ "review": {
+  "id": 6088248021,
+  "url": "https://github.com/amn-00/starlette/pull/11#pullrequestreview-6088248021",
+  "submitted_at": "2026-11-27T12:37:29Z",
+  "body": "<!-- pr-review-agent run:25 -->\n### Automated review of `aaf4370`\nFound 1 confirmed issue(s): 1 high. 1 style suggestion(s) below.\nReviewed 3 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 3 dropped, 0 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0098 at list prices (free tier; agent $0.0053); 0 of 12 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `starlette/formparsers.py:132` Repeated magic number for size limits: The default value for `max_file_size` and `max_part_size` is written as the literal `1024 * 1024` on two separate lines. Repeating the same magic number can lead to inconsistency if one is changed and the other is not. It also makes the intent less clear. Defining a module\u2011level constant such as `DEFAULT_MAX_SIZE = 1024 * 1024` and referencing that constant for both defaults would improve maintainability.\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4719468857,
+   "url": "https://github.com/amn-00/starlette/pull/11#discussion_r4719468857",
+   "file": "tests/test_formparsers.py",
+   "line": 733,
+   "start_line": 732,
+   "body": "**high** \u00b7 bug \u00b7 Unary plus before string literal causes TypeError in second test\n\nLines 732 and 733 also prepend a '+' to string literals, resulting in the same TypeError when building multipart_data for the custom limit test.\n\n**Suggested fix:** Remove the leading '+' operators:\n```python\n(\"x\" * 1024 * 10 + \"x\")\n\"\\r\\n\"\n```\n\n_Checked against `tests/test_formparsers.py:732`, `tests/test_formparsers.py:733`_"
+  }
+ ]
+}
