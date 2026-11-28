@@ -1,0 +1,614 @@
+{
+ "k": 22,
+ "upstream": {
+  "repo": "pydantic/pydantic-settings",
+  "number": 698,
+  "replay_sha": "2d469a6e8fd911bc15e6e80616e7e7095ab14f98",
+  "merge_base_sha": "fc8a694e364a73daa58a2d371bfa44ba33174503"
+ },
+ "fork": {
+  "repo": "amn-00/pydantic-settings",
+  "pull": 11,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/11",
+  "head_sha": "d18fd483fb309654a15938ba7802815ea230f3a2"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [
+  "6 lane call(s) not run (PR token budget)",
+  "finding 143 not verified (agent PR token budget)",
+  "finding 144 not verified (agent PR token budget)",
+  "finding 145 not verified (agent PR token budget)",
+  "finding 146 not verified (agent PR token budget)",
+  "finding 147 not verified (agent PR token budget)"
+ ],
+ "issue_links": [],
+ "run": {
+  "id": 26,
+  "pr_id": 26,
+  "head_sha": "d18fd483fb309654a15938ba7802815ea230f3a2",
+  "status": "completed",
+  "started_at": "2026-11-28 13:22:35.360308+00:00",
+  "finished_at": "2026-11-28 13:31:11.851493+00:00",
+  "tokens_in": 72666,
+  "tokens_out": 7075,
+  "cost_usd": "0.013382850",
+  "llm_calls": 41,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 6098040449
+ },
+ "findings": [
+  {
+   "id": 139,
+   "run_id": 26,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/json.py",
+   "line_start": 37,
+   "line_end": 37,
+   "category": "bug",
+   "severity": "high",
+   "title": "Calling undefined method _read_files",
+   "explanation": "The class defines a method _read_file, but the initializer calls self._read_files, which does not exist. This will raise an AttributeError at runtime, preventing settings from being loaded.",
+   "suggested_fix": "Replace the call with self._read_file(self.json_file_path) and handle deep_merge logic appropriately, e.g., self.json_data = self._read_file(self.json_file_path)",
+   "verdict": "dropped",
+   "verdict_reason": "The _read_files method is defined in ConfigFileSourceMixin which JsonConfigSettingsSource inherits, so the call is valid and will not raise AttributeError.",
+   "evidence": [
+    {
+     "why": "Mixin provides _read_files method used by JsonConfigSettingsSource",
+     "line": 195,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "def _read_files(self, files: PathType | None, deep_merge: bool = False) -> dict[str, Any]:"
+    },
+    {
+     "why": "Calls method defined in ConfigFileSourceMixin, so not undefined",
+     "line": 37,
+     "path": "pydantic_settings/sources/providers/json.py",
+     "quote": "self.json_data = self._read_files(self.json_file_path, deep_merge=deep_merge)"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 248,
+     "finding_id": 139,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def _read_files"
+     },
+     "result_chars": 165,
+     "result_summary": "Lines containing 'def _read_files':\npydantic_settings/sources/base.py:195: def _read_files(self, files: PathType | None, deep_merge: bool = False) -> dict[str, Any]:",
+     "tokens_in": 2159,
+     "tokens_out": 40,
+     "latency_ms": 47749
+    },
+    {
+     "id": 249,
+     "finding_id": 139,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "class InitSettingsSource"
+     },
+     "result_chars": 137,
+     "result_summary": "Lines containing 'class InitSettingsSource':\npydantic_settings/sources/base.py:259: class InitSettingsSource(PydanticBaseSettingsSource):",
+     "tokens_in": 2267,
+     "tokens_out": 78,
+     "latency_ms": 41790
+    },
+    {
+     "id": 251,
+     "finding_id": 139,
+     "step_no": 3,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/base.py",
+      "line_end": 210,
+      "line_start": 180
+     },
+     "result_chars": 1354,
+     "result_summary": "pydantic_settings/sources/base.py, lines 180-210 of 556:\n  180          \"\"\"\n  181          if field and (\n  182              NoDecode in field.metadata\n  183              or (self.config.get('enable_decoding') is False and ForceDecode not in field.metadata)\n  184          ):\n  185              retur",
+     "tokens_in": 2358,
+     "tokens_out": 67,
+     "latency_ms": 42330
+    },
+    {
+     "id": 255,
+     "finding_id": 139,
+     "step_no": 4,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The _read_files method is defined in ConfigFileSourceMixin which JsonConfigSettingsSource inherits, so the call is valid and will not raise AttributeError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Mixin provides _read_files method used by JsonConfigSettingsSource",
+        "line": 195,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "def _read_files(self, files: PathType | None, deep_merge: bool = False) -> dict[str, Any]:"
+       },
+       {
+        "why": "Calls method defined in ConfigFileSourceMixin, so not undefined",
+        "line": 37,
+        "path": "pydantic_settings/sources/providers/json.py",
+        "quote": "self.json_data = self._read_files(self.json_file_path, deep_merge=deep_merge)"
+       }
+      ]
+     },
+     "result_chars": 164,
+     "result_summary": "dropped: The _read_files method is defined in ConfigFileSourceMixin which JsonConfigSettingsSource inherits, so the call is valid and will not raise AttributeError.",
+     "tokens_in": 2802,
+     "tokens_out": 246,
+     "latency_ms": 56249
+    }
+   ]
+  },
+  {
+   "id": 140,
+   "run_id": 26,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/toml.py",
+   "line_start": 56,
+   "line_end": 56,
+   "category": "bug",
+   "severity": "high",
+   "title": "Call to undefined method _read_files",
+   "explanation": "The constructor calls self._read_files, but the class only defines _read_file (singular) and likely does not inherit a method with that name. This will raise an AttributeError at runtime when initializing TomlConfigSettingsSource.",
+   "suggested_fix": "Replace the call with the correct method name, e.g., self._read_file(self.toml_file_path, deep_merge=deep_merge) if the method supports the deep_merge argument, or implement _read_files appropriately.",
+   "verdict": "dropped",
+   "verdict_reason": "The class inherits ConfigFileSourceMixin which defines _read_files, so the call is valid and will not raise AttributeError.",
+   "evidence": [
+    {
+     "why": "Mixin defines _read_files method used by TomlConfigSettingsSource",
+     "line": 195,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "def _read_files(self, files: PathType | None, deep_merge: bool = False) -> dict[str, Any]:"
+    },
+    {
+     "why": "Class inherits ConfigFileSourceMixin which provides _read_files",
+     "line": 44,
+     "path": "pydantic_settings/sources/providers/toml.py",
+     "quote": "class TomlConfigSettingsSource(InitSettingsSource, ConfigFileSourceMixin):"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 246,
+     "finding_id": 140,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "_read_files"
+     },
+     "result_chars": 647,
+     "result_summary": "Lines containing '_read_files':\npydantic_settings/sources/base.py:195: def _read_files(self, files: PathType | None, deep_merge: bool = False) -> dict[str, Any]:\npydantic_settings/sources/providers/json.py:37: self.json_data = self._read_files(self.json_file_path, deep_merge=deep_merge)\npydantic_set",
+     "tokens_in": 2213,
+     "tokens_out": 41,
+     "latency_ms": 474
+    },
+    {
+     "id": 247,
+     "finding_id": 140,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/base.py",
+      "line_end": 210,
+      "line_start": 180
+     },
+     "result_chars": 1354,
+     "result_summary": "pydantic_settings/sources/base.py, lines 180-210 of 556:\n  180          \"\"\"\n  181          if field and (\n  182              NoDecode in field.metadata\n  183              or (self.config.get('enable_decoding') is False and ForceDecode not in field.metadata)\n  184          ):\n  185              retur",
+     "tokens_in": 2443,
+     "tokens_out": 83,
+     "latency_ms": 46903
+    },
+    {
+     "id": 250,
+     "finding_id": 140,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The class inherits ConfigFileSourceMixin which defines _read_files, so the call is valid and will not raise AttributeError.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "Mixin defines _read_files method used by TomlConfigSettingsSource",
+        "line": 195,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "def _read_files(self, files: PathType | None, deep_merge: bool = False) -> dict[str, Any]:"
+       },
+       {
+        "why": "Class inherits ConfigFileSourceMixin which provides _read_files",
+        "line": 44,
+        "path": "pydantic_settings/sources/providers/toml.py",
+        "quote": "class TomlConfigSettingsSource(InitSettingsSource, ConfigFileSourceMixin):"
+       }
+      ]
+     },
+     "result_chars": 132,
+     "result_summary": "dropped: The class inherits ConfigFileSourceMixin which defines _read_files, so the call is valid and will not raise AttributeError.",
+     "tokens_in": 2883,
+     "tokens_out": 240,
+     "latency_ms": 42361
+    }
+   ]
+  },
+  {
+   "id": 141,
+   "run_id": 26,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/yaml.py",
+   "line_start": 56,
+   "line_end": 56,
+   "category": "idiom",
+   "severity": "high",
+   "title": "Undefined method call in constructor",
+   "explanation": "The constructor calls `self._read_files` which is not defined anywhere in this class or its parents, leading to a runtime error. The intent is likely to use the existing `_read_file` method that reads a single file.",
+   "suggested_fix": "Replace the call with `self._read_file(self.yaml_file_path)` or implement a `_read_files` helper that iterates over multiple paths.",
+   "verdict": "uncertain",
+   "verdict_reason": "agent error: Groq 400: {\"error\":{\"message\":\"Failed to generate JSON. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"json_validate_failed\",\"failed_gener",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 252,
+     "finding_id": 141,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def _read_files"
+     },
+     "result_chars": 165,
+     "result_summary": "Lines containing 'def _read_files':\npydantic_settings/sources/base.py:195: def _read_files(self, files: PathType | None, deep_merge: bool = False) -> dict[str, Any]:",
+     "tokens_in": 2268,
+     "tokens_out": 40,
+     "latency_ms": 41817
+    },
+    {
+     "id": 253,
+     "finding_id": 141,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "pydantic_settings/sources/base.py",
+      "line_end": 210,
+      "line_start": 180
+     },
+     "result_chars": 1354,
+     "result_summary": "pydantic_settings/sources/base.py, lines 180-210 of 556:\n  180          \"\"\"\n  181          if field and (\n  182              NoDecode in field.metadata\n  183              or (self.config.get('enable_decoding') is False and ForceDecode not in field.metadata)\n  184          ):\n  185              retur",
+     "tokens_in": 2374,
+     "tokens_out": 56,
+     "latency_ms": 374
+    },
+    {
+     "id": 254,
+     "finding_id": 141,
+     "step_no": 3,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 55205
+    },
+    {
+     "id": 257,
+     "finding_id": 141,
+     "step_no": 4,
+     "tool": null,
+     "args_json": null,
+     "result_chars": 310,
+     "result_summary": "Groq 400: {\"error\":{\"message\":\"Tool call validation failed: tool call validation failed: attempted to call tool 'search_repo' which does not match request.tool_choice: 'submit_verdict'\",\"type\":\"invalid_request_error\",\"code\":\"tool_use_failed\",\"failed_generation\":\"{\\\"name\\\": \\\"search_repo\\\", \\\"argumen",
+     "tokens_in": 0,
+     "tokens_out": 0,
+     "latency_ms": 46308
+    }
+   ]
+  },
+  {
+   "id": 142,
+   "run_id": 26,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/base.py",
+   "line_start": 201,
+   "line_end": 201,
+   "category": "bug",
+   "severity": "medium",
+   "title": "Undefined function `deep_update` may cause NameError",
+   "explanation": "When `deep_merge` is True, the code attempts to use `deep_update` which is not defined or imported in this module. This will raise a NameError at runtime, breaking settings loading.",
+   "suggested_fix": "Import the appropriate `deep_update` utility or reference it via the correct module, e.g., `from pydantic._internal._utils import deep_update` or use `self._deep_update` if defined.",
+   "verdict": "dropped",
+   "verdict_reason": "deep_update is imported at the top of the module, so the code will not raise NameError. The finding is therefore incorrect.",
+   "evidence": [
+    {
+     "why": "deep_update is imported, so the name is defined",
+     "line": 16,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "from pydantic._internal._utils import deep_update, is_model_class"
+    },
+    {
+     "why": "uses imported deep_update, no NameError",
+     "line": 201,
+     "path": "pydantic_settings/sources/base.py",
+     "quote": "update = deep_update if deep_merge else self._shallow_update"
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 256,
+     "finding_id": 142,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def deep_update"
+     },
+     "result_chars": 47,
+     "result_summary": "Lines containing 'def deep_update': no matches.",
+     "tokens_in": 2245,
+     "tokens_out": 39,
+     "latency_ms": 45599
+    },
+    {
+     "id": 258,
+     "finding_id": 142,
+     "step_no": 2,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "deep_update"
+     },
+     "result_chars": 755,
+     "result_summary": "Lines containing 'deep_update':\npydantic_settings/main.py:15: from pydantic._internal._utils import deep_update, is_model_class\npydantic_settings/main.py:444: state = deep_update(source_state, state)\npydantic_settings/sources/base.py:16: from pydantic._internal._utils import deep_update, is_model_cl",
+     "tokens_in": 2315,
+     "tokens_out": 35,
+     "latency_ms": 549
+    },
+    {
+     "id": 259,
+     "finding_id": 142,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "deep_update is imported at the top of the module, so the code will not raise NameError. The finding is therefore incorrect.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "deep_update is imported, so the name is defined",
+        "line": 16,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "from pydantic._internal._utils import deep_update, is_model_class"
+       },
+       {
+        "why": "uses imported deep_update, no NameError",
+        "line": 201,
+        "path": "pydantic_settings/sources/base.py",
+        "quote": "update = deep_update if deep_merge else self._shallow_update"
+       }
+      ]
+     },
+     "result_chars": 132,
+     "result_summary": "dropped: deep_update is imported at the top of the module, so the code will not raise NameError. The finding is therefore incorrect.",
+     "tokens_in": 2570,
+     "tokens_out": 169,
+     "latency_ms": 59612
+    }
+   ]
+  },
+  {
+   "id": 143,
+   "run_id": 26,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/toml.py",
+   "line_start": 53,
+   "line_end": 54,
+   "category": "idiom",
+   "severity": "medium",
+   "title": "Use None as default instead of sentinel value",
+   "explanation": "The constructor uses DEFAULT_PATH as a sentinel to detect whether the caller supplied a path. This is less idiomatic than using None for an optional argument, which is the Python convention and simplifies downstream code. It also requires callers to know about DEFAULT_PATH, increasing cognitive load.",
+   "suggested_fix": "Change the signature to `def __init__(self, settings_cls: type[BaseSettings], toml_file: PathType | None = None, deep_merge: bool = False):` and replace the sentinel check with `self.toml_file_path = toml_file or settings_cls.model_config.get(\"toml_file\")`.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 144,
+   "run_id": 26,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/yaml.py",
+   "line_start": 43,
+   "line_end": 43,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Unnecessary boolean default parameter",
+   "explanation": "Adding a `deep_merge: bool = False` parameter without documentation or usage may confuse readers, as its purpose is not evident from the context. If deep merging is not implemented, the parameter should be removed or clearly explained.",
+   "suggested_fix": "Add a comment describing the intended behavior of `deep_merge`, or remove the parameter if it is unused.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 145,
+   "run_id": 26,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_source_yaml.py",
+   "line_start": 170,
+   "line_end": 170,
+   "category": "bug",
+   "severity": "medium",
+   "title": "NameError due to undefined 'yaml' in skipif decorator",
+   "explanation": "The skipif decorator references the name `yaml` which is not imported in this test file. Python evaluates the decorator at import time, causing a NameError before the test can be collected, even when the condition would be skipped.",
+   "suggested_fix": "Import yaml safely or use pytest.importorskip, e.g.,\n```python\nimport importlib\nyaml = importlib.util.find_spec('yaml')\n```\nor replace the decorator with `@pytest.mark.skipif(importlib.util.find_spec('yaml') is None, reason='pyYAML is not installed')`.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 146,
+   "run_id": 26,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_source_yaml.py",
+   "line_start": 175,
+   "line_end": 182,
+   "category": "readability",
+   "severity": "medium",
+   "title": "Indented multiline string literals introduce unintended leading whitespace",
+   "explanation": "The YAML content written to temporary files is defined using triple\u2011quoted strings that retain the indentation of the surrounding code. This leads to YAML keys being prefixed with spaces, which will break parsing and make the test unreliable.",
+   "suggested_fix": "Use `textwrap.dedent` to strip common leading whitespace, e.g. `p3.write_text(textwrap.dedent('''\n  hello: world\n  nested:\n    foo: 1\n    bar: 2\n'''))`. Apply the same to the second file.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 147,
+   "run_id": 26,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/base.py",
+   "line_start": 200,
+   "line_end": 200,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Shadowing built-in name 'vars'",
+   "explanation": "The local variable name `vars` shadows the built-in function `vars()`, which can be confusing for future readers and may cause accidental misuse. Using a more descriptive name such as `config` or `variables` improves clarity.",
+   "suggested_fix": "Rename the variable: `config: dict[str, Any] = {}` and update all references accordingly.",
+   "verdict": null,
+   "verdict_reason": "agent PR token budget",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": []
+  },
+  {
+   "id": 148,
+   "run_id": 26,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/toml.py",
+   "line_start": 53,
+   "line_end": 56,
+   "category": "security",
+   "severity": "high",
+   "title": "Potential unsafe loading of arbitrary TOML file",
+   "explanation": "The constructor accepts a user\u2011controlled `toml_file` path and immediately reads it via `_read_files` without any validation or sandboxing. An attacker who can influence this argument could cause the application to read sensitive files on the filesystem, leading to information disclosure or further misuse.",
+   "suggested_fix": "Validate the provided path (e.g., ensure it resides within an allowed directory) or restrict the file to a known safe location before reading it.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 140,
+   "agent_steps": []
+  },
+  {
+   "id": 149,
+   "run_id": 26,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/json.py",
+   "line_start": 37,
+   "line_end": 37,
+   "category": "idiom",
+   "severity": "high",
+   "title": "Calling undefined method _read_files",
+   "explanation": "The code calls self._read_files, which is not defined anywhere in the class; the intended method is likely _read_file. This will raise an AttributeError at runtime.",
+   "suggested_fix": "Replace self._read_files(self.json_file_path, deep_merge=deep_merge) with self._read_file(self.json_file_path) (remove deep_merge if not needed).",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 139,
+   "agent_steps": []
+  },
+  {
+   "id": 150,
+   "run_id": 26,
+   "lane": "security",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/base.py",
+   "line_start": 195,
+   "line_end": 206,
+   "category": "security",
+   "severity": "medium",
+   "title": "Potential unsafe file path handling in _read_files",
+   "explanation": "The _read_files method accepts arbitrary paths (including user\u2011controlled strings) and reads them without any validation or restriction, which could allow an attacker to perform path traversal and read sensitive files on the host.",
+   "suggested_fix": "Validate and sanitize the input paths, enforce that they reside within an allowed directory, and handle errors securely before reading the file.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 142,
+   "agent_steps": []
+  },
+  {
+   "id": 151,
+   "run_id": 26,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "pydantic_settings/sources/providers/toml.py",
+   "line_start": 53,
+   "line_end": 56,
+   "category": "readability",
+   "severity": "low",
+   "title": "Unclear purpose of deep_merge parameter",
+   "explanation": "The `deep_merge` parameter is accepted and passed to `_read_files`, but its effect is not documented in the docstring or visible in this snippet. Future readers may be confused about when and why to set it.",
+   "suggested_fix": "Add a brief comment or update the docstring to explain the purpose of `deep_merge` and under what circumstances it should be set to True.",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 140,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-28T13:22:07Z",
+ "review": {
+  "id": 6098040449,
+  "url": "https://github.com/amn-00/pydantic-settings/pull/11#pullrequestreview-6098040449",
+  "submitted_at": "2026-11-28T13:31:11Z",
+  "body": "<!-- pr-review-agent run:26 -->\n### Automated review of `d18fd48`\nNo confirmed issues found.\nReviewed 8 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 0 confirmed, 3 dropped, 1 uncertain, 5 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0134 at list prices (free tier; agent $0.0050); 0 of 27 lane call(s) answered from cache.\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `pydantic_settings/sources/providers/yaml.py:56` **high** Undefined method call in constructor \u2014 agent error: Groq 400: {\"error\":{\"message\":\"Failed to generate JSON. Please adjust your prompt. See 'failed_generation' for more details.\",\"type\":\"invalid_request_error\",\"code\":\"json_validate_failed\",\"failed_gener\n\n</details>\n\n<details><summary>Not verified (not posted): 5</summary>\n\n- `pydantic_settings/sources/providers/toml.py:53` **medium** Use None as default instead of sentinel value \u2014 agent PR token budget\n- `pydantic_settings/sources/providers/yaml.py:43` **medium** Unnecessary boolean default parameter \u2014 agent PR token budget\n- `tests/test_source_yaml.py:170` **medium** NameError due to undefined 'yaml' in skipif decorator \u2014 agent PR token budget\n- `tests/test_source_yaml.py:175` **medium** Indented multiline string literals introduce unintended leading whitespace \u2014 agent PR token budget\n- `pydantic_settings/sources/base.py:200` **low** Shadowing built-in name 'vars' \u2014 agent PR token budget\n\n</details>\n\n<details><summary>Not fully reviewed</summary>\n\n- 6 lane call(s) not run (PR token budget), in: `docs/index.md`\n\n</details>"
+ },
+ "comments": []
+}

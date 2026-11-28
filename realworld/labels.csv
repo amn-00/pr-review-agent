@@ -11,3 +11,4 @@
 17,4653274335,https://github.com/amn-00/starlette/pull/9#discussion_r4653274335,starlette/testclient.py,292,"medium · bug · ASGI `client` field should be a tuple, not a list",,
 19,4684585406,https://github.com/amn-00/starlette/pull/10#discussion_r4684585406,starlette/middleware/base.py,176,high · bug · Using synchronous context manager on async streams,,
 21,4719468857,https://github.com/amn-00/starlette/pull/11#discussion_r4719468857,tests/test_formparsers.py,733,high · bug · Unary plus before string literal causes TypeError in second test,,
+23,4727217368,https://github.com/amn-00/starlette/pull/12#discussion_r4727217368,starlette/responses.py,142,medium · bug · delete_cookie may raise ValueError on unsupported Python versions,,

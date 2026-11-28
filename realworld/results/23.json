@@ -1,0 +1,351 @@
+{
+ "k": 23,
+ "upstream": {
+  "repo": "Kludex/starlette",
+  "number": 3376,
+  "replay_sha": "7b7c083a418845c057ab66b750fc097bfde69129",
+  "merge_base_sha": "5174d4c8358a6f06aa8056bafd14c2272dab8dd1"
+ },
+ "fork": {
+  "repo": "amn-00/starlette",
+  "pull": 12,
+  "url": "https://github.com/amn-00/starlette/pull/12",
+  "head_sha": "44ba8fd5705bbe7d1788ab17a8dae442d8f03cfb"
+ },
+ "budget_limited": false,
+ "problems": [],
+ "notes": [],
+ "issue_links": [],
+ "run": {
+  "id": 27,
+  "pr_id": 27,
+  "head_sha": "44ba8fd5705bbe7d1788ab17a8dae442d8f03cfb",
+  "status": "completed",
+  "started_at": "2026-11-28 13:31:47.985789+00:00",
+  "finished_at": "2026-11-28 13:34:28.069270+00:00",
+  "tokens_in": 31633,
+  "tokens_out": 3156,
+  "cost_usd": "0.005990475",
+  "llm_calls": 15,
+  "cached_calls": 0,
+  "tokens_saved": 0,
+  "error": null,
+  "failure_kind": null,
+  "auto_retries": 0,
+  "agent_enabled": true,
+  "github_review_id": 6098050775
+ },
+ "findings": [
+  {
+   "id": 152,
+   "run_id": 27,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "starlette/responses.py",
+   "line_start": 142,
+   "line_end": 142,
+   "category": "bug",
+   "severity": "medium",
+   "title": "delete_cookie may raise ValueError on unsupported Python versions",
+   "explanation": "When `partitioned=True` is passed to `delete_cookie` on Python versions earlier than 3.14, the call to `set_cookie` will raise a ValueError because partitioned cookies are not supported. This causes `delete_cookie` to fail unexpectedly instead of simply deleting the cookie.",
+   "suggested_fix": "Add a version check in `delete_cookie` similar to `set_cookie`, or ignore the `partitioned` flag when the runtime does not support it.",
+   "verdict": "confirmed",
+   "verdict_reason": "delete_cookie forwards the partitioned flag to set_cookie, which raises a ValueError on Python <3.14, so calling delete_cookie with partitioned=True will raise unexpectedly. This confirms the bug.",
+   "evidence": [
+    {
+     "why": "set_cookie checks partitioned flag",
+     "line": 126,
+     "path": "starlette/responses.py",
+     "quote": "if partitioned:"
+    },
+    {
+     "why": "raises ValueError on old Python",
+     "line": 127,
+     "path": "starlette/responses.py",
+     "quote": "if sys.version_info < (3, 14):"
+    },
+    {
+     "why": "error source",
+     "line": 128,
+     "path": "starlette/responses.py",
+     "quote": "raise ValueError(\"Partitioned cookies are only supported in Python 3.14 and above.\")  # pragma: no cover"
+    },
+    {
+     "why": "delete_cookie accepts partitioned flag",
+     "line": 142,
+     "path": "starlette/responses.py",
+     "quote": "partitioned: bool = False,"
+    },
+    {
+     "why": "passes flag to set_cookie without guard",
+     "line": 153,
+     "path": "starlette/responses.py",
+     "quote": "partitioned=partitioned,"
+    }
+   ],
+   "posted": true,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 261,
+     "finding_id": 152,
+     "step_no": 1,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "delete_cookie forwards the partitioned flag to set_cookie, which raises a ValueError on Python <3.14, so calling delete_cookie with partitioned=True will raise unexpectedly. This confirms the bug.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "set_cookie checks partitioned flag",
+        "line": 126,
+        "path": "starlette/responses.py",
+        "quote": "if partitioned:"
+       },
+       {
+        "why": "raises ValueError on old Python",
+        "line": 127,
+        "path": "starlette/responses.py",
+        "quote": "if sys.version_info < (3, 14):"
+       },
+       {
+        "why": "error source",
+        "line": 128,
+        "path": "starlette/responses.py",
+        "quote": "raise ValueError(\"Partitioned cookies are only supported in Python 3.14 and above.\")  # pragma: no cover"
+       },
+       {
+        "why": "delete_cookie accepts partitioned flag",
+        "line": 142,
+        "path": "starlette/responses.py",
+        "quote": "partitioned: bool = False,"
+       },
+       {
+        "why": "passes flag to set_cookie without guard",
+        "line": 153,
+        "path": "starlette/responses.py",
+        "quote": "partitioned=partitioned,"
+       }
+      ]
+     },
+     "result_chars": 207,
+     "result_summary": "confirmed: delete_cookie forwards the partitioned flag to set_cookie, which raises a ValueError on Python <3.14, so calling delete_cookie with partitioned=True will raise unexpectedly. This confirms the bug.",
+     "tokens_in": 2301,
+     "tokens_out": 449,
+     "latency_ms": 1569
+    }
+   ]
+  },
+  {
+   "id": 153,
+   "run_id": 27,
+   "lane": "correctness",
+   "prompt_version": "v3",
+   "file": "tests/test_responses.py",
+   "line_start": 518,
+   "line_end": 521,
+   "category": "bug",
+   "severity": "medium",
+   "title": "delete_cookie called with unsupported argument on older Python versions",
+   "explanation": "When running on Python versions prior to 3.14, the `Response.delete_cookie` method does not accept the `partitioned` parameter. Passing it unconditionally (even as False) raises a TypeError, causing the test to fail on those versions.",
+   "suggested_fix": null,
+   "verdict": "uncertain",
+   "verdict_reason": "dropped without evidence from code it read (the quote for starlette/responses.py:126 isn't on that line): Response.delete_cookie forwards the partitioned flag to set_cookie, which only raises an error when the flag is True on Python <3.14. The test passes partitioned=False on older versions, so no TypeError occurs.",
+   "evidence": [],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 260,
+     "finding_id": 153,
+     "step_no": 1,
+     "tool": "search_repo",
+     "args_json": {
+      "query": "def delete_cookie"
+     },
+     "result_chars": 84,
+     "result_summary": "Lines containing 'def delete_cookie':\nstarlette/responses.py:134: def delete_cookie(",
+     "tokens_in": 2355,
+     "tokens_out": 53,
+     "latency_ms": 487
+    },
+    {
+     "id": 262,
+     "finding_id": 153,
+     "step_no": 2,
+     "tool": "read_file",
+     "args_json": {
+      "path": "starlette/responses.py",
+      "line_end": 170,
+      "line_start": 120
+     },
+     "result_chars": 2339,
+     "result_summary": "starlette/responses.py, lines 120-170 of 569:\n  120              assert samesite.lower() in [\n  121                  \"strict\",\n  122                  \"lax\",\n  123                  \"none\",\n  124              ], \"samesite must be either 'strict', 'lax' or 'none'\"\n  125              cookie[key][\"samesi",
+     "tokens_in": 2438,
+     "tokens_out": 45,
+     "latency_ms": 37145
+    },
+    {
+     "id": 263,
+     "finding_id": 153,
+     "step_no": 3,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "Response.delete_cookie forwards the partitioned flag to set_cookie, which only raises an error when the flag is True on Python <3.14. The test passes partitioned=False on older versions, so no TypeError occurs.",
+      "verdict": "dropped",
+      "evidence": [
+       {
+        "why": "check prevents error when partitioned is False",
+        "line": 126,
+        "path": "starlette/responses.py",
+        "quote": "if sys.version_info < (3, 14):"
+       },
+       {
+        "why": "error raised only if partitioned is True on older Python",
+        "line": 128,
+        "path": "starlette/responses.py",
+        "quote": "raise ValueError(\"Partitioned cookies are only supported in Python 3.14 and above.\")  # pragma: no cover"
+       },
+       {
+        "why": "default is False; passing False does not trigger error",
+        "line": 142,
+        "path": "starlette/responses.py",
+        "quote": "partitioned: bool = False,"
+       },
+       {
+        "why": "passes through value; test passes False on old versions",
+        "line": 153,
+        "path": "starlette/responses.py",
+        "quote": "partitioned=partitioned,"
+       }
+      ]
+     },
+     "result_chars": 327,
+     "result_summary": "uncertain: dropped without evidence from code it read (the quote for starlette/responses.py:126 isn't on that line): Response.delete_cookie forwards the partitioned flag to set_cookie, which only raises an error when the flag is True on Python <3.14. The test passes partitioned=False on older versio",
+     "tokens_in": 3152,
+     "tokens_out": 391,
+     "latency_ms": 1744
+    }
+   ]
+  },
+  {
+   "id": 154,
+   "run_id": 27,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "docs/responses.md",
+   "line_start": 51,
+   "line_end": 53,
+   "category": "readability",
+   "severity": "low",
+   "title": "Incomplete documentation for Response.delete_cookie parameters",
+   "explanation": "The signature lists several parameters (key, path, domain, secure, httponly, samesite, partitioned), but only the `partitioned` parameter is described in the documentation bullets. Readers will not know the purpose or defaults of the other parameters, leading to confusion or misuse.",
+   "suggested_fix": "Add bullet points for each parameter, e.g. `* key - ...`, `* path - ...`, etc., to fully document the method.",
+   "verdict": "confirmed",
+   "verdict_reason": "The documentation for Response.delete_cookie includes a signature with several parameters but provides a bullet description only for `partitioned`, leaving the other parameters undocumented, matching the finding.",
+   "evidence": [
+    {
+     "why": "Shows the method signature with many parameters",
+     "line": 51,
+     "path": "docs/responses.md",
+     "quote": "Signature: `Response.delete_cookie(key, path='/', domain=None, secure=False, httponly=False, samesite=\"lax\", partitioned=False)`"
+    },
+    {
+     "why": "Only the partitioned parameter is documented; other parameters lack description",
+     "line": 53,
+     "path": "docs/responses.md",
+     "quote": "* `partitioned` - A bool that indicates to user agents that these cross-site cookies should only be available in the same top-level context that the cookie was first set in. Only available for Python "
+    }
+   ],
+   "posted": false,
+   "drop_reason": null,
+   "duplicate_of": null,
+   "agent_steps": [
+    {
+     "id": 264,
+     "finding_id": 154,
+     "step_no": 1,
+     "tool": "read_file",
+     "args_json": {
+      "path": "docs/responses.md",
+      "line_end": 55,
+      "line_start": 45
+     },
+     "result_chars": 765,
+     "result_summary": "docs/responses.md, lines 45-55 of 201:\n   45  * `partitioned` - A bool that indicates to user agents that these cross-site cookies should only be available in the same top-level context that the cookie was first set in. Only available for Python \n   46  \n   47  #### Delete Cookie\n   48  \n   49  Conv",
+     "tokens_in": 2560,
+     "tokens_out": 70,
+     "latency_ms": 57557
+    },
+    {
+     "id": 265,
+     "finding_id": 154,
+     "step_no": 2,
+     "tool": "submit_verdict",
+     "args_json": {
+      "reason": "The documentation for Response.delete_cookie includes a signature with several parameters but provides a bullet description only for `partitioned`, leaving the other parameters undocumented, matching the finding.",
+      "verdict": "confirmed",
+      "evidence": [
+       {
+        "why": "Shows the method signature with many parameters",
+        "line": 51,
+        "path": "docs/responses.md",
+        "quote": "Signature: `Response.delete_cookie(key, path='/', domain=None, secure=False, httponly=False, samesite=\"lax\", partitioned=False)`"
+       },
+       {
+        "why": "Only the partitioned parameter is documented; other parameters lack description",
+        "line": 53,
+        "path": "docs/responses.md",
+        "quote": "* `partitioned` - A bool that indicates to user agents that these cross-site cookies should only be available in the same top-level context that the cookie was first set in. Only available for Python "
+       }
+      ]
+     },
+     "result_chars": 223,
+     "result_summary": "confirmed: The documentation for Response.delete_cookie includes a signature with several parameters but provides a bullet description only for `partitioned`, leaving the other parameters undocumented, matching the finding.",
+     "tokens_in": 2833,
+     "tokens_out": 269,
+     "latency_ms": 41036
+    }
+   ]
+  },
+  {
+   "id": 155,
+   "run_id": 27,
+   "lane": "maintainability",
+   "prompt_version": "v3",
+   "file": "tests/test_responses.py",
+   "line_start": 520,
+   "line_end": 520,
+   "category": "idiom",
+   "severity": "low",
+   "title": "Unnecessary True/False expression",
+   "explanation": "The expression `True if sys.version_info >= (3, 14) else False` is equivalent to `sys.version_info >= (3, 14)`. Using the comparison directly is more idiomatic and clearer.",
+   "suggested_fix": "Replace with `partitioned=sys.version_info >= (3, 14)`",
+   "verdict": null,
+   "verdict_reason": null,
+   "evidence": null,
+   "posted": false,
+   "drop_reason": "duplicate",
+   "duplicate_of": 153,
+   "agent_steps": []
+  }
+ ],
+ "pr_created_at": "2026-11-28T13:31:45Z",
+ "review": {
+  "id": 6098050775,
+  "url": "https://github.com/amn-00/starlette/pull/12#pullrequestreview-6098050775",
+  "submitted_at": "2026-11-28T13:34:27Z",
+  "body": "<!-- pr-review-agent run:27 -->\n### Automated review of `44ba8fd`\nFound 1 confirmed issue(s): 1 medium. 1 style suggestion(s) below.\nReviewed 3 file(s) with `openai/gpt-oss-120b` (correctness, security) and `openai/gpt-oss-20b` (maintainability), prompts v3.\nEach finding was checked against the repository by the verification agent (`openai/gpt-oss-120b`, prompt agent v3): 2 confirmed, 0 dropped, 1 uncertain, 0 not verified. Only confirmed findings are shown.\nCost \u2248 $0.0060 at list prices (free tier; agent $0.0031); 0 of 9 lane call(s) answered from cache.\n\n<details><summary>Suggestions (style, not posted inline): 1</summary>\n\n- `docs/responses.md:51` Incomplete documentation for Response.delete_cookie parameters: The signature lists several parameters (key, path, domain, secure, httponly, samesite, partitioned), but only the `partitioned` parameter is described in the documentation bullets. Readers will not know the purpose or defaults of the other parameters, leading to confusion or misuse.\n\n</details>\n\n<details><summary>Uncertain (not posted): 1</summary>\n\n- `tests/test_responses.py:518` **medium** delete_cookie called with unsupported argument on older Python versions \u2014 dropped without evidence from code it read (the quote for starlette/responses.py:126 isn't on that line): Response.delete_cookie forwards the partitioned flag to set_cookie, which only raises an error when the flag is True on Python <3.14. The test passes partitioned=False on older versions, so no TypeError occurs.\n\n</details>"
+ },
+ "comments": [
+  {
+   "id": 4727217368,
+   "url": "https://github.com/amn-00/starlette/pull/12#discussion_r4727217368",
+   "file": "starlette/responses.py",
+   "line": 142,
+   "start_line": 142,
+   "body": "**medium** \u00b7 bug \u00b7 delete_cookie may raise ValueError on unsupported Python versions\n\nWhen `partitioned=True` is passed to `delete_cookie` on Python versions earlier than 3.14, the call to `set_cookie` will raise a ValueError because partitioned cookies are not supported. This causes `delete_cookie` to fail unexpectedly instead of simply deleting the cookie.\n\n**Suggested fix:** Add a version check in `delete_cookie` similar to `set_cookie`, or ignore the `partitioned` flag when the runtime does not support it.\n\n_Checked against `starlette/responses.py:126`, `starlette/responses.py:127`, `starlette/responses.py:128`_"
+  }
+ ]
+}
